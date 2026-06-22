@@ -7249,6 +7249,11 @@ window.markNoticeRead = (id) => {
                     const deadlineTime = deadlineVal ? new Date(deadlineVal).getTime() : null;
                     const projectTag = 'عام'; // تم إزالة الحقل من الواجهة وتثبيت القيمة افتراضياً
                     const isHighPriority = document.getElementById('isTaskHighPriority').value === 'true';
+                        if (deadlineTime && deadlineTime < Date.now()) {
+                        showToast('غير مسموح! لا يمكنك إسناد مهمة في تاريخ أو وقت سابق.', 'error');
+                        if(submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = 'إنشاء المهمة'; }
+                        return;
+                    }
 
                     const submitTask = async (fileData, fileType, fileName) => {
                         try {
