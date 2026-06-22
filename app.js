@@ -7505,26 +7505,42 @@ window.markNoticeRead = (id) => {
             });
         };
 
-       // دوال قوائم التحقق عند إنشاء مهمة جديدة
-        window.renderCreationChecklists = () => {
-            const container = document.getElementById('creationChecklistsContainer');
-            if (!container) return; // حماية الكود إذا لم يكن العنصر موجوداً في HTML
-            
-            container.innerHTML = '';
-            creationChecklists.forEach((item, index) => {
-                container.innerHTML += `
-                    <div class="flex items-center gap-2 mb-2">
-                        <input type="text" value="${escapeHTML(item.text)}" onchange="window.updateCreationChecklist(${index}, this.value)" placeholder="اكتب المهمة الفرعية هنا..." class="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm dark:bg-gray-700 dark:text-white focus:border-[#00839b] outline-none" required>
-                        <button type="button" onclick="window.removeCreationChecklist(${index})" class="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded transition"><i class="fa-solid fa-trash"></i></button>
-                    </div>
-                `;
-            });
-        };
+       // دوال إدارة قوائم التحقق داخل المهام
+window.renderCreationChecklists = () => {
+    const container = document.getElementById('checklistItemsContainer');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    creationChecklists.forEach((item, index) => {
+        container.innerHTML += `
+            <div class="flex items-center gap-2 mb-2 bg-gray-50 dark:bg-gray-700 p-2 rounded-lg border border-gray-200 dark:border-gray-600 w-full">
+                <input type="text" value="${escapeHTML(item.text)}" onchange="window.updateCreationChecklist(${index}, this.value)" class="flex-1 bg-transparent border-none text-sm dark:text-white outline-none w-full text-right" required>
+                <button type="button" onclick="window.removeCreationChecklist(${index})" class="text-red-500 hover:text-red-700 p-1"><i class="fa-solid fa-trash"></i></button>
+            </div>
+        `;
+    });
 
-        window.addCreationChecklist = () => {
-            creationChecklists.push({ text: '', isCompleted: false });
-            window.renderCreationChecklists();
-        };
+    const progressText = document.getElementById('checklistProgressText');
+    if(progressText) progressText.innerText = `المهام المضافة: ${creationChecklists.length}`;
+};
+
+window.addChecklistItem = () => {
+    const input = document.getElementById('newChecklistItemInput');
+    if(!input) return;
+    const text = input.value.trim();
+    if(text) {
+        creationChecklists.push({ text: text, isCompleted: false });
+        input.value = '';
+        window.renderCreationChecklists();
+    }
+};
+
+window.handleChecklistEnter = (e) => {
+    if(e.key === 'Enter') {
+        e.preventDefault();
+        window.addChecklistItem();
+    }
+};
 
         window.updateCreationChecklist = (index, value) => {
             creationChecklists[index].text = value;
