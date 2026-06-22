@@ -1191,65 +1191,168 @@
                 <div id="inventoryPastContainer" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
             </section>
 
-            <section id="tasks" class="section-content hidden animate-fade-in py-6 px-4 w-full h-[calc(100vh-80px)] relative flex flex-col">
+            <!-- المهام (التصميم الشامل: List, Deadline, Planner) -->
+            <section id="tasks" class="section-content hidden animate-fade-in py-4 px-2 md:px-6 w-full h-[calc(100vh-80px)] relative flex flex-col">
                 
-                <div class="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mb-6 gap-4 flex-shrink-0">
-                    <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 rounded-xl bg-[#002d74]/10 flex items-center justify-center text-[#002d74] dark:text-secondary text-2xl">
-                            <i class="fa-solid fa-layer-group"></i>
+                <!-- الشريط العلوي للمهام -->
+                <div class="flex flex-col lg:flex-row justify-between items-center bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mb-4 gap-4 flex-shrink-0">
+                    <div class="flex items-center gap-3 w-full lg:w-auto justify-between lg:justify-start">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-[#002d74]/10 flex items-center justify-center text-[#002d74] dark:text-[#00b0f0] text-xl">
+                                <i class="fa-solid fa-list-check"></i>
+                            </div>
+                            <h2 class="text-xl font-bold text-gray-800 dark:text-white hidden md:block">إدارة المهام</h2>
                         </div>
-                        <div>
-                            <h2 class="text-xl font-bold text-gray-800 dark:text-white">مخطط المهام (Planner)</h2>
-                            <p class="text-xs text-gray-500">إدارة المهام بالسحب والإفلات</p>
+                        
+                        <!-- أزرار التبديل بين طرق العرض -->
+                        <div class="flex gap-1 bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
+                            <button onclick="window.switchTaskSubView('list')" id="btn-view-list" class="px-4 py-1.5 text-xs font-bold rounded-md bg-white dark:bg-gray-600 shadow-sm text-[#002d74] dark:text-white transition-all">List</button>
+                            <button onclick="window.switchTaskSubView('deadline')" id="btn-view-deadline" class="px-4 py-1.5 text-xs font-bold rounded-md text-gray-500 hover:text-[#002d74] dark:hover:text-white transition-all">Deadline</button>
+                            <button onclick="window.switchTaskSubView('planner')" id="btn-view-planner" class="px-4 py-1.5 text-xs font-bold rounded-md text-gray-500 hover:text-[#002d74] dark:hover:text-white transition-all">Planner</button>
                         </div>
                     </div>
                     
-                    <div class="flex items-center gap-3 w-full md:w-auto">
-                        <div class="search-wrapper flex-1 md:w-64">
-                            <i class="fa-solid fa-search search-icon"></i>
-                            <input type="text" id="taskSearchInput" onkeyup="window.filterTasksList()" placeholder="بحث في المهام..." class="search-input w-full bg-gray-50 dark:bg-gray-900">
+                    <div class="flex items-center gap-3 w-full lg:w-auto flex-wrap lg:flex-nowrap">
+                        <!-- التبديل بين المهام الحالية والمنجزة للاعتماد -->
+                        <div class="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-lg w-full md:w-auto">
+                            <button onclick="window.switchTaskTab('active')" id="tab-tasks-active" class="flex-1 px-4 py-1.5 text-sm font-bold rounded-md bg-white text-[#00839b] shadow-sm transition">المهام الحالية</button>
+                            <button onclick="window.switchTaskTab('reports')" id="tab-tasks-reports" class="flex-1 px-4 py-1.5 text-sm font-bold rounded-md text-gray-500 hover:text-[#00839b] transition relative">
+                                المهام المنجزة
+                                <span id="pendingApprovalBadge" class="absolute -top-2 -left-2 bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full hidden shadow-md animate-bounce">0</span>
+                            </button>
                         </div>
-                        <button id="addTaskBtn" onclick="window.openTaskModal()" class="bg-[#00839b] hover:bg-[#002d74] text-white px-5 py-2.5 rounded-xl text-sm font-bold transition flex items-center gap-2 shadow-md">
-                            <i class="fa-solid fa-plus"></i> مهمة جديدة
+
+                        <div class="search-wrapper flex-1 min-w-[200px]">
+                            <i class="fa-solid fa-search search-icon"></i>
+                            <input type="text" id="taskSearchInput" onkeyup="window.filterTasksList()" placeholder="بحث في المهام..." class="search-input w-full bg-gray-50 dark:bg-gray-900 text-xs py-2">
+                        </div>
+                        <button id="addTaskBtn" onclick="window.openTaskModal()" class="bg-[#00839b] hover:bg-[#002d74] text-white px-4 py-2 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 shadow-md w-full md:w-auto">
+                            <i class="fa-solid fa-plus"></i> إنشاء مهمة
                         </button>
                     </div>
                 </div>
 
-                <div class="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar pb-4">
-                    <div class="flex gap-6 h-full min-w-max items-start px-2">
-                        
-                        <div class="w-80 flex flex-col h-full max-h-full bg-gray-100/80 dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700">
-                            <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-200/50 dark:bg-gray-800/80 rounded-t-2xl">
-                                <h3 class="font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-gray-400"></div> قيد الانتظار</h3>
-                                <span id="count-pending" class="bg-white dark:bg-gray-700 text-xs px-2 py-1 rounded-md font-bold shadow-sm">0</span>
-                            </div>
-                            <div id="column-pending" class="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar min-h-[150px]" data-status="pending"></div>
-                        </div>
+                <!-- حاويات العرض الرئيسية الثلاثة -->
+                <div id="tasksMainView" class="flex-1 overflow-hidden relative flex flex-col bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+                    
+                    <!-- 1. طريقة العرض كقائمة (List) -->
+                    <div id="tasks-list-view" class="flex-1 overflow-y-auto custom-scrollbar">
+                        <table class="w-full text-right text-sm">
+                            <thead class="bg-[#002d74]/5 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 text-[#002d74] dark:text-gray-300 sticky top-0 z-10">
+                                <tr>
+                                    <th class="p-3 w-10 text-center"><i class="fa-solid fa-arrows-up-down"></i></th>
+                                    <th class="p-3 font-bold w-1/3">Name</th>
+                                    <th class="p-3 font-bold">Active (Status)</th>
+                                    <th class="p-3 font-bold">Deadline</th>
+                                    <th class="p-3 font-bold">Created by</th>
+                                    <th class="p-3 font-bold">Assignee</th>
+                                    <th class="p-3 font-bold text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tasksListTbody" class="divide-y divide-gray-100 dark:divide-gray-700">
+                                <!-- سيتم التعبئة من الجافاسكريبت -->
+                            </tbody>
+                        </table>
+                    </div>
 
-                        <div class="w-80 flex flex-col h-full max-h-full bg-blue-50/50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-900/30">
-                            <div class="p-4 border-b border-blue-100 dark:border-blue-900/30 flex justify-between items-center bg-blue-100/50 dark:bg-blue-900/20 rounded-t-2xl">
-                                <h3 class="font-bold text-blue-700 dark:text-blue-400 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></div> قيد التنفيذ</h3>
-                                <span id="count-in-progress" class="bg-white dark:bg-gray-800 text-xs px-2 py-1 rounded-md font-bold shadow-sm">0</span>
+                    <!-- 2. طريقة العرض المجدولة (Deadline) -->
+                    <div id="tasks-deadline-view" class="hidden flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar bg-gray-50 dark:bg-gray-900/30 p-4">
+                        <div class="flex gap-4 h-full min-w-max items-start">
+                            <div class="w-[300px] flex flex-col h-full bg-red-50/50 dark:bg-red-900/10 rounded-xl border border-red-100 dark:border-red-900/30">
+                                <div class="p-3 bg-red-500 text-white font-bold rounded-t-xl text-sm flex justify-between items-center">
+                                    <span>Overdue (متأخرة)</span>
+                                    <span id="count-dl-overdue" class="bg-white/20 px-2 py-0.5 rounded text-xs">0</span>
+                                </div>
+                                <div id="col-dl-overdue" class="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar min-h-[150px]" data-status="overdue"></div>
                             </div>
-                            <div id="column-in-progress" class="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar min-h-[150px]" data-status="in-progress"></div>
-                        </div>
-
-                        <div class="w-80 flex flex-col h-full max-h-full bg-orange-50/50 dark:bg-orange-900/10 rounded-2xl border border-orange-100 dark:border-orange-900/30">
-                            <div class="p-4 border-b border-orange-100 dark:border-orange-900/30 flex justify-between items-center bg-orange-100/50 dark:bg-orange-900/20 rounded-t-2xl">
-                                <h3 class="font-bold text-orange-700 dark:text-orange-400 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-orange-500"></div> للمراجعة</h3>
-                                <span id="count-pending_approval" class="bg-white dark:bg-gray-800 text-xs px-2 py-1 rounded-md font-bold shadow-sm">0</span>
+                            <div class="w-[300px] flex flex-col h-full bg-lime-50/50 dark:bg-lime-900/10 rounded-xl border border-lime-100 dark:border-lime-900/30">
+                                <div class="p-3 bg-lime-500 text-white font-bold rounded-t-xl text-sm flex justify-between items-center">
+                                    <span>Due today (اليوم)</span>
+                                    <span id="count-dl-today" class="bg-white/20 px-2 py-0.5 rounded text-xs">0</span>
+                                </div>
+                                <div id="col-dl-today" class="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar min-h-[150px]" data-status="today"></div>
                             </div>
-                            <div id="column-pending_approval" class="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar min-h-[150px]" data-status="pending_approval"></div>
-                        </div>
-
-                        <div class="w-80 flex flex-col h-full max-h-full bg-green-50/50 dark:bg-green-900/10 rounded-2xl border border-green-100 dark:border-green-900/30">
-                            <div class="p-4 border-b border-green-100 dark:border-green-900/30 flex justify-between items-center bg-green-100/50 dark:bg-green-900/20 rounded-t-2xl">
-                                <h3 class="font-bold text-green-700 dark:text-green-400 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-green-500"></div> مكتملة</h3>
-                                <span id="count-completed" class="bg-white dark:bg-gray-800 text-xs px-2 py-1 rounded-md font-bold shadow-sm">0</span>
+                            <div class="w-[300px] flex flex-col h-full bg-[#00b0f0]/10 rounded-xl border border-[#00b0f0]/30">
+                                <div class="p-3 bg-[#00b0f0] text-white font-bold rounded-t-xl text-sm flex justify-between items-center">
+                                    <span>Due this week (هذا الأسبوع)</span>
+                                    <span id="count-dl-week" class="bg-white/20 px-2 py-0.5 rounded text-xs">0</span>
+                                </div>
+                                <div id="col-dl-week" class="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar min-h-[150px]" data-status="week"></div>
                             </div>
-                            <div id="column-completed" class="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar min-h-[150px]" data-status="completed"></div>
+                            <div class="w-[300px] flex flex-col h-full bg-teal-50/50 dark:bg-teal-900/10 rounded-xl border border-teal-100 dark:border-teal-900/30">
+                                <div class="p-3 bg-teal-500 text-white font-bold rounded-t-xl text-sm flex justify-between items-center">
+                                    <span>Due next week (الأسبوع القادم)</span>
+                                    <span id="count-dl-next" class="bg-white/20 px-2 py-0.5 rounded text-xs">0</span>
+                                </div>
+                                <div id="col-dl-next" class="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar min-h-[150px]" data-status="next"></div>
+                            </div>
+                            <div class="w-[300px] flex flex-col h-full bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+                                <div class="p-3 bg-gray-500 text-white font-bold rounded-t-xl text-sm flex justify-between items-center">
+                                    <span>No deadline (بدون موعد)</span>
+                                    <span id="count-dl-none" class="bg-white/20 px-2 py-0.5 rounded text-xs">0</span>
+                                </div>
+                                <div id="col-dl-none" class="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar min-h-[150px]" data-status="none"></div>
+                            </div>
                         </div>
+                    </div>
 
+                    <!-- 3. طريقة العرض كمخطط (Planner) -->
+                    <div id="tasks-planner-view" class="hidden flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar bg-gray-50 dark:bg-gray-900/30 p-4">
+                        <div class="flex gap-4 h-full min-w-max items-start">
+                            <div class="w-[300px] flex flex-col h-full bg-[#00b0f0]/10 rounded-xl border border-[#00b0f0]/30">
+                                <div class="p-3 bg-[#00b0f0] text-white font-bold rounded-t-xl text-sm flex justify-between items-center shadow-sm">
+                                    <span>Not planned (قيد الانتظار)</span>
+                                    <span id="count-pl-pending" class="bg-white/20 px-2 py-0.5 rounded text-xs">0</span>
+                                </div>
+                                <div id="col-pl-pending" class="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar min-h-[150px]" data-status="pending"></div>
+                            </div>
+
+                            <div class="w-[300px] flex flex-col h-full bg-lime-50 dark:bg-lime-900/10 rounded-xl border border-lime-200 dark:border-lime-900/30">
+                                <div class="p-3 bg-lime-500 text-white font-bold rounded-t-xl text-sm flex justify-between items-center shadow-sm">
+                                    <span>In progress (قيد التنفيذ)</span>
+                                    <span id="count-pl-progress" class="bg-white/20 px-2 py-0.5 rounded text-xs">0</span>
+                                </div>
+                                <div id="col-pl-progress" class="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar min-h-[150px]" data-status="in-progress"></div>
+                            </div>
+
+                            <div class="w-[300px] flex flex-col h-full bg-orange-50 dark:bg-orange-900/10 rounded-xl border border-orange-200 dark:border-orange-900/30">
+                                <div class="p-3 bg-orange-500 text-white font-bold rounded-t-xl text-sm flex justify-between items-center shadow-sm">
+                                    <span>Review (بانتظار الموافقة)</span>
+                                    <span id="count-pl-review" class="bg-white/20 px-2 py-0.5 rounded text-xs">0</span>
+                                </div>
+                                <div id="col-pl-review" class="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar min-h-[150px]" data-status="pending_approval"></div>
+                            </div>
+                            
+                            <div class="w-[300px] flex flex-col h-full bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+                                <div class="p-3 bg-gray-500 text-white font-bold rounded-t-xl text-sm flex justify-between items-center shadow-sm">
+                                    <span>Completed (مكتملة)</span>
+                                    <span id="count-pl-completed" class="bg-white/20 px-2 py-0.5 rounded text-xs">0</span>
+                                </div>
+                                <div id="col-pl-completed" class="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar min-h-[150px]" data-status="completed"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- شاشة عرض المنجزات والاعتمادات (للمدير) -->
+                <div id="inlineCeoReports" class="hidden flex-1 overflow-hidden relative flex-col bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
+                    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4 border-b border-gray-100 dark:border-gray-700 pb-4">
+                        <div class="flex items-center gap-3 w-full md:w-auto">
+                            <label class="font-bold text-sm text-[#002d74] dark:text-gray-300 whitespace-nowrap"><i class="fa-solid fa-user-check mx-2"></i>اختر الموظف:</label>
+                            <div class="relative w-full md:w-64">
+                                <select id="ceoReportEmpSelect" onchange="if(this.value) window.renderCeoEmployeeTasks(this.value, this.options[this.selectedIndex].text)" class="w-full bg-gray-50 border border-gray-300 shadow-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg pr-3 pl-10 py-2 text-sm appearance-none focus:outline-none focus:border-[#00839b] font-bold cursor-pointer">
+                                    <option value="">-- اختر موظفاً لعرض إنجازاته --</option>
+                                </select>
+                                <i class="fa-solid fa-chevron-down absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex-1 overflow-y-auto custom-scrollbar" id="ceoReportTasksDetails">
+                        <div class="flex flex-col items-center justify-center h-full text-gray-400 mt-10">
+                            <i class="fa-solid fa-folder-open text-5xl mb-4 text-[#00839b]/50"></i>
+                            <p class="font-bold text-lg text-[#002d74] dark:text-gray-300">المهام المنجزة بانتظار الاعتماد</p>
+                            <p class="text-sm mt-2 text-gray-500">اختر موظفاً لعرض ومراجعة المهام التي أتمها.</p>
+                        </div>
                     </div>
                 </div>
             </section>
