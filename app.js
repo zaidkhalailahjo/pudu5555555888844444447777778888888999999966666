@@ -7438,20 +7438,18 @@ if(assignedUser && assignedUser.email && assignedUser.email !== 'no-email@compan
         };
 
         window.filterTasksList = () => {
-            const query = document.getElementById('taskSearchInput').value.toLowerCase();
-            document.querySelectorAll('.task-row-item').forEach(el => {
-                const title = el.getAttribute('data-title').toLowerCase();
-                const assignee = el.getAttribute('data-assignee').toLowerCase();
-                const project = el.getAttribute('data-project').toLowerCase();
-                if(title.includes(query) || assignee.includes(query) || project.includes(query)) {
-                    el.style.display = 'table-row';
-                } else {
-                    el.style.display = 'none';
-                    const detailsRow = document.getElementById(`task-details-tr-${el.getAttribute('data-id')}`);
-                    if(detailsRow) detailsRow.style.display = 'none';
-                }
-            });
-        };
+    const query = document.getElementById('taskSearchInput').value.toLowerCase();
+    document.querySelectorAll('.task-card').forEach(el => {
+        const title = el.querySelector('h4').innerText.toLowerCase();
+        const assignee = el.querySelector('span[title]').innerText.toLowerCase();
+        
+        if(title.includes(query) || assignee.includes(query)) {
+            el.style.display = 'block';
+        } else {
+            el.style.display = 'none';
+        }
+    });
+};
 
         window.toggleTaskDetailsList = (id) => {
             const detailsDiv = document.getElementById(`task-details-${id}`);
