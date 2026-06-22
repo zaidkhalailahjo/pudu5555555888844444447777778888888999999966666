@@ -3806,9 +3806,17 @@ function buildAttendanceRow(emp, record, showDate = false) {
         pOut = record.punchOut ? new Date(record.punchOut).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'}) : '<span class="text-gray-400">-</span>';
 
         if (record.reEntries && record.reEntries.length > 0) {
+            const isManager = currentUserData && currentUserData.role === 'CEO';
             record.reEntries.forEach((re, idx) => {
                 const reTime = new Date(re.time).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
-                pOut += `<br><button onclick="window.openSpecificReEntryLog('${record.id}', ${idx})" class="text-[10px] text-blue-600 bg-blue-50 px-2 py-1 rounded shadow-sm font-bold mt-1 inline-block border border-blue-200 hover:bg-blue-100 transition"><i class="fa-solid fa-rotate-left mx-1"></i>لقد عاد للعمل (${reTime})</button>`;
+                
+                if (isManager) {
+                    // المدير يرى زراً أزرق يمكن النقر عليه لفتح الجاسوس
+                    pOut += `<br><button onclick="window.openSpecificReEntryLog('${record.id}', ${idx})" class="text-[10px] text-blue-600 bg-blue-50 px-2 py-1 rounded shadow-sm font-bold mt-1 inline-block border border-blue-200 hover:bg-blue-100 transition"><i class="fa-solid fa-rotate-left mx-1"></i>عاد للعمل (${reTime}) - تتبع الحركات</button>`;
+                } else {
+                    // الموظف يرى نصاً أخضر ثابتاً لا يمكن النقر عليه
+                    pOut += `<br><span class="text-[10px] text-green-700 bg-green-50 px-2 py-1 rounded shadow-sm font-bold mt-1 inline-block border border-green-200"><i class="fa-solid fa-check mx-1"></i>لقد عدت للعمل (${reTime})</span>`;
+                }
             });
         }
 
