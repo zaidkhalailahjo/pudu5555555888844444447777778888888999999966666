@@ -7632,232 +7632,137 @@ if(assignedUser && assignedUser.email && assignedUser.email !== 'no-email@compan
         };
 
         window.renderTasks = function() {
-    const listBody = document.getElementById('tasksListBody');
-    const totalTasksCountList = document.getElementById('totalTasksCountList');
-    const emptyMsg = document.getElementById('emptyTasksMessage');
-    if(!listBody) return;
-    listBody.innerHTML = '';
+    const colPending = document.getElementById('column-pending');
+    const colInProgress = document.getElementById('column-in-progress');
+    const colApproval = document.getElementById('column-pending_approval');
+    const colCompleted = document.getElementById('column-completed');
     
+    if(!colPending) return;
+
+    // تفريغ القوائم
+    colPending.innerHTML = '';
+    colInProgress.innerHTML = '';
+    colApproval.innerHTML = '';
+    colCompleted.innerHTML = '';
+
     const isCEO = currentUserData.role === 'CEO';
     let tasksToRender = globalTasks.filter(t => {
-            const isSelfAssigned = t.assigneeId === t.createdBy;
-            // إذا كان الشخص هو من أسند المهمة لنفسه، لا يراها أحد غيره (حتى المدير)
-            if (isSelfAssigned) {
-                return t.assigneeId === currentUserData.uid; 
-            }
-            // باقي المهام يراها المدير بشكل طبيعي
-            if (isCEO) return true;
-            
-            // السماح لمن يملك صلاحية (إسناد المهام) برؤية المهام المكتملة أو التي بانتظار الموافقة
-            const hasAssignPerm = currentUserData.permissions && currentUserData.permissions.canAssignTasks;
-            if (hasAssignPerm && (t.status === 'completed' || t.status === 'pending_approval')) {
-                return true; 
-            }
-            
-            // والموظف العادي يرى المهام التي أسندت إليه أو التي أسندها لغيره
-            return t.assigneeId === currentUserData.uid || t.createdBy === currentUserData.uid;
-        });
-
-    if (window.currentTaskTab === 'reports') {
-        tasksToRender = tasksToRender.filter(t => t.status === 'completed');
-    } else if (window.currentTaskTab === 'active') {
-        tasksToRender = tasksToRender.filter(t => t.status !== 'completed');
-    }
-
-    tasksToRender.sort((a, b) => {
-        // رفع المهام التي بانتظار الموافقة للأعلى دائماً
-        if (a.status === 'pending_approval' && b.status !== 'pending_approval') return -1;
-        if (b.status === 'pending_approval' && a.status !== 'pending_approval') return 1;
-        
-        // باقي المهام ترتب حسب الأحدث
-        return b.timestamp - a.timestamp;
+        const isSelfAssigned = t.assigneeId === t.createdBy;
+        if (isSelfAssigned) return t.assigneeId === currentUserData.uid; 
+        if (isCEO) return true;
+        const hasAssignPerm = currentUserData.permissions && currentUserData.permissions.canAssignTasks;
+        if (hasAssignPerm) return true; 
+        return t.assigneeId === currentUserData.uid || t.createdBy === currentUserData.uid;
     });
 
-    if(totalTasksCountList) totalTasksCountList.innerText = tasksToRender.length;
-    if(tasksToRender.length === 0) {
-        if(emptyMsg) emptyMsg.classList.remove('hidden');
-        return;
-    } else {
-        if(emptyMsg) emptyMsg.classList.add('hidden');
-    }
+    // ترتيب تنازلي (الأحدث أولاً)
+    tasksToRender.sort((a, b) => b.timestamp - a.timestamp);
+
+    // عدادات القوائم
+    let counts = { 'pending': 0, 'in-progress': 0, 'pending_approval': 0, 'completed': 0 };
 
     tasksToRender.forEach(task => {
+        if(counts[task.status] !== undefined) counts[task.status]++;
+
         const isMyTask = task.assigneeId === currentUserData.uid;
-        const canCheck = isMyTask || isCEO;
-        const isCompleted = task.status === 'completed';
-        const isPendingApproval = task.status === 'pending_approval';
+        const deadlineStr = task.deadline ? new Date(task.deadline).toLocaleString('ar-EG', {month: 'short', day: 'numeric', hour:'2-digit'}) : 'بدون موعد';
+        const isLate = new Date(task.deadline).getTime() < Date.now() && task.status !== 'completed' && task.status !== 'pending_approval';
         
-        let statusDotClass = 'bg-gray-400';
-        let statusText = 'قيد الانتظار';
-        let statusBg = 'bg-gray-100';
-        let statusTextColor = 'text-gray-600';
+        // شريط الأولوية الجانبي
+        const priorityColor = task.isHighPriority ? 'bg-orange-500' : 'bg-[#00839b]';
+        const lateBadge = isLate ? `<span class="absolute top-2 left-2 bg-red-100 text-red-600 text-[9px] font-bold px-2 py-1 rounded animate-pulse">متأخرة!</span>` : '';
 
-        if(task.status === 'in-progress') { 
-            statusDotClass = 'bg-[#00839b] animate-pulse shadow-[0_0_8px_#00839b]'; 
-            statusText = 'قيد التنفيذ'; 
-            statusBg = 'bg-[#00839b]/10'; 
-            statusTextColor = 'text-[#00839b]'; 
-        }
-        if(task.status === 'completed') { 
-            statusDotClass = 'bg-green-500'; 
-            statusText = 'مكتمل'; 
-            statusBg = 'bg-green-50'; 
-            statusTextColor = 'text-green-700'; 
-        }
-        if(task.status === 'pending_approval') { 
-            statusDotClass = 'bg-orange-500'; 
-            statusText = 'بانتظار الموافقة'; 
-            statusBg = 'bg-orange-50'; 
-            statusTextColor = 'text-orange-700'; 
-        }
-
-        const deadlineStr = task.deadline ? new Date(task.deadline).toLocaleString('ar-EG', {month: 'short', day: 'numeric', hour:'2-digit', minute:'2-digit'}) : 'بدون موعد';
-        const isLate = new Date(task.deadline).getTime() < Date.now() && !isCompleted && !isPendingApproval;
-            let startTaskBtnHtml = '';
-        if (task.status === 'pending' && canCheck) {
-            startTaskBtnHtml = `<button onclick="event.stopPropagation(); window.startTask('${task.id}')" class="bg-[#00839b] text-white px-4 py-1.5 rounded-lg text-xs font-bold hover:bg-[#002d74] transition shadow-md mt-2 w-max">بدء المهمة <i class="fa-solid fa-play mr-1"></i></button>`;
-        }
-        
-        let checklistHtml = '';
-        if(task.checklists && task.checklists.length > 0) {
-            let clItemsHtml = task.checklists.map((cl, idx) => `
-                <label class="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-[#00839b]/50 transition-all cursor-pointer shadow-sm hover:shadow">
-                    <div class="flex items-center justify-center w-6 h-6 rounded bg-gray-50 border border-gray-200 dark:border-gray-600 shrink-0">
-                        <input type="checkbox" class="custom-checkbox w-4 h-4 rounded-sm m-0" ${cl.isCompleted ? 'checked' : ''} ${!canCheck || isPendingApproval || isCompleted ? 'disabled' : ''} onchange="window.toggleTaskChecklistItem('${task.id}', ${idx}, this.checked)">
-                    </div>
-                    <span class="text-sm font-semibold ${cl.isCompleted ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'}">${escapeHTML(cl.text)}</span>
-                </label>
-            `).join('');
-            checklistHtml = `<div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700/50"><div class="grid grid-cols-1 md:grid-cols-2 gap-3">${clItemsHtml}</div></div>`;
-        }
-
-        // --- عرض أوقات الإنجاز، وسبب الرفض، والتقرير ---
-        let approvalDetailsHtml = '';
-        
-        // عرض سبب الرفض بشكل متقارب إذا تم رفضها
-        if (task.rejectReason && task.status === 'in-progress') {
-            approvalDetailsHtml += `
-                <div class="mt-4 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border-l-4 border-red-500 shadow-sm flex flex-col gap-1">
-                    <span class="text-xs font-bold text-red-700 dark:text-red-400"><i class="fa-solid fa-triangle-exclamation mx-1"></i>سبب رفض تقرير المهمة:</span>
-                    <span class="text-sm text-red-600 dark:text-red-300 font-medium whitespace-pre-wrap">${escapeHTML(task.rejectReason)}</span>
-                </div>
-            `;
-        }
-
-        if (isPendingApproval || isCompleted || task.reportText) {
-            const startStr = task.startedAt ? new Date(task.startedAt).toLocaleString('ar-EG', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) : 'غير مسجل';
-            const endStr = task.completedAt ? new Date(task.completedAt).toLocaleString('ar-EG', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) : 'غير مسجل';
-            
-            const durationMs = (task.startedAt && task.completedAt) ? (task.completedAt - task.startedAt) : 0;
-            const durationStr = formatDurationArabic(durationMs);
-            
-            let fileHtml = '';
-            if(task.reportFileData) {
-                if(task.reportFileType && task.reportFileType.startsWith('image/')) {
-                    fileHtml = `<img src="${escapeHTML(task.reportFileData)}" class="mt-3 rounded-lg max-w-[150px] border shadow cursor-pointer">`;
-                } else {
-                    fileHtml = `<a href="${escapeHTML(task.reportFileData)}" download="مرفق_مهمة" class="inline-block mt-2 text-xs text-blue-600 underline"><i class="fa-solid fa-paperclip"></i> تحميل المرفق</a>`;
-                }
-            }
-
-            let ceoActionBtns = '';
-            if (isPendingApproval && (isCEO || (currentUserData.permissions && currentUserData.permissions.canAssignTasks))) {
-                ceoActionBtns = `
-                    <div class="flex gap-2 mt-4 pt-3 border-t border-orange-200 dark:border-orange-800/50">
-                        <button onclick="event.stopPropagation(); window.approveTask('${task.id}')" class="flex-1 bg-green-500 text-white text-xs px-3 py-2 rounded-lg font-bold shadow transition hover:bg-green-600"><i class="fa-solid fa-check mx-1"></i> موافقة واعتماد</button>
-                        <button onclick="event.stopPropagation(); window.openRejectTaskModal('${task.id}')" class="flex-1 bg-red-500 text-white text-xs px-3 py-2 rounded-lg font-bold shadow transition hover:bg-red-600"><i class="fa-solid fa-xmark mx-1"></i> رفض وتعديل</button>
-                    </div>
-                `;
-            }
-
-            const ceoTitleHtml = isCEO && isPendingApproval ? `<p class="text-xs font-bold text-orange-700 dark:text-orange-400 mb-3"><i class="fa-solid fa-hourglass-half mx-1"></i> تفاصيل إنجاز الموظف (بانتظار موافقتك)</p>` : '';
-            const boxColor = isPendingApproval ? 'bg-orange-50 border-orange-200 dark:bg-orange-900/20 dark:border-orange-800' : 'bg-gray-50 border-gray-200 dark:bg-gray-800/50 dark:border-gray-700';
-
-            approvalDetailsHtml += `
-                <div class="mt-4 p-4 rounded-xl border ${boxColor}">
-                    ${ceoTitleHtml}
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3 text-[11px] text-gray-700 dark:text-gray-300 text-center font-bold">
-                        <div class="bg-white dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700 shadow-sm"><span class="text-gray-400">وقت البدء:</span> <br><span dir="ltr">${startStr}</span></div>
-                        <div class="bg-white dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700 shadow-sm"><span class="text-gray-400">وقت الانتهاء:</span> <br><span dir="ltr">${endStr}</span></div>
-                        <div class="bg-white dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700 shadow-sm"><span class="text-gray-400">المدة المستغرقة:</span> <br><span>${durationStr}</span></div>
-                    </div>
-                    <div class="text-sm bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm">
-                        <span class="font-bold text-[#002d74] dark:text-secondary">تفاصيل التقرير: </span><br>
-                        <span class="whitespace-pre-wrap">${escapeHTML(task.reportText)}</span>
-                        ${fileHtml}
-                    </div>
-                    ${ceoActionBtns}
-                </div>
-            `;
-        }
-
-        listBody.innerHTML += `
-            <div class="task-row-item bg-white dark:bg-gray-800 rounded-2xl p-5 border border-transparent shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.1)] hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-300 group relative flex flex-col gap-4 cursor-pointer" data-id="${task.id}" data-title="${escapeHTML(task.title)}" data-assignee="${escapeHTML(task.assigneeName)}" data-project="${escapeHTML(task.project || '')}" onclick="window.toggleTaskDetailsList('${task.id}')">
-                <div class="absolute right-0 top-6 bottom-6 w-1.5 rounded-l-full ${task.isHighPriority ? 'bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.5)]' : 'bg-[#002d74]'}"></div>
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pr-3">
-                    <div class="flex items-start gap-4">
-                        <div class="mt-1" onclick="event.stopPropagation()">
-                            <input type="checkbox" class="custom-checkbox w-6 h-6 rounded-md border-2" ${isCompleted || isPendingApproval ? 'checked' : ''} ${!canCheck || isPendingApproval || isCompleted ? 'disabled' : ''} onchange="window.updateTaskStatusFromCheckbox('${task.id}', '${escapeHTML(task.title.replace(/'/g, "\\'"))}', this.checked)">
+        // تصميم الكرت (Card) الواقعي
+        const cardHtml = `
+            <div class="task-card bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing relative transition-all group" data-id="${task.id}">
+                <div class="absolute right-0 top-3 bottom-3 w-1.5 rounded-l-full ${priorityColor}"></div>
+                ${lateBadge}
+                
+                <h4 class="font-bold text-sm text-[#002d74] dark:text-white mb-2 pr-2">${escapeHTML(task.title)}</h4>
+                <p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 pr-2 mb-3 leading-relaxed">${escapeHTML(task.desc)}</p>
+                
+                <div class="flex justify-between items-end border-t border-gray-100 dark:border-gray-700 pt-3 pr-2">
+                    <div class="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 px-2 py-1 rounded-lg border border-gray-100 dark:border-gray-600">
+                        <div class="w-5 h-5 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-user text-[10px] text-gray-500"></i>
                         </div>
-                        <div class="flex flex-col">
-                            <h3 class="font-bold text-lg text-[#002d74] dark:text-white ${isCompleted ? 'line-through opacity-60' : ''}">
-                                ${task.isHighPriority ? '<i class="fa-solid fa-fire text-orange-500 ml-1"></i>' : ''}
-                                ${escapeHTML(task.title)}
-                            </h3>
-                            <div class="flex items-center gap-3 mt-1.5 flex-wrap">
-                                <span class="px-3 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 ${statusBg} ${statusTextColor}">
-                                    <div class="w-1.5 h-1.5 rounded-full ${statusDotClass}"></div>
-                                    ${statusText}
-                                </span>
-                            </div>
-                            ${startTaskBtnHtml}
-                        </div>
+                        <span class="text-[10px] font-bold text-gray-700 dark:text-gray-300 truncate max-w-[80px]" title="${escapeHTML(task.assigneeName)}">${escapeHTML(task.assigneeName)}</span>
                     </div>
-                    <div class="flex items-center gap-6 self-start md:self-auto mr-10 md:mr-0 border-t md:border-none border-gray-100 dark:border-gray-700 pt-3 md:pt-0">
-                        <div class="flex flex-col text-right">
-                            <span class="text-[10px] text-gray-400 font-bold mb-1">الموعد النهائي</span>
-                            <div class="flex items-center gap-1.5 text-xs font-bold ${isLate ? 'text-red-600 bg-red-50 px-2 py-1 rounded-md animate-pulse' : 'text-gray-600 dark:text-gray-300'}">
-                                <i class="fa-regular fa-clock"></i> ${deadlineStr}
-                            </div>
-                        </div>
-                        <div class="flex flex-col text-right">
-                            <span class="text-[10px] text-gray-400 font-bold mb-1">الشخص المسؤول</span>
-                            <div class="flex items-center gap-2 bg-white border border-gray-100 dark:bg-gray-800 dark:border-gray-600 px-2 py-1 rounded-xl shadow-sm">
-                                <div class="w-7 h-7 bg-gray-50 dark:bg-gray-700 border border-gray-100 dark:border-gray-600 rounded-lg flex items-center justify-center shrink-0">
-                                    <i class="fa-solid fa-user text-[#00839b] text-[11px]"></i>
-                                </div>
-                                <span class="text-xs font-bold text-[#002d74] dark:text-white">${escapeHTML(task.assigneeName)}</span>
-                            </div>
-                        </div>
-                        <div class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center h-full" onclick="event.stopPropagation()">
-                            ${isCEO || task.createdBy === currentUserData.uid ? `<button onclick="window.deleteTask('${task.id}')" class="w-9 h-9 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white border border-red-100 hover:border-red-500 rounded-xl transition-all flex items-center justify-center shadow-sm"><i class="fa-solid fa-trash text-sm"></i></button>` : ''}
-                        </div>
-                    </div>
-                </div>
-
-                <div id="task-details-${task.id}" class="slide-down">
-                    <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                        <div class="flex items-center gap-2 mb-3">
-                            <i class="fa-solid fa-align-right text-gray-400 text-sm"></i>
-                            <h5 class="text-xs font-bold text-gray-500">تفاصيل المهمة بالكامل</h5>
-                        </div>
-                        <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-loose font-medium bg-gray-50/50 dark:bg-gray-900/30 p-4 rounded-xl border border-gray-100 dark:border-gray-700/50">${escapeHTML(task.desc || 'لا توجد تفاصيل إضافية')}</p>
-                        ${checklistHtml}
-                        ${approvalDetailsHtml}
+                    
+                    <div class="text-[10px] font-bold ${isLate ? 'text-red-500' : 'text-gray-400'} flex items-center gap-1">
+                        <i class="fa-regular fa-clock"></i> ${deadlineStr}
                     </div>
                 </div>
                 
-                <div class="absolute -bottom-3 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full w-6 h-6 flex items-center justify-center shadow-sm">
-                        <i id="task-chevron-${task.id}" class="fa-solid fa-chevron-down text-[10px] text-gray-400 transition-transform duration-300"></i>
-                    </div>
-                </div>
+                <button onclick="window.toggleTaskDetailsList('${task.id}')" class="absolute -bottom-3 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-full w-6 h-6 flex items-center justify-center shadow-md z-10">
+                    <i class="fa-solid fa-expand text-[10px] text-gray-500"></i>
+                </button>
             </div>
         `;
+
+        if(task.status === 'pending') colPending.innerHTML += cardHtml;
+        else if(task.status === 'in-progress') colInProgress.innerHTML += cardHtml;
+        else if(task.status === 'pending_approval') colApproval.innerHTML += cardHtml;
+        else if(task.status === 'completed') colCompleted.innerHTML += cardHtml;
     });
+
+    // تحديث الأرقام
+    document.getElementById('count-pending').innerText = counts['pending'];
+    document.getElementById('count-in-progress').innerText = counts['in-progress'];
+    document.getElementById('count-pending_approval').innerText = counts['pending_approval'];
+    document.getElementById('count-completed').innerText = counts['completed'];
+
+    // تهيئة نظام السحب والإفلات (SortableJS) للمجموعات الأربعة
+    initDragAndDrop();
 };
 
-        // ==========================================
+// دالة تفعيل السحب والإفلات
+function initDragAndDrop() {
+    const columns = [
+        document.getElementById('column-pending'),
+        document.getElementById('column-in-progress'),
+        document.getElementById('column-pending_approval'),
+        document.getElementById('column-completed')
+    ];
+
+    columns.forEach(col => {
+        if(col) {
+            new Sortable(col, {
+                group: 'shared-tasks', // السماح بالسحب بين القوائم
+                animation: 150,
+                ghostClass: 'opacity-50',
+                dragClass: 'shadow-2xl',
+                onEnd: async function (evt) {
+                    const itemEl = evt.item;  // الكرت المسحوب
+                    const toColumn = evt.to;  // العمود الجديد
+                    
+                    const taskId = itemEl.getAttribute('data-id');
+                    const newStatus = toColumn.getAttribute('data-status');
+                    
+                    if(taskId && newStatus) {
+                        try {
+                            const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                            
+                            let updateData = { status: newStatus };
+                            
+                            // تحديث الوقت حسب الحالة الجديدة
+                            if(newStatus === 'in-progress') updateData.startedAt = Date.now();
+                            if(newStatus === 'completed' || newStatus === 'pending_approval') updateData.completedAt = Date.now();
+                            if(newStatus === 'pending') updateData.completedAt = null;
+
+                            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), updateData);
+                            
+                            // تحديث الواجهة تلقائياً سيتم من خلال Listener قاعدة البيانات الموجود في الكود الأصلي
+                        } catch(e) {
+                            console.error("خطأ أثناء تغيير حالة المهمة بالسحب:", e);
+                            window.renderTasks(); // إعادة الرندرة لحالتها الأصلية في حال الفشل
+                        }
+                    }
+                },
+            });
+        }
+    });
+}
         
         // --- دوال العهد والتوقيع ---
         window.renderCustody = () => {
