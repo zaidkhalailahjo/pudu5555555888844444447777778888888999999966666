@@ -7648,7 +7648,14 @@ if(assignedUser && assignedUser.email && assignedUser.email !== 'no-email@compan
         tasksToRender = tasksToRender.filter(t => t.status !== 'completed');
     }
 
-    tasksToRender.sort((a,b) => b.timestamp - a.timestamp); 
+    tasksToRender.sort((a, b) => {
+        // رفع المهام التي بانتظار الموافقة للأعلى دائماً
+        if (a.status === 'pending_approval' && b.status !== 'pending_approval') return -1;
+        if (b.status === 'pending_approval' && a.status !== 'pending_approval') return 1;
+        
+        // باقي المهام ترتب حسب الأحدث
+        return b.timestamp - a.timestamp;
+    });
 
     if(totalTasksCountList) totalTasksCountList.innerText = tasksToRender.length;
     if(tasksToRender.length === 0) {
