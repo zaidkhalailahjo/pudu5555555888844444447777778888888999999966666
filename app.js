@@ -8651,8 +8651,7 @@ if(assignedUser && assignedUser.email && assignedUser.email !== 'no-email@compan
         // ------------------ دوال قسم الموظفين والإيميلات ------------------
 
         // دوال الإيميلات المصرح لها
-        let inviteTimerInterval = null;
-        let inviteCountdown = 0;
+        window.pendingEmailTimers = {}; // لتخزين عدادات الإرسال في الخلفية
 
         window.addAllowedEmail = async () => {
             const input = document.getElementById('newAllowedEmailInput');
@@ -8665,67 +8664,51 @@ if(assignedUser && assignedUser.email && assignedUser.email !== 'no-email@compan
                 return;
             }
 
-            // إذا نقر المدير مرة أخرى أثناء العد التنازلي (نقوم بإلغاء الإضافة)
-            if (inviteTimerInterval) {
-                clearInterval(inviteTimerInterval);
-                inviteTimerInterval = null;
-                btn.innerHTML = 'إضافة تصريح';
-                btn.classList.replace('bg-red-500', 'bg-green-600');
-                btn.classList.replace('hover:bg-red-600', 'hover:bg-green-700');
-                input.disabled = false;
-                showToast('تم إلغاء إرسال الدعوة وإضافة الإيميل', 'info');
-                return;
-            }
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
 
-            // بدء العد التنازلي
-            inviteCountdown = 20;
-            input.disabled = true;
-            btn.classList.replace('bg-green-600', 'bg-red-500');
-            btn.classList.replace('hover:bg-green-700', 'hover:bg-red-600');
-            btn.innerHTML = `إلغاء الإضافة (${inviteCountdown}ث)`;
+            try {
+                const newList = [...new Set([...globalAllowedEmails, email])];
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'security'), { allowedEmails: newList }, { merge: true });
+                
+                input.value = '';
+                showToast('تم إضافة الإيميل بنجاح (سيتم إرسال الدعوة تلقائياً بعد 20 ثانية)', 'success');
 
-            inviteTimerInterval = setInterval(async () => {
-                inviteCountdown--;
-                if (inviteCountdown > 0) {
-                    btn.innerHTML = `إلغاء الإضافة (${inviteCountdown}ث)`;
-                } else {
-                    // انتهى العد.. ننفذ الإضافة والإرسال
-                    clearInterval(inviteTimerInterval);
-                    inviteTimerInterval = null;
-                    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الحفظ والإرسال...';
-                    
+                // تشغيل المؤقت في الخلفية لإرسال الإيميل
+                window.pendingEmailTimers[email] = setTimeout(async () => {
                     try {
-                        const newList = [...new Set([...globalAllowedEmails, email])];
-                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'security'), { allowedEmails: newList }, { merge: true });
-                        
-                        // إرسال الإيميل عبر Google Apps Script
-fetch(GOOGLE_SCRIPT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({
-    action: 'sendInvite',
-    email: email,
-    token: await auth.currentUser.getIdToken() // أرسل التوكن فقط للتحقق من هوية المدير
-})
-}).catch(e => console.log('Invite email request sent'));
+                        fetch(GOOGLE_SCRIPT_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify({
+                                action: 'sendInvite',
+                                email: email,
+                                token: await auth.currentUser.getIdToken()
+                            })
+                        }).catch(e => console.log('Invite email request sent'));
+                        delete window.pendingEmailTimers[email]; // تنظيف المؤقت
+                    } catch(e) {}
+                }, 20000);
 
-                        input.value = '';
-                        showToast('تمت إضافة الإيميل وإرسال الدعوة للموظف بنجاح', 'success');
-                    } catch(e) { 
-                        showToast('حدث خطأ في قاعدة البيانات', 'error'); 
-                    } finally {
-                        input.disabled = false;
-                        btn.classList.replace('bg-red-500', 'bg-green-600');
-                        btn.classList.replace('hover:bg-red-600', 'hover:bg-green-700');
-                        btn.innerHTML = 'إضافة تصريح';
-                    }
-                }
-            }, 1000);
+            } catch(e) { 
+                showToast('حدث خطأ في قاعدة البيانات', 'error'); 
+            } finally {
+                input.disabled = false;
+                btn.disabled = false;
+                btn.innerHTML = 'إضافة تصريح';
+            }
         };
 
         window.removeAllowedEmail = async (email) => {
             if(!confirm(`هل أنت متأكد من حذف الإيميل (${email}) من قائمة المصرح لهم؟\nلن يتمكن من التسجيل مستقبلاً.`)) return;
             try {
+                // إذا تم الحذف قبل مرور 20 ثانية، يتم إلغاء إرسال الإيميل
+                if(window.pendingEmailTimers[email]) {
+                    clearTimeout(window.pendingEmailTimers[email]);
+                    delete window.pendingEmailTimers[email];
+                    showToast('تم إلغاء إرسال الدعوة بنجاح', 'info');
+                }
+
                 const newList = globalAllowedEmails.filter(e => e !== email);
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'security'), { allowedEmails: newList }, { merge: true });
                 showToast('تم إزالة الإيميل', 'success');
@@ -8737,17 +8720,20 @@ fetch(GOOGLE_SCRIPT_URL, {
             if(!cont) return;
             cont.innerHTML = '';
             
-            // فلترة الإيميلات: عرض الإيميلات التي لم يقم أصحابها بإنشاء حسابات فعلية بعد
             const registeredEmails = globalUsers.map(u => u.email ? u.email.toLowerCase() : '');
             const pendingEmails = globalAllowedEmails.filter(email => !registeredEmails.includes(email.toLowerCase()));
 
             if(pendingEmails.length === 0) {
-                cont.innerHTML = '<span class="text-xs text-gray-500 font-bold p-2">لا يوجد إيميلات معلقة. (جميع المصرح لهم سجلوا دخولهم كأنهم موظفين أو القائمة فارغة)</span>';
+                cont.innerHTML = '<span class="text-xs text-gray-500 font-bold p-2">لا يوجد إيميلات معلقة حالياً.</span>';
                 return;
             }
             pendingEmails.forEach(email => {
+                // إضافة علامة توضح أن الإرسال قيد الانتظار إذا كان المؤقت يعمل
+                const isPendingSend = window.pendingEmailTimers[email] ? '<i class="fa-solid fa-clock text-orange-500 ml-1" title="يتم إرسال الدعوة..."></i>' : '';
+                
                 cont.innerHTML += `<span class="bg-green-100 text-green-800 text-[11px] px-3 py-1 rounded flex items-center gap-2 border border-green-200 font-bold" dir="ltr">
-                    ${escapeHTML(email)} <button onclick="window.removeAllowedEmail('${escapeHTML(email)}')" class="text-red-500 hover:text-red-700 bg-green-200 w-5 h-5 rounded-full flex justify-center items-center"><i class="fa-solid fa-xmark"></i></button>
+                    ${escapeHTML(email)} ${isPendingSend}
+                    <button onclick="window.removeAllowedEmail('${escapeHTML(email)}')" class="text-red-500 hover:text-red-700 bg-green-200 w-5 h-5 rounded-full flex justify-center items-center"><i class="fa-solid fa-xmark"></i></button>
                 </span>`;
             });
         };
