@@ -33,7 +33,7 @@
         const appId = 'quill-world-system';
         const cloudFunctions = getFunctions(app);
         const appCheck = initializeAppCheck(app, {
-    provider: new ReCaptchaV3Provider('6LcjQyotAAAAAPeSgcr4Nwq023P0cvZ_syUBm8Pb'),
+    provider: new ReCaptchaV3Provider('6LdlXi0tAAAAAMKyF4LbNTqwGPE85gXhl6BLWVSS'),
     isTokenAutoRefreshEnabled: true
    });
 
