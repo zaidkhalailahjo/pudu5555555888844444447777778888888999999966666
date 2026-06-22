@@ -1191,79 +1191,68 @@
                 <div id="inventoryPastContainer" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
             </section>
 
-            <!-- المهام -->
-            <section id="tasks" class="section-content hidden animate-fade-in p-4 md:p-0 relative">
-                <div id="tasksMainView" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col h-full">
-                    <div class="flex flex-col md:flex-row justify-between items-center p-3 md:p-4 bg-[#002d74] text-white gap-3 rounded-t-lg">
-                        <div class="flex justify-between w-full md:w-auto overflow-x-auto hide-scroll gap-4">
-                            <div class="flex gap-2">
-                                <button onclick="window.switchTaskTab('active')" id="tab-tasks-active" class="font-bold text-sm whitespace-nowrap px-5 py-2 rounded-full bg-white text-[#002d74] transition shadow-sm flex items-center gap-2">
-                                    <i class="fa-solid fa-list-ul"></i> المهام الحالية
-                                </button>
-                            </div>
-                            <div class="flex gap-2">
-                                <button onclick="window.toggleCeoReportsInline()" id="viewReportsBtn" class="hidden font-bold text-sm whitespace-nowrap bg-[#00839b] px-5 py-2 rounded-full text-white hover:opacity-90 transition flex items-center gap-2">
-                                    <i class="fa-solid fa-check-double"></i> الاعتمادات
-                                </button>
-                                <button onclick="window.switchTaskTab('reports')" id="tab-tasks-reports" class="font-bold text-sm whitespace-nowrap bg-white/20 px-5 py-2 rounded-full text-white hover:bg-white/30 transition flex items-center gap-2">
-                                    <i class="fa-solid fa-folder"></i> <span id="reportsTabLabel">المهام المنجزة</span>
-                                </button>
-                            </div>
+            <section id="tasks" class="section-content hidden animate-fade-in py-6 px-4 w-full h-[calc(100vh-80px)] relative flex flex-col">
+                
+                <div class="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mb-6 gap-4 flex-shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-xl bg-[#002d74]/10 flex items-center justify-center text-[#002d74] dark:text-secondary text-2xl">
+                            <i class="fa-solid fa-layer-group"></i>
                         </div>
-
-                        <div class="flex items-center gap-3 w-full md:w-auto rtl:flex-row-reverse">
-                            <button id="addTaskBtn" onclick="window.openTaskModal()" class="bg-[#22c55e] hover:bg-green-600 text-white px-5 py-2 rounded-md text-sm font-bold transition flex items-center gap-2 whitespace-nowrap shadow-sm">
-                                <i class="fa-solid fa-plus"></i> إنشاء مهمة
-                            </button>
-                            <div class="relative flex-1 md:w-64">
-                                <i class="fa-solid fa-search absolute right-3 top-1/2 transform -translate-y-1/2 text-white/70 text-xs"></i>
-                                <input type="text" id="taskSearchInput" onkeyup="window.filterTasksList()" placeholder="عامل التصفية والبحث" class="bg-white/10 border border-white/20 rounded-md text-white pr-8 pl-3 py-2 text-sm w-full focus:outline-none focus:bg-white/20 placeholder-white/70 transition">
-                            </div>
+                        <div>
+                            <h2 class="text-xl font-bold text-gray-800 dark:text-white">مخطط المهام (Planner)</h2>
+                            <p class="text-xs text-gray-500">إدارة المهام بالسحب والإفلات</p>
                         </div>
                     </div>
-
-                    <div class="flex-1 min-h-[50vh] bg-gray-50/50 dark:bg-gray-900/30 p-4 md:p-6">
-                        <div id="tasksListBody" class="flex flex-col gap-5"></div>
-                        
-                        <div id="emptyTasksMessage" class="hidden flex flex-col items-center justify-center text-center text-gray-400 py-20">
-                            <div class="w-24 h-24 bg-white dark:bg-gray-800 rounded-3xl shadow-sm flex items-center justify-center mb-4">
-                                <i class="fa-solid fa-clipboard-list text-5xl text-[#00839b] opacity-80"></i>
-                            </div>
-                            <p class="font-bold text-lg text-[#002d74] dark:text-white">لا توجد مهام هنا حالياً</p>
-                            <p class="text-sm mt-1">المساحة نظيفة وجاهزة للعمل</p>
+                    
+                    <div class="flex items-center gap-3 w-full md:w-auto">
+                        <div class="search-wrapper flex-1 md:w-64">
+                            <i class="fa-solid fa-search search-icon"></i>
+                            <input type="text" id="taskSearchInput" onkeyup="window.filterTasksList()" placeholder="بحث في المهام..." class="search-input w-full bg-gray-50 dark:bg-gray-900">
                         </div>
-                    </div>
-
-                    <div class="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-b-lg flex justify-start items-center">
-                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400">الإجمالي: <b id="totalTasksCountList" class="text-gray-700 dark:text-gray-200 ml-1">0</b></span>
-                    </div>
-                </div>
-
-                <div id="inlineCeoReports" class="hidden bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-6 min-h-[60vh] flex-col">
-                    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 border-b border-gray-100 dark:border-gray-700 pb-4">
-                        <div class="flex items-center gap-3 w-full md:w-auto">
-                            <label class="font-bold text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">اختر الموظف:</label>
-                            <div class="relative w-full md:w-64">
-                                <i class="fa-solid fa-user absolute right-3 top-1/2 transform -translate-y-1/2 text-primary"></i>
-                                <select id="ceoReportEmpSelect" onchange="if(this.value) window.renderCeoEmployeeTasks(this.value, this.options[this.selectedIndex].text)" class="w-full bg-gray-50 border border-gray-300 shadow-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg pr-10 pl-3 py-2 text-sm appearance-none focus:outline-none focus:border-primary font-bold cursor-pointer">
-                                    <option value="">-- اختر موظفاً لعرض مهامه --</option>
-                                </select>
-                                <i class="fa-solid fa-chevron-down absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
-                            </div>
-                        </div>
-                        <button onclick="window.toggleCeoReportsInline()" class="bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2">
-                            <i class="fa-solid fa-arrow-left"></i> العودة للمهام
+                        <button id="addTaskBtn" onclick="window.openTaskModal()" class="bg-[#00839b] hover:bg-[#002d74] text-white px-5 py-2.5 rounded-xl text-sm font-bold transition flex items-center gap-2 shadow-md">
+                            <i class="fa-solid fa-plus"></i> مهمة جديدة
                         </button>
                     </div>
+                </div>
 
-                    <div class="flex-1 overflow-y-auto custom-scrollbar" id="ceoReportTasksDetails">
-                        <div class="flex flex-col items-center justify-center h-full text-gray-400 mt-10">
-                            <i class="fa-solid fa-hand-pointer text-4xl mb-3"></i>
-                            <p class="font-bold">قم باختيار موظف من القائمة لعرض مهامه المنجزة</p>
+                <div class="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar pb-4">
+                    <div class="flex gap-6 h-full min-w-max items-start px-2">
+                        
+                        <div class="w-80 flex flex-col h-full max-h-full bg-gray-100/80 dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700">
+                            <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-200/50 dark:bg-gray-800/80 rounded-t-2xl">
+                                <h3 class="font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-gray-400"></div> قيد الانتظار</h3>
+                                <span id="count-pending" class="bg-white dark:bg-gray-700 text-xs px-2 py-1 rounded-md font-bold shadow-sm">0</span>
+                            </div>
+                            <div id="column-pending" class="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar min-h-[150px]" data-status="pending"></div>
                         </div>
+
+                        <div class="w-80 flex flex-col h-full max-h-full bg-blue-50/50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+                            <div class="p-4 border-b border-blue-100 dark:border-blue-900/30 flex justify-between items-center bg-blue-100/50 dark:bg-blue-900/20 rounded-t-2xl">
+                                <h3 class="font-bold text-blue-700 dark:text-blue-400 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></div> قيد التنفيذ</h3>
+                                <span id="count-in-progress" class="bg-white dark:bg-gray-800 text-xs px-2 py-1 rounded-md font-bold shadow-sm">0</span>
+                            </div>
+                            <div id="column-in-progress" class="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar min-h-[150px]" data-status="in-progress"></div>
+                        </div>
+
+                        <div class="w-80 flex flex-col h-full max-h-full bg-orange-50/50 dark:bg-orange-900/10 rounded-2xl border border-orange-100 dark:border-orange-900/30">
+                            <div class="p-4 border-b border-orange-100 dark:border-orange-900/30 flex justify-between items-center bg-orange-100/50 dark:bg-orange-900/20 rounded-t-2xl">
+                                <h3 class="font-bold text-orange-700 dark:text-orange-400 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-orange-500"></div> للمراجعة</h3>
+                                <span id="count-pending_approval" class="bg-white dark:bg-gray-800 text-xs px-2 py-1 rounded-md font-bold shadow-sm">0</span>
+                            </div>
+                            <div id="column-pending_approval" class="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar min-h-[150px]" data-status="pending_approval"></div>
+                        </div>
+
+                        <div class="w-80 flex flex-col h-full max-h-full bg-green-50/50 dark:bg-green-900/10 rounded-2xl border border-green-100 dark:border-green-900/30">
+                            <div class="p-4 border-b border-green-100 dark:border-green-900/30 flex justify-between items-center bg-green-100/50 dark:bg-green-900/20 rounded-t-2xl">
+                                <h3 class="font-bold text-green-700 dark:text-green-400 flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-green-500"></div> مكتملة</h3>
+                                <span id="count-completed" class="bg-white dark:bg-gray-800 text-xs px-2 py-1 rounded-md font-bold shadow-sm">0</span>
+                            </div>
+                            <div id="column-completed" class="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar min-h-[150px]" data-status="completed"></div>
+                        </div>
+
                     </div>
                 </div>
-           </section>
+            </section>
 
             <!-- الحضور والانصراف -->
             <section id="attendance" class="section-content hidden animate-fade-in p-4 md:p-0">
