@@ -9653,22 +9653,29 @@ window.openSpecificReEntryLog = async (recordId, entryIndex) => {
     const photo = user ? user.photoURL : 'https://ui-avatars.com/api/?name=User';
     
     const list = document.getElementById('ceoReEntryLogList');
-    list.innerHTML = '<div class="text-center p-6"><i class="fa-solid fa-spinner fa-spin text-2xl text-orange-500"></i><p class="mt-2 text-sm font-bold text-gray-500">جاري جلب تفاصيل تحركات الموظف...</p></div>';
+    // إزالة النص المزعج ووضع دائرة تحميل سريعة فقط
+    list.innerHTML = '<div class="text-center p-6"><i class="fa-solid fa-spinner fa-spin text-2xl text-orange-500"></i></div>';
     
     // عرض التاريخ ليتذكر المدير
     document.getElementById('reEntryModalTitleTxt').innerText = `سجل العودة والتتبع | تاريخ: ${record.date}`;
     window.openModal('ceoReEntryLogModal');
     
     try {
+        // جلبنا فقط سجلات هذا الموظف، وسنقوم بالفلترة برمجياً لتخطي مشكلة فايربيس
         const { getDocs, query, where, collection } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
         const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'logs'), 
-            where('uid', '==', record.uid),
-            where('timestamp', '>=', re.time),
-            where('timestamp', '<=', endTime)
+            where('uid', '==', record.uid)
         );
         const querySnapshot = await getDocs(q);
+        
         let actions = [];
-        querySnapshot.forEach(doc => actions.push(doc.data()));
+        querySnapshot.forEach(doc => {
+            const data = doc.data();
+            // فلترة الوقت هنا بدلاً من قاعدة البيانات
+            if(data.timestamp >= re.time && data.timestamp <= endTime) {
+                actions.push(data);
+            }
+        });
         actions.sort((a,b) => b.timestamp - a.timestamp);
         
         let actionsHtml = '';
@@ -9728,5 +9735,8 @@ window.openSpecificReEntryLog = async (recordId, entryIndex) => {
             </div>
             <button onclick="window.openReEntryLogModal()" class="w-full mt-3 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border dark:border-gray-600 py-2 rounded-lg font-bold text-xs transition"><i class="fa-solid fa-arrow-right mx-1"></i> العودة للقائمة السابقة</button>
         `;
-    } catch(e) { console.error(e); }
+    } catch(e) { 
+        console.error(e); 
+        list.innerHTML = '<div class="p-6 text-center text-red-500 font-bold">حدث خطأ أثناء جلب البيانات. يرجى المحاولة لاحقاً.</div>';
+    }
 };
