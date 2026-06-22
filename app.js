@@ -7381,10 +7381,13 @@ if(assignedUser && assignedUser.email && assignedUser.email !== 'no-email@compan
                             window.closeModal('taskReportModal');
                             if (isSelfAssigned) showToast('أحسنت! تم إنجاز المهمة بنجاح.', 'success');
                             else {
-                                showToast('تم إرسال التقرير للمدير بانتظار الموافقة.', 'success');
-                                const ceoUser = globalUsers.find(u => u.role === 'CEO');
-                                if(ceoUser) window.sendSystemNotification(ceoUser.uid, 'مهمة بانتظار الموافقة', `أنهى ${currentUserData.name} المهمة: ${title} بانتظار الاعتماد`, 'tasks', 'tasks');
-                            }
+                                showToast('تم إرسال التقرير للإدارة بانتظار الموافقة.', 'success');
+                                globalUsers.forEach(u => {
+                                    if ((u.role === 'CEO' || (u.permissions && u.permissions.canAssignTasks)) && u.uid !== currentUserData.uid) {
+                                        window.sendSystemNotification(u.uid, 'مهمة بانتظار الاعتماد', `أنهى الموظف ${currentUserData.name} المهمة (${title}) وهي بانتظار موافقتك.`, 'tasks', 'tasks');
+                                    }
+                                });
+                            }
                         } catch(e) { console.error(e); }
                     };
 
