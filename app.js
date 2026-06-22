@@ -7425,6 +7425,13 @@ if(assignedUser && assignedUser.email && assignedUser.email !== 'no-email@compan
             }
         };
 
+        window.startTask = async (taskId) => {
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { status: 'in-progress', startedAt: Date.now() });
+                showToast('تم البدء بتنفيذ المهمة، بالتوفيق!', 'success');
+            } catch(e) { console.error(e); }
+        };
+
         window.toggleTaskChecklistItem = async (taskId, itemIndex, isChecked) => {
             if(!currentUserData) return;
             const task = globalTasks.find(t => t.id === taskId);
