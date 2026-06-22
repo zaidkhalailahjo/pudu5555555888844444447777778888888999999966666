@@ -7632,16 +7632,23 @@ if(assignedUser && assignedUser.email && assignedUser.email !== 'no-email@compan
     
     const isCEO = currentUserData.role === 'CEO';
     let tasksToRender = globalTasks.filter(t => {
-        const isSelfAssigned = t.assigneeId === t.createdBy;
-        // إذا كان الشخص هو من أسند المهمة لنفسه، لا يراها أحد غيره (حتى المدير)
-        if (isSelfAssigned) {
-            return t.assigneeId === currentUserData.uid; 
-        }
-        // باقي المهام يراها المدير بشكل طبيعي
-        if (isCEO) return true;
-        // والموظف العادي يرى المهام التي أسندت إليه أو التي أسندها لغيره
-        return t.assigneeId === currentUserData.uid || t.createdBy === currentUserData.uid;
-    });
+            const isSelfAssigned = t.assigneeId === t.createdBy;
+            // إذا كان الشخص هو من أسند المهمة لنفسه، لا يراها أحد غيره (حتى المدير)
+            if (isSelfAssigned) {
+                return t.assigneeId === currentUserData.uid; 
+            }
+            // باقي المهام يراها المدير بشكل طبيعي
+            if (isCEO) return true;
+            
+            // السماح لمن يملك صلاحية (إسناد المهام) برؤية المهام المكتملة أو التي بانتظار الموافقة
+            const hasAssignPerm = currentUserData.permissions && currentUserData.permissions.canAssignTasks;
+            if (hasAssignPerm && (t.status === 'completed' || t.status === 'pending_approval')) {
+                return true; 
+            }
+            
+            // والموظف العادي يرى المهام التي أسندت إليه أو التي أسندها لغيره
+            return t.assigneeId === currentUserData.uid || t.createdBy === currentUserData.uid;
+        });
 
     if (window.currentTaskTab === 'reports') {
         tasksToRender = tasksToRender.filter(t => t.status === 'completed');
