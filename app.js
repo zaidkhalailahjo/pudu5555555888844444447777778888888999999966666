@@ -7612,6 +7612,10 @@ if(assignedUser && assignedUser.email && assignedUser.email !== 'no-email@compan
 
         const deadlineStr = task.deadline ? new Date(task.deadline).toLocaleString('ar-EG', {month: 'short', day: 'numeric', hour:'2-digit', minute:'2-digit'}) : 'بدون موعد';
         const isLate = new Date(task.deadline).getTime() < Date.now() && !isCompleted && !isPendingApproval;
+            let startTaskBtnHtml = '';
+        if (task.status === 'pending' && canCheck) {
+            startTaskBtnHtml = `<button onclick="event.stopPropagation(); window.startTask('${task.id}')" class="bg-[#00839b] text-white px-4 py-1.5 rounded-lg text-xs font-bold hover:bg-[#002d74] transition shadow-md mt-2 w-max">بدء المهمة <i class="fa-solid fa-play mr-1"></i></button>`;
+        }
         
         let checklistHtml = '';
         if(task.checklists && task.checklists.length > 0) {
