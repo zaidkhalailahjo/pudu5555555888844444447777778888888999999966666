@@ -7207,15 +7207,28 @@ window.markNoticeRead = (id) => {
                 mainView.classList.add('hidden');
                 inlineReports.classList.remove('hidden');
                 
-                // تعبئة قائمة الموظفين في قسم المنجزات
+                // تحديد ما إذا كان المستخدم مديراً أو لديه صلاحية
+                const isCEO = currentUserData.role === 'CEO' || (currentUserData.permissions && currentUserData.permissions.canAssignTasks);
                 const select = document.getElementById('ceoReportEmpSelect');
-                if(select && select.options.length <= 1) {
-                    select.innerHTML = '<option value="">-- اختر موظفاً لعرض مهامه --</option>';
-                    globalUsers.forEach(u => {
-                        if(u.role !== 'CEO' && u.status !== 'pending' && u.status !== 'rejected') {
-                            select.innerHTML += `<option value="${u.uid}">${escapeHTML(u.name)}</option>`;
-                        }
-                    });
+                const selectContainer = select ? select.parentElement.parentElement : null;
+                
+                if (isCEO) {
+                    // إظهار قائمة اختيار الموظفين للمدير
+                    if (selectContainer) selectContainer.classList.remove('hidden');
+                    if(select && select.options.length <= 1) {
+                        select.innerHTML = '<option value="">-- اختر موظفاً لعرض مهامه --</option>';
+                        globalUsers.forEach(u => {
+                            if(u.role !== 'CEO' && u.status !== 'pending' && u.status !== 'rejected') {
+                                select.innerHTML += `<option value="${u.uid}">${escapeHTML(u.name)}</option>`;
+                            }
+                        });
+                    }
+                    // للمدير: عرض المهام التي بانتظار الاعتماد كافتراضي عند فتح القسم
+                    window.renderCeoEmployeeTasks('all_pending', 'المهام بانتظار الاعتماد');
+                } else {
+                    // للموظف العادي: إخفاء القائمة المنسدلة وعرض مهامه المنجزة تلقائياً
+                    if (selectContainer) selectContainer.classList.add('hidden');
+                    window.renderCeoEmployeeTasks(currentUserData.uid, currentUserData.name);
                 }
             }
             window.renderTasks();
