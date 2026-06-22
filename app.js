@@ -7440,10 +7440,19 @@ if(assignedUser && assignedUser.email && assignedUser.email !== 'no-email@compan
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { status: 'in-progress', startedAt: Date.now() });
             }
             const updatedChecklists = [...task.checklists];
-            updatedChecklists[itemIndex].isCompleted = isChecked;
-            try {
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { checklists: updatedChecklists });
-            } catch(e) { console.error(e); }
+            updatedChecklists[itemIndex].isCompleted = isChecked;
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { checklists: updatedChecklists });
+                
+                // فحص إذا تم تحديد جميع المربعات لإنهاء المهمة وفتح التقرير تلقائياً
+                const allCompleted = updatedChecklists.length > 0 && updatedChecklists.every(c => c.isCompleted);
+                if (allCompleted) {
+                    setTimeout(() => {
+                        const taskTitle = task.title.replace(/'/g, "\\'");
+                        window.updateTaskStatusFromCheckbox(taskId, taskTitle, true);
+                    }, 500); // تأخير نصف ثانية لجمالية الحركة
+                }
+            } catch(e) { console.error(e); }
         };
 
         window.undoTaskCompletion = async () => {
