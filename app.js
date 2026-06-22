@@ -7187,52 +7187,49 @@ window.markNoticeRead = (id) => {
         };
 
         window.switchTaskTab = (tabName) => {
-            window.currentTaskTab = tabName;
-            const btnActive = document.getElementById('tab-tasks-active');
-            const btnReports = document.getElementById('tab-tasks-reports');
-            const mainView = document.getElementById('tasksMainView');
-            const inlineReports = document.getElementById('inlineCeoReports');
-            
-            const activeClass = 'flex-1 px-4 py-1.5 text-sm font-bold rounded-md bg-white text-[#00839b] shadow-sm transition relative';
-            const inactiveClass = 'flex-1 px-4 py-1.5 text-sm font-bold rounded-md text-gray-500 hover:text-[#00839b] transition relative';
+    window.currentTaskTab = tabName;
+    const btnActive = document.getElementById('tab-tasks-active');
+    const btnReports = document.getElementById('tab-tasks-reports');
+    const mainView = document.getElementById('tasksMainView');
+    const inlineReports = document.getElementById('inlineCeoReports');
+    
+    const activeClass = 'flex-1 px-4 py-1.5 text-sm font-bold rounded-md bg-white text-[#00839b] shadow-sm transition relative';
+    const inactiveClass = 'flex-1 px-4 py-1.5 text-sm font-bold rounded-md text-gray-500 hover:text-[#00839b] transition relative';
 
-            if (tabName === 'active') {
-                btnActive.className = activeClass;
-                btnReports.className = inactiveClass;
-                mainView.classList.remove('hidden');
-                inlineReports.classList.add('hidden');
-            } else {
-                btnActive.className = inactiveClass;
-                btnReports.className = activeClass;
-                mainView.classList.add('hidden');
-                inlineReports.classList.remove('hidden');
-                
-                // تحديد ما إذا كان المستخدم مديراً أو لديه صلاحية
-                const isCEO = currentUserData.role === 'CEO' || (currentUserData.permissions && currentUserData.permissions.canAssignTasks);
-                const select = document.getElementById('ceoReportEmpSelect');
-                const selectContainer = select ? select.parentElement.parentElement : null;
-                
-                if (isCEO) {
-                    // إظهار قائمة اختيار الموظفين للمدير
-                    if (selectContainer) selectContainer.classList.remove('hidden');
-                    if(select && select.options.length <= 1) {
-                        select.innerHTML = '<option value="">-- اختر موظفاً لعرض مهامه --</option>';
-                        globalUsers.forEach(u => {
-                            if(u.role !== 'CEO' && u.status !== 'pending' && u.status !== 'rejected') {
-                                select.innerHTML += `<option value="${u.uid}">${escapeHTML(u.name)}</option>`;
-                            }
-                        });
+    if (tabName === 'active') {
+        btnActive.className = activeClass;
+        btnReports.className = inactiveClass;
+        mainView.classList.remove('hidden');
+        inlineReports.classList.add('hidden');
+    } else {
+        btnActive.className = inactiveClass;
+        btnReports.className = activeClass;
+        mainView.classList.add('hidden');
+        inlineReports.classList.remove('hidden');
+        
+        const isCEO = currentUserData.role === 'CEO' || (currentUserData.permissions && currentUserData.permissions.canAssignTasks);
+        const select = document.getElementById('ceoReportEmpSelect');
+        const selectContainer = select ? select.parentElement.parentElement : null;
+        
+        if (isCEO) {
+            if (selectContainer) selectContainer.classList.remove('hidden');
+            if(select && select.options.length <= 1) {
+                // التغيير هنا: عرض الجميع بدلاً من عرض المهام بانتظار الاعتماد فقط
+                select.innerHTML = '<option value="all">-- عرض الجميع --</option>';
+                globalUsers.forEach(u => {
+                    if(u.role !== 'CEO' && u.status !== 'pending' && u.status !== 'rejected') {
+                        select.innerHTML += `<option value="${u.uid}">${escapeHTML(u.name)}</option>`;
                     }
-                    // للمدير: عرض المهام التي بانتظار الاعتماد كافتراضي عند فتح القسم
-                    window.renderCeoEmployeeTasks('all_pending', 'المهام بانتظار الاعتماد');
-                } else {
-                    // للموظف العادي: إخفاء القائمة المنسدلة وعرض مهامه المنجزة تلقائياً
-                    if (selectContainer) selectContainer.classList.add('hidden');
-                    window.renderCeoEmployeeTasks(currentUserData.uid, currentUserData.name);
-                }
+                });
             }
-            window.renderTasks();
-        };
+            window.renderCeoEmployeeTasks('all', 'الجميع');
+        } else {
+            if (selectContainer) selectContainer.classList.add('hidden');
+            window.renderCeoEmployeeTasks(currentUserData.uid, currentUserData.name);
+        }
+    }
+    window.renderTasks();
+};
 
         window.toggleInlineChecklist = (taskId) => {
             const row = document.getElementById(`checklist-row-${taskId}`);
