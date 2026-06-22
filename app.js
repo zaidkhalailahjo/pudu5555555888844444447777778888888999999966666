@@ -7159,6 +7159,34 @@ window.markNoticeRead = (id) => {
         // ==========================================
         // -------- دوال إدارة المهام (Tasks) -------
         // ==========================================
+        window.currentTaskTab = 'list'; // الافتراضي
+
+        // التحقق هل المهمة جديدة للموظف الحالي
+        window.isTaskNewForMe = (task) => {
+            if (!currentUserData) return false;
+            // إذا انضم الموظف للنظام بعد إنشاء المهمة، فهي ليست جديدة له (مخصصة للقدامى فقط)
+            if (task.timestamp < currentUserData.timestamp) return false;
+            // إذا كان هو من أنشأ المهمة
+            if (task.createdBy === currentUserData.uid) return false;
+            // إذا كان قد قرأها سابقاً
+            if (groupReadTimestamps && groupReadTimestamps[`task_${task.id}`]) return false;
+            
+            return true; // إذن هي جديدة
+        };
+
+        // مسح علامة الـ NEW
+        window.markTaskAsViewed = (taskId) => {
+            if (!groupReadTimestamps[`task_${taskId}`]) {
+                groupReadTimestamps[`task_${taskId}`] = Date.now();
+                updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), {
+                    readReceipts: groupReadTimestamps
+                }).catch(e => console.error(e));
+                
+                // إخفائها من الواجهة فوراً
+                document.querySelectorAll(`.new-badge-${taskId}`).forEach(el => el.classList.add('hidden'));
+            }
+        };
+
         window.switchTaskTab = (tabName) => {
             window.currentTaskTab = tabName;
             const btnActive = document.getElementById('tab-tasks-active');
