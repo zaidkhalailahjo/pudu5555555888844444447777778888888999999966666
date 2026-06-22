@@ -3410,12 +3410,12 @@ window.verifyOTP = async () => {
             if(!confirm('هل أنت متأكد من تسجيل الانصراف وإنهاء الدوام لهذا اليوم؟')) return;
             if(!currentUserData) return;
             
-            currentPunchAction = 'out';
             const btn = document.getElementById('punchOutBtn');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري تحديد الموقع...';
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري تسجيل الانصراف...';
             btn.disabled = true;
-            tryGetLocation(btn, originalText);
+            
+            // تسجيل الانصراف مباشرة بدون طلب الموقع
+            executePunchOutFinal(null);
         };
 
         const tryGetLocation = (btnElement, originalHtml) => {
