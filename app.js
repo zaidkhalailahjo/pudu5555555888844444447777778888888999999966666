@@ -7516,13 +7516,19 @@ if(assignedUser && assignedUser.email && assignedUser.email !== 'no-email@compan
         };
 
         window.approveTask = async (taskId) => {
-            if(confirm('هل أنت متأكد من الموافقة على هذا التقرير واعتماده؟')) {
-                try {
-                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { status: 'completed' });
-                    showToast('تم الموافقة على المهمة', 'success');
-                } catch(e) { console.error(e); }
-            }
-        };
+            if(confirm('هل أنت متأكد من الموافقة على هذا التقرير واعتماده؟')) {
+                try {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { status: 'completed' });
+                    showToast('تم الموافقة على المهمة', 'success');
+                    
+                    // إرسال إشعار للموظف
+                    const task = globalTasks.find(t => t.id === taskId);
+                    if(task && task.assigneeId !== currentUserData.uid) {
+                        window.sendSystemNotification(task.assigneeId, 'تم اعتماد المهمة', `أحسنت! تمت الموافقة على مهمتك (${task.title}) واعتمادها بنجاح.`, 'tasks', 'tasks');
+                    }
+                } catch(e) { console.error(e); }
+            }
+        };
 
         window.openRejectTaskModal = (taskId) => {
             document.getElementById('rejectModalTaskId').value = taskId;
