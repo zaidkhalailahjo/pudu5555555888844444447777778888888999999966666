@@ -9474,75 +9474,97 @@ window.openChatMembersModal = () => {
 
 // 1. دالة تأكيد العودة وحفظ السبب
 window.confirmReEntry = async () => {
-    const reasonInput = document.getElementById('reEntryReasonInput');
-    const reason = reasonInput.value.trim();
-    
-    // إزالة المسافات، النقاط، والشرطات لفحص الطول الحقيقي
-    const cleanReason = reason.replace(/[\.\-\_\s]/g, ''); 
-    
-    // الشروط الصارمة
-    if (cleanReason.length < 20) {
-        showToast('يجب كتابة مبرر حقيقي وواضح لا يقل عن 20 حرفاً (النقاط لا تُحسب)!', 'error');
-        reasonInput.focus(); 
-        return;
-    }
-    // منع تكرار نفس الحرف 5 مرات متتالية (مثل ههههه أو ثثثثث)
-    if (/(.)\1{4,}/.test(reason)) {
-        showToast('مرفوض: يرجى عدم تكرار الحروف بشكل عشوائي!', 'warning');
-        return;
-    }
-    // التأكد أنه لا يحتوي على كلمات طويلة جداً بدون مسافات (كتابة عشوائية على الكيبورد)
-    const words = reason.split(/\s+/);
-    for (let w of words) {
-        if (w.length > 15) {
-            showToast('مرفوض: تم اكتشاف كلمات عشوائية غير مفهومة!', 'warning');
-            return;
-        }
-    }
+            const reasonInput = document.getElementById('reEntryReasonInput');
+            const reason = reasonInput.value.trim();
+            
+            // --- نظام الكشف الصارم (Gibberish Detector Pro) ---
+            const cleanReason = reason.replace(/[\.\-\_\s]/g, ''); 
+            const words = reason.split(/\s+/).filter(w => w.length > 0);
 
-    const btn = document.getElementById('confirmReEntryBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mx-1"></i> جاري التأكيد...';
+            if (cleanReason.length < 15) {
+                showToast('مرفوض: يجب كتابة مبرر حقيقي وواضح لا يقل عن 15 حرفاً!', 'error');
+                reasonInput.focus(); 
+                return;
+            }
+            if (words.length < 3) {
+                showToast('مرفوض: يجب أن تتكون الجملة من 3 كلمات على الأقل لتوضيح السبب.', 'warning');
+                reasonInput.focus();
+                return;
+            }
+            if (/(.)\1{4,}/.test(reason)) {
+                showToast('مرفوض: يرجى عدم تكرار الحروف بشكل عشوائي!', 'warning');
+                return;
+            }
+            for (let w of words) {
+                // الكلمات الطويلة جداً التي لا تحتوي على 'ال' تعتبر في الغالب ضرباً عشوائياً على لوحة المفاتيح
+                if (w.length > 10 && !w.startsWith('ال') && !w.startsWith('وال')) {
+                    showToast('مرفوض: تم اكتشاف كلمات عشوائية غير مفهومة! يرجى الكتابة بشكل صحيح.', 'warning');
+                    return;
+                }
+            }
 
-    const today = getTodayDateString();
-    const docId = `${currentUserData.uid}_${today}`;
-    
-    try {
-        let record = globalAttendance.find(a => a.id === docId);
-        let reEntries = record && record.reEntries ? record.reEntries : [];
-        
-        reEntries.push({ time: Date.now(), reason: reason });
+            const btn = document.getElementById('confirmReEntryBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mx-1"></i> جاري تأكيد العودة...';
 
-        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance', docId), {
-            status: 'active', // هذه الحالة ستقوم بإخفاء زر (لقد عاد للعمل) تلقائياً
-            punchOut: null, 
-            reEntries: reEntries
-        });
+            const today = getTodayDateString();
+            const docId = `${currentUserData.uid}_${today}`;
+            
+            // الدالة المساعدة لحفظ البيانات في قاعدة البيانات بعد محاولة تحديد الموقع
+            const processSave = async (locationData) => {
+                try {
+                    let record = globalAttendance.find(a => a.id === docId);
+                    let reEntries = record && record.reEntries ? record.reEntries : [];
+                    
+                    // إضافة الموقع مع السبب
+                    reEntries.push({ time: Date.now(), reason: reason, location: locationData });
 
-        localStorage.setItem('quill_my_attendance_state', JSON.stringify({ date: today, status: 'active' }));
-        hasPunchedInToday = true;
-        unlockNavigation();
-        document.getElementById('reEntryMainBtn').classList.add('hidden');
-        
-        showToast('تم تأكيد عودتك للعمل وإبلاغ الإدارة.', 'success');
-        window.closeModal('reEntryModal');
-        reasonInput.value = '';
-        
-        window.renderEmpAttendanceView();
-        
-        const ceoUsers = globalUsers.filter(u => u.role === 'CEO');
-        ceoUsers.forEach(ceo => {
-            window.sendSystemNotification(ceo.uid, 'عودة للعمل بعد الانصراف', `قام الموظف ${currentUserData.name} بالعودة للعمل. السبب: ${reason}`, 'attendance', 'attendance');
-        });
-        
-    } catch (error) {
-        console.error("ReEntry Error:", error);
-        showToast('حدث خطأ.', 'error');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = 'تأكيد العودة';
-    }
-};
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance', docId), {
+                        status: 'active',
+                        punchOut: null, 
+                        reEntries: reEntries
+                    });
+
+                    localStorage.setItem('quill_my_attendance_state', JSON.stringify({ date: today, status: 'active' }));
+                    hasPunchedInToday = true;
+                    unlockNavigation();
+                    document.getElementById('reEntryMainBtn').classList.add('hidden');
+                    
+                    showToast('تم تأكيد عودتك للعمل وإبلاغ الإدارة.', 'success');
+                    window.closeModal('reEntryModal');
+                    reasonInput.value = '';
+                    window.renderEmpAttendanceView();
+                    
+                    const ceoUsers = globalUsers.filter(u => u.role === 'CEO');
+                    ceoUsers.forEach(ceo => {
+                        window.sendSystemNotification(ceo.uid, 'عودة للعمل بعد الانصراف', `عاد الموظف ${currentUserData.name} للعمل. السبب: ${reason}`, 'attendance', 'attendance');
+                    });
+                } catch (error) {
+                    console.error("ReEntry Error:", error);
+                    showToast('حدث خطأ أثناء الاتصال بقاعدة البيانات.', 'error');
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = 'تأكيد العودة';
+                }
+            };
+
+            // محاولة التقاط الموقع الجغرافي (GPS) بصمت تام للمدير (بدون شاشات مزعجة للموظف)
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const gpsLink = `http://maps.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}`;
+                        processSave({ type: 'gps', link: gpsLink });
+                    },
+                    (error) => {
+                        // إذا رفض الموظف أو فشل التقاط الموقع، نمشيها له بصمت ولكن نسجل أن الموقع غير متوفر
+                        processSave({ type: 'unavailable', text: 'الموقع غير متوفر / مرفوض' });
+                    },
+                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                );
+            } else {
+                processSave({ type: 'unavailable', text: 'المتصفح لا يدعم تحديد الموقع' });
+            }
+        };
 
 window.renderReEntryLogBadge = () => {
     if (!currentUserData || currentUserData.role !== 'CEO') return;
