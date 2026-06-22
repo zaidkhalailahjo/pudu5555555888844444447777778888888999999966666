@@ -7661,7 +7661,18 @@ window.markNoticeRead = (id) => {
 
         window.renderCeoEmployeeTasks = (empId, empName) => {
             const container = document.getElementById('ceoReportTasksDetails');
-            const empTasks = globalTasks.filter(t => t.assigneeId === empId && (t.status === 'completed' || t.status === 'pending_approval')).sort((a,b) => (b.completedAt || 0) - (a.completedAt || 0));
+            
+            // جلب المهام بذكاء بناءً على نوع الطلب
+            let empTasks = [];
+            if (empId === 'all_pending') {
+                // للمدير: جلب جميع المهام التي بانتظار الاعتماد من جميع الموظفين
+                empTasks = globalTasks.filter(t => t.status === 'pending_approval' && (currentUserData.role === 'CEO' || t.createdBy === currentUserData.uid));
+            } else {
+                // للموظف: جلب مهامه هو فقط
+                empTasks = globalTasks.filter(t => t.assigneeId === empId && (t.status === 'completed' || t.status === 'pending_approval'));
+            }
+            
+            empTasks.sort((a,b) => (b.completedAt || 0) - (a.completedAt || 0));
             
             if(empTasks.length === 0) {
                 container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-gray-400 mt-10"><i class="fa-solid fa-folder-open text-5xl mb-4 text-[#00839b]/50"></i><p class="font-bold text-lg text-[#002d74] dark:text-gray-300">لا توجد مهام منجزة لهذا الموظف</p></div>`;
