@@ -7454,13 +7454,20 @@ if(assignedUser && assignedUser.email && assignedUser.email !== 'no-email@compan
         };
 
         window.toggleTaskDetailsList = (id) => {
-            const detailsDiv = document.getElementById(`task-details-${id}`);
-            const icon = document.getElementById(`task-chevron-${id}`);
-            if (detailsDiv) {
-                detailsDiv.classList.toggle('open');
-                if (icon) icon.classList.toggle('rotate-180');
-            }
-        };
+            const detailsDiv = document.getElementById(`task-details-${id}`);
+            const icon = document.getElementById(`task-chevron-${id}`);
+            if (detailsDiv) {
+                detailsDiv.classList.toggle('open');
+                if (icon) icon.classList.toggle('rotate-180');
+            }
+            
+            // إخفاء علامة "جديد" وحفظ أنها شوهدت
+            const newBadge = document.getElementById(`new-badge-${id}`);
+            if (newBadge) {
+                newBadge.classList.add('hidden');
+                localStorage.setItem('viewed_task_' + id, 'true');
+            }
+        };
 
         window.updateTaskStatusFromCheckbox = async (id, title, isCompleted) => {
             if(isCompleted) {
