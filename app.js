@@ -7419,6 +7419,7 @@ if(assignedUser && assignedUser.email && assignedUser.email !== 'no-email@compan
                     } catch(e) { console.error(e); }
                 });
             }
+        });
 
         window.clearTaskAttachment = () => {
             pendingTaskAttachment = null;
