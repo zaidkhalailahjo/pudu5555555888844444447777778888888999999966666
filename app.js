@@ -7547,9 +7547,17 @@ if(assignedUser && assignedUser.email && assignedUser.email !== 'no-email@compan
     listBody.innerHTML = '';
     
     const isCEO = currentUserData.role === 'CEO';
-    let tasksToRender = globalTasks;
-    
-    if(!isCEO) tasksToRender = globalTasks.filter(t => t.assigneeId === currentUserData.uid || t.createdBy === currentUserData.uid);
+    let tasksToRender = globalTasks.filter(t => {
+        const isSelfAssigned = t.assigneeId === t.createdBy;
+        // إذا كان الشخص هو من أسند المهمة لنفسه، لا يراها أحد غيره (حتى المدير)
+        if (isSelfAssigned) {
+            return t.assigneeId === currentUserData.uid; 
+        }
+        // باقي المهام يراها المدير بشكل طبيعي
+        if (isCEO) return true;
+        // والموظف العادي يرى المهام التي أسندت إليه أو التي أسندها لغيره
+        return t.assigneeId === currentUserData.uid || t.createdBy === currentUserData.uid;
+    });
 
     if (window.currentTaskTab === 'reports') {
         tasksToRender = tasksToRender.filter(t => t.status === 'completed');
