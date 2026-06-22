@@ -7456,54 +7456,56 @@ window.markNoticeRead = (id) => {
         };
 
         window.initTaskDragAndDrop = () => {
-            // السحب والإفلات للـ List View لتحديث الترتيب
-            const listTbody = document.getElementById('tasksListTbody');
-            if(listTbody && !listTbody.sortableInstance) {
-                listTbody.sortableInstance = new Sortable(listTbody, {
-                    handle: '.drag-handle',
-                    animation: 150,
-                    ghostClass: 'bg-gray-100',
-                    onEnd: function (evt) {
-                        const rows = Array.from(listTbody.querySelectorAll('.task-list-row'));
-                        rows.forEach((row, index) => {
-                            const id = row.getAttribute('data-id');
-                            import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(({ doc, updateDoc }) => {
-                                updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', id), { orderIndex: index }).catch(()=>{});
-                            });
-                        });
-                    }
+    const listTbody = document.getElementById('tasksListTbody');
+    if(listTbody && !listTbody.sortableInstance) {
+        listTbody.sortableInstance = new Sortable(listTbody, {
+            handle: '.drag-handle',
+            animation: 200, // سرعة حركة ناعمة
+            forceFallback: true, // يمنع عناد المتصفح
+            fallbackOnBody: true, // سحب حر فوق كل العناصر
+            ghostClass: 'opacity-50',
+            onEnd: function (evt) {
+                const rows = Array.from(listTbody.querySelectorAll('.task-list-row'));
+                rows.forEach((row, index) => {
+                    const id = row.getAttribute('data-id');
+                    import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(({ doc, updateDoc }) => {
+                        updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', id), { orderIndex: index }).catch(()=>{});
+                    });
                 });
             }
+        });
+    }
 
-            // السحب والإفلات لـ Planner
-            const plannerCols = ['col-pl-pending', 'col-pl-progress', 'col-pl-review', 'col-pl-completed'];
-            plannerCols.forEach(colId => {
-                const el = document.getElementById(colId);
-                if(el && !el.sortableInstance) {
-                    el.sortableInstance = new Sortable(el, {
-                        group: 'planner-tasks',
-                        animation: 150,
-                        ghostClass: 'opacity-50',
-                        onEnd: async function (evt) {
-                            const itemEl = evt.item;
-                            const toColumn = evt.to;
-                            const taskId = itemEl.getAttribute('data-id');
-                            const newStatus = toColumn.getAttribute('data-status');
-                            if(taskId && newStatus) {
-                                try {
-                                    const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-                                    let updateData = { status: newStatus };
-                                    if(newStatus === 'in-progress') updateData.startedAt = Date.now();
-                                    if(newStatus === 'completed' || newStatus === 'pending_approval') updateData.completedAt = Date.now();
-                                    if(newStatus === 'pending') updateData.completedAt = null;
-                                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), updateData);
-                                } catch(e) {}
-                            }
-                        }
-                    });
+    const plannerCols = ['col-pl-pending', 'col-pl-progress', 'col-pl-review', 'col-pl-completed'];
+    plannerCols.forEach(colId => {
+        const el = document.getElementById(colId);
+        if(el && !el.sortableInstance) {
+            el.sortableInstance = new Sortable(el, {
+                group: 'planner-tasks',
+                animation: 200,
+                forceFallback: true, // يمنع التعليق
+                fallbackOnBody: true,
+                ghostClass: 'opacity-40',
+                onEnd: async function (evt) {
+                    const itemEl = evt.item;
+                    const toColumn = evt.to;
+                    const taskId = itemEl.getAttribute('data-id');
+                    const newStatus = toColumn.getAttribute('data-status');
+                    if(taskId && newStatus) {
+                        try {
+                            const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                            let updateData = { status: newStatus };
+                            if(newStatus === 'in-progress') updateData.startedAt = Date.now();
+                            if(newStatus === 'completed' || newStatus === 'pending_approval') updateData.completedAt = Date.now();
+                            if(newStatus === 'pending') updateData.completedAt = null;
+                            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), updateData);
+                        } catch(e) {}
+                    }
                 }
             });
-        };
+        }
+    });
+};
 
        // دوال إدارة قوائم التحقق داخل المهام
 window.renderCreationChecklists = () => {
