@@ -347,6 +347,59 @@
             animation-duration: 0.4s;
         }
         /* ============================================================== */
+
+        /* ================== تصميم لوحات المهام (Kanban - Bitrix Style) ================== */
+        .tasks-header-bg {
+            background: linear-gradient(90deg, #1e1b4b, #312e81, #1e3a8a);
+        }
+        .kanban-board {
+            display: flex;
+            overflow-x: auto;
+            gap: 1rem;
+            padding-bottom: 1rem;
+            min-height: calc(100vh - 280px);
+            align-items: flex-start;
+        }
+        .kanban-col {
+            min-width: 280px;
+            max-width: 300px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 0.5rem;
+            height: 100%;
+        }
+        .dark .kanban-col { background: rgba(31, 41, 55, 0.4); border: 1px solid rgba(255,255,255,0.05); }
+        
+        .kanban-header {
+            padding: 0.75rem 1rem;
+            color: white;
+            font-weight: bold;
+            border-radius: 0.5rem 0.5rem 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+        .kanban-header.red { background-color: #ff5752; }
+        .kanban-header.green { background-color: #9dcf00; color: #1f2937;}
+        .kanban-header.blue { background-color: #2961eb; }
+        .kanban-header.cyan { background-color: #2fc6f6; color: #1f2937; }
+        .kanban-header.gray { background-color: #6b7280; }
+        .kanban-header.yellow { background-color: #eab308; color: #1f2937; }
+        
+        .kanban-cards-container {
+            padding: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .task-list-table th { background-color: #f8fafc; color: #64748b; font-weight: bold; font-size: 0.8rem; border-bottom: 1px solid #e2e8f0; }
+        .dark .task-list-table th { background-color: #1f2937; color: #9ca3af; border-color: #374151; }
+        /* ============================================================== */
         
         .section-content {
             width: 100%;
