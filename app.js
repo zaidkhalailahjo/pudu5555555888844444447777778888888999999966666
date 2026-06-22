@@ -7157,383 +7157,470 @@ window.markNoticeRead = (id) => {
         };
 
         // ==========================================
-        // -------- دوال إدارة المهام (Tasks) -------
-        // ==========================================
-        window.switchTaskTab = (tabName) => {
-            window.currentTaskTab = tabName;
-            const btnActive = document.getElementById('tab-tasks-active');
-            const btnReports = document.getElementById('tab-tasks-reports');
+        // -------- دوال إدارة المهام (الجديدة) -------
+        // ==========================================
+        window.currentTaskSubView = 'list';
+        
+        window.switchTaskSubView = (viewName) => {
+            window.currentTaskSubView = viewName;
             
-            const activeClass = 'font-bold text-sm whitespace-nowrap px-4 py-1.5 rounded-full bg-white text-primary transition shadow-sm flex items-center gap-2';
-            const inactiveClass = 'font-bold text-sm whitespace-nowrap bg-white/20 px-4 py-1.5 rounded-full text-white hover:bg-white/30 transition flex items-center gap-2';
-
-            if (tabName === 'active') {
-                btnActive.className = activeClass;
-                btnReports.className = inactiveClass;
-            } else {
-                btnActive.className = inactiveClass;
-                btnReports.className = activeClass;
-            }
-            renderTasks();
-        };
-
-        window.openTaskModal = () => {
-            const select = document.getElementById('taskAssignee');
-            select.innerHTML = '';
-            const isCEO = currentUserData.role === 'CEO';
-            const canAssign = currentUserData.permissions?.canAssignTasks;
-
-            if (isCEO || canAssign) {
-                select.innerHTML = '<option value="">-- اختر موظف --</option>';
-                globalUsers.forEach(emp => {
-                    if (emp.status !== 'pending' && emp.status !== 'rejected') {
-                        select.innerHTML += `<option value="${emp.uid}">${escapeHTML(emp.name)} (${escapeHTML(emp.role)})</option>`;
-                    }
-                });
-                select.disabled = false;
-            } else {
-                select.innerHTML = `<option value="${currentUserData.uid}" selected>${escapeHTML(currentUserData.name)} (أنت)</option>`;
-                select.disabled = false;
-            }
-            window.openModal('taskModal');
-        };
-
-        window.toggleTaskPriority = () => {
-            const input = document.getElementById('isTaskHighPriority');
-            const btn = document.getElementById('taskPriorityToggle');
-            if(input.value === 'false') {
-                input.value = 'true';
-                btn.classList.replace('text-gray-400', 'text-orange-500');
-                btn.classList.add('scale-110');
-            } else {
-                input.value = 'false';
-                btn.classList.replace('text-orange-500', 'text-gray-400');
-                btn.classList.remove('scale-110');
-            }
-        };
-
-        window.toggleChecklistSection = () => {
-            document.getElementById('checklistSection').classList.toggle('hidden');
-        };
-
-        window.handleChecklistEnter = (e) => {
-            if(e.key === 'Enter') { e.preventDefault(); window.addChecklistItem(); }
-        };
-
-        window.addChecklistItem = () => {
-            const input = document.getElementById('newChecklistItemInput');
-            const val = input.value.trim();
-            if(val !== '') {
-                creationChecklists.push({ text: escapeHTML(val), isCompleted: false });
-                input.value = '';
-                renderCreationChecklists();
-            }
-        };
-
-        window.removeCreationChecklist = (index) => {
-            creationChecklists.splice(index, 1);
-            renderCreationChecklists();
-        };
-
-        function renderCreationChecklists() {
-            const container = document.getElementById('checklistItemsContainer');
-            container.innerHTML = '';
+            const btnList = document.getElementById('btn-view-list');
+            const btnDeadline = document.getElementById('btn-view-deadline');
+            const btnPlanner = document.getElementById('btn-view-planner');
             
-            // حساب نسبة الإنجاز لشريط التقدم (رغم أنها أثناء الإنشاء ستكون 0 غالباً، لكن للتوافق)
-            const total = creationChecklists.length;
-            const completed = creationChecklists.filter(c => c.isCompleted).length;
-            const progressPercent = total === 0 ? 0 : (completed / total) * 100;
+            const viewList = document.getElementById('tasks-list-view');
+            const viewDeadline = document.getElementById('tasks-deadline-view');
+            const viewPlanner = document.getElementById('tasks-planner-view');
+
+            const activeClass = "px-4 py-1.5 text-xs font-bold rounded-md bg-white dark:bg-gray-600 shadow-sm text-[#002d74] dark:text-white transition-all";
+            const inactiveClass = "px-4 py-1.5 text-xs font-bold rounded-md text-gray-500 hover:text-[#002d74] dark:hover:text-white transition-all";
+
+            btnList.className = viewName === 'list' ? activeClass : inactiveClass;
+            btnDeadline.className = viewName === 'deadline' ? activeClass : inactiveClass;
+            btnPlanner.className = viewName === 'planner' ? activeClass : inactiveClass;
+
+            viewList.classList.toggle('hidden', viewName !== 'list');
+            viewDeadline.classList.toggle('hidden', viewName !== 'deadline');
+            viewPlanner.classList.toggle('hidden', viewName !== 'planner');
             
-            document.getElementById('checklistProgressText').innerText = `المكتمل: ${completed} من ${total}`;
-            const progressBar = document.getElementById('checklistProgressBar');
-            if(progressBar) {
-                progressBar.style.width = `${progressPercent}%`;
-                progressBar.className = progressPercent === 100 ? 'bg-green-500 h-1.5 rounded-full transition-all duration-300' : 'bg-gray-400 h-1.5 rounded-full transition-all duration-300';
+            window.renderTasks();
+        };
+
+        window.switchTaskTab = (tabName) => {
+            window.currentTaskTab = tabName;
+            const btnActive = document.getElementById('tab-tasks-active');
+            const btnReports = document.getElementById('tab-tasks-reports');
+            const mainView = document.getElementById('tasksMainView');
+            const inlineReports = document.getElementById('inlineCeoReports');
+            
+            const activeClass = 'flex-1 px-4 py-1.5 text-sm font-bold rounded-md bg-white text-[#00839b] shadow-sm transition relative';
+            const inactiveClass = 'flex-1 px-4 py-1.5 text-sm font-bold rounded-md text-gray-500 hover:text-[#00839b] transition relative';
+
+            if (tabName === 'active') {
+                btnActive.className = activeClass;
+                btnReports.className = inactiveClass;
+                mainView.classList.remove('hidden');
+                inlineReports.classList.add('hidden');
+            } else {
+                btnActive.className = inactiveClass;
+                btnReports.className = activeClass;
+                mainView.classList.add('hidden');
+                inlineReports.classList.remove('hidden');
+                
+                // تعبئة قائمة الموظفين في قسم المنجزات
+                const select = document.getElementById('ceoReportEmpSelect');
+                if(select && select.options.length <= 1) {
+                    select.innerHTML = '<option value="">-- اختر موظفاً لعرض مهامه --</option>';
+                    globalUsers.forEach(u => {
+                        if(u.role !== 'CEO' && u.status !== 'pending' && u.status !== 'rejected') {
+                            select.innerHTML += `<option value="${u.uid}">${escapeHTML(u.name)}</option>`;
+                        }
+                    });
+                }
+            }
+            window.renderTasks();
+        };
+
+        window.toggleInlineChecklist = (taskId) => {
+            const row = document.getElementById(`checklist-row-${taskId}`);
+            const icon = document.getElementById(`icon-chk-${taskId}`);
+            if(row) {
+                row.classList.toggle('hidden');
+                if(icon) {
+                    icon.classList.toggle('fa-chevron-left');
+                    icon.classList.toggle('fa-chevron-down');
+                }
+            }
+        };
+
+        window.renderTasks = function() {
+            const isCEO = currentUserData.role === 'CEO';
+            let tasksToRender = globalTasks.filter(t => {
+                const isSelfAssigned = t.assigneeId === t.createdBy;
+                if (isSelfAssigned) return t.assigneeId === currentUserData.uid; 
+                if (isCEO) return true;
+                const hasAssignPerm = currentUserData.permissions && currentUserData.permissions.canAssignTasks;
+                if (hasAssignPerm && (t.status === 'completed' || t.status === 'pending_approval')) return true; 
+                return t.assigneeId === currentUserData.uid || t.createdBy === currentUserData.uid;
+            });
+
+            // ترتيب المهام بناءً على الـ orderIndex لتثبيت السحب والإفلات، ثم التاريخ
+            tasksToRender.sort((a, b) => {
+                if (a.orderIndex !== undefined && b.orderIndex !== undefined) {
+                    return a.orderIndex - b.orderIndex;
+                }
+                return b.timestamp - a.timestamp;
+            });
+
+            // تحديث إشعار المهام المعلقة للاعتماد
+            let pendingApprovalCount = 0;
+            globalTasks.forEach(t => {
+                if (t.status === 'pending_approval' && (isCEO || t.createdBy === currentUserData.uid)) {
+                    pendingApprovalCount++;
+                }
+            });
+            
+            const badge = document.getElementById('pendingApprovalBadge');
+            if(badge) {
+                if(pendingApprovalCount > 0) {
+                    badge.innerText = pendingApprovalCount;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
             }
 
-            creationChecklists.forEach((item, idx) => {
-                container.innerHTML += `
-                    <div class="flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded group transition">
-                        <button type="button" onclick="window.removeCreationChecklist(${idx})" class="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition"><i class="fa-solid fa-trash text-sm"></i></button>
-                        <div class="flex items-center gap-3">
-                            <span class="text-sm text-gray-700 dark:text-gray-200">${item.text}</span>
-                            <input type="checkbox" class="w-4 h-4 text-blue-500 bg-white border-gray-300 rounded cursor-not-allowed opacity-50" disabled>
-                        </div>
-                    </div>
-                `;
-            });
-        }
+            // إذا كنا في صفحة المهام المنجزة (Reports) لا نرندر اللوحات
+            if (window.currentTaskTab === 'reports') return;
 
-        let pendingTaskAttachment = null;
-        let pendingTaskAttachmentType = null;
-        let pendingTaskAttachmentName = null;
-        document.addEventListener("DOMContentLoaded", () => {
-            const attInput = document.getElementById('taskAttachmentInput');
-            if(attInput) {
-                attInput.addEventListener('change', (e) => {
-                    const file = e.target.files[0];
-                    if(!file) return;
-                    if(file.size > 2 * 1024 * 1024) { showToast('الملف كبير جداً! الحد الأقصى 2MB', 'warning'); e.target.value = ''; return; }
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                        pendingTaskAttachment = ev.target.result;
-                        pendingTaskAttachmentType = file.type;
-                        pendingTaskAttachmentName = file.name;
-                        const display = document.getElementById('attachmentNameDisplay');
-                        display.innerHTML = `<i class="fa-solid fa-file-circle-check"></i> تم إرفاق: ${escapeHTML(file.name)} <button type="button" onclick="window.clearTaskAttachment()" class="text-red-500 float-left text-xs bg-white rounded-full p-1"><i class="fa-solid fa-xmark"></i></button>`;
-                        display.classList.remove('hidden');
-                    };
-                    reader.readAsDataURL(file);
-                });
-            }
-            
-            const addTaskFormNew = document.getElementById('addTaskForm');
-            if (addTaskFormNew) {
-                addTaskFormNew.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    if(!currentUserData) return;
-                    
-                    const submitBtn = document.getElementById('taskSubmitBtn');
-                    if(submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الحفظ'; }
+            // استثناء المهام المكتملة أو المرفوعة للاعتماد من لوحات List/Deadline/Planner العادية إلا إذا كانت في عواميدها
+            const activeTasks = tasksToRender.filter(t => t.status !== 'completed' && t.status !== 'pending_approval');
+            const allKanbanTasks = tasksToRender; // للبلانر نعرض الجميع حسب العمود
 
-                    const assigneeSelect = document.getElementById('taskAssignee');
-                    const assigneeId = assigneeSelect.value;
-                    const assigneeName = assigneeSelect.options[assigneeSelect.selectedIndex].text.split(' (')[0];
-                    const title = document.getElementById('taskTitle').value;
-                    const desc = document.getElementById('taskDesc').value;
-                    const deadlineVal = document.getElementById('taskDeadline').value;
-                    const deadlineTime = deadlineVal ? new Date(deadlineVal).getTime() : null;
-                    const projectTag = 'عام'; // تم إزالة الحقل من الواجهة وتثبيت القيمة افتراضياً
-                    const isHighPriority = document.getElementById('isTaskHighPriority').value === 'true';
-                        if (deadlineTime && deadlineTime < Date.now()) {
-                        showToast('غير مسموح! لا يمكنك إسناد مهمة في تاريخ أو وقت سابق.', 'error');
-                        if(submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = 'إنشاء المهمة'; }
-                        return;
+            // ================= 1. RENDER LIST VIEW =================
+            const listTbody = document.getElementById('tasksListTbody');
+            if(listTbody) {
+                listTbody.innerHTML = '';
+                activeTasks.forEach(task => {
+                    const creator = globalUsers.find(u => u.uid === task.createdBy);
+                    const assignee = globalUsers.find(u => u.uid === task.assigneeId);
+                    const creatorPhoto = creator ? creator.photoURL : 'https://ui-avatars.com/api/?name=U';
+                    const assigneePhoto = assignee ? assignee.photoURL : 'https://ui-avatars.com/api/?name=U';
+                    
+                    const deadlineStr = task.deadline ? new Date(task.deadline).toLocaleString('en-US', {month: 'short', day: 'numeric', hour:'2-digit', minute:'2-digit'}) : 'No Deadline';
+                    const isLate = new Date(task.deadline).getTime() < Date.now() && task.status !== 'completed';
+                    const deadlineBadge = isLate ? `<span class="bg-red-100 text-red-600 px-2 py-1 rounded-full">${deadlineStr}</span>` : `<span class="bg-blue-50 text-blue-600 px-2 py-1 rounded-full border border-blue-100">${deadlineStr}</span>`;
+
+                    let statusText = 'Pending';
+                    let statusClass = 'bg-gray-100 text-gray-600';
+                    if(task.status === 'in-progress') { statusText = 'In progress'; statusClass = 'bg-[#00839b]/10 text-[#00839b] border border-[#00839b]/20 font-bold'; }
+                    
+                    let checklistsHtml = '';
+                    if(task.checklists && task.checklists.length > 0) {
+                        checklistsHtml = task.checklists.map((cl, idx) => `
+                            <div class="flex items-center gap-2 mb-1">
+                                <input type="checkbox" class="w-3.5 h-3.5 text-[#00839b]" ${cl.isCompleted ? 'checked' : ''} disabled>
+                                <span class="${cl.isCompleted ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-300'}">${escapeHTML(cl.text)}</span>
+                            </div>
+                        `).join('');
+                    } else {
+                        checklistsHtml = '<span class="text-gray-400">لا توجد قوائم تحقق</span>';
                     }
 
-                    const submitTask = async (fileData, fileType, fileName) => {
-                        try {
-                            const newTaskObj = {
-                                title: escapeHTML(title),
-                                desc: escapeHTML(desc),
-                                assigneeId: assigneeId,
-                                assigneeName: escapeHTML(assigneeName),
-                                createdBy: currentUserData.uid,
-                                deadline: deadlineTime,
-                                status: 'pending',
-                                project: escapeHTML(projectTag),
-                                isHighPriority: isHighPriority,
-                                checklists: creationChecklists, 
-                                timestamp: Date.now()
-                            };
-                            if(fileData) {
-                                newTaskObj.attachmentData = fileData;
-                                newTaskObj.attachmentType = fileType;
-                                newTaskObj.attachmentName = escapeHTML(fileName);
-                            }
-                            await addDoc(getColRef('tasks'), newTaskObj);
-                            window.closeModal('taskModal');
-                            
-                            const assignedUser = globalUsers.find(u => u.uid === assigneeId);
-if(assignedUser && assignedUser.email && assignedUser.email !== 'no-email@company.com') {
-    if (currentUserData.uid !== assigneeId) {
-        // أسند المهمة لغيره
-        window.sendEmailNotification(assignedUser.email, assigneeName, title, desc);
-        window.sendSystemNotification(assigneeId, 'مهمة جديدة', `لقد أسند إليك ${currentUserData.name} مهمة: ${title}`, 'tasks', 'tasks');
-    } else {
-        // أسند المهمة لنفسه (إرسال تذكير)
-        auth.currentUser.getIdToken().then(token => {
-            fetch(GOOGLE_SCRIPT_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ action: 'sendSelfTaskReminder', to_email: assignedUser.email, to_name: assignedUser.name, task_title: title, token: token })
-            }).catch(e => console.log(e));
-        });
-    }
-}
-                            showToast('تم إنشاء المهمة بنجاح', 'success');
-                        } catch(e) { console.error(e); showToast('حدث خطأ أثناء الإنشاء', 'error'); }
-                        if(submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = 'إنشاء المهمة'; }
-                    };
-
-                    if(pendingTaskAttachment) {
-                        submitTask(pendingTaskAttachment, pendingTaskAttachmentType, pendingTaskAttachmentName);
-                    } else {
-                        submitTask(null, null, null);
-                    }
-                });
-            }
-            
-            const taskReportForm = document.getElementById('taskReportForm');
-            if (taskReportForm) {
-                taskReportForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const id = document.getElementById('reportTaskId').value;
-                    const title = document.getElementById('reportTaskTitle').value;
-                    const reportText = document.getElementById('reportText').value;
-                    const fileInput = document.getElementById('reportFileInput');
-                    const file = fileInput.files[0];
-                    
-                    const completeTask = async (fileData, fileType) => {
-                        try {
-                            const taskRef = doc(db, 'artifacts', appId, 'public', 'data', 'tasks', id);
-                            const taskSnap = await getDoc(taskRef);
-                            const taskData = taskSnap.data();
-                            const isSelfAssigned = taskData.createdBy === currentUserData.uid;
-                            const newStatus = isSelfAssigned ? 'completed' : 'pending_approval';
-
-                            const updateData = { status: newStatus, reportText: reportText, completedAt: Date.now(), rejectReason: null };
-                            if(fileData) { updateData.reportFileData = fileData; updateData.reportFileType = fileType || ''; }
-
-                            await updateDoc(taskRef, updateData);
-                            window.closeModal('taskReportModal');
-                            if (isSelfAssigned) showToast('أحسنت! تم إنجاز المهمة بنجاح.', 'success');
-                            else {
-                                showToast('تم إرسال التقرير للإدارة بانتظار الموافقة.', 'success');
-                                globalUsers.forEach(u => {
-                                    if ((u.role === 'CEO' || (u.permissions && u.permissions.canAssignTasks)) && u.uid !== currentUserData.uid) {
-                                        window.sendSystemNotification(u.uid, 'مهمة بانتظار الاعتماد', `أنهى الموظف ${currentUserData.name} المهمة (${title}) وهي بانتظار موافقتك.`, 'tasks', 'tasks');
-                                    }
-                                });
-                            }
-                        } catch(e) { console.error(e); }
-                    };
-
-                    if(file) {
-                        if(file.size > 1024 * 1024) { showToast('الملف كبير جداً! الحد الأقصى 1MB', 'warning'); return; }
-                        const reader = new FileReader();
-                        reader.onload = (ev) => completeTask(ev.target.result, file.type);
-                        reader.readAsDataURL(file);
-                    } else { completeTask(null, null); }
-                });
-            }
-
-            const rejectForm = document.getElementById('rejectTaskForm');
-            if(rejectForm) {
-                rejectForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const taskId = document.getElementById('rejectModalTaskId').value;
-                    const reason = document.getElementById('rejectReasonInput').value;
-                    try {
-                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { status: 'in-progress', rejectReason: reason, completedAt: null });
-                        window.closeModal('rejectTaskModal');
-                        showToast('تم رفض المهمة وإعادتها للموظف', 'success');
-                        
-                        // إرسال إشعار للموظف
-                        const task = globalTasks.find(t => t.id === taskId);
-                        if(task && task.assigneeId !== currentUserData.uid) {
-                            window.sendSystemNotification(task.assigneeId, 'إعادة مهمة للتعديل', `تم رفض إنجازك للمهمة (${task.title}). السبب: ${reason}`, 'tasks', 'tasks');
-                        }
-                    } catch(e) { console.error(e); }
+                    listTbody.innerHTML += `
+                        <tr class="task-list-row bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 transition border-b border-gray-100 dark:border-gray-700" data-id="${task.id}">
+                            <td class="p-3 text-center align-middle">
+                                <i class="fa-solid fa-bars text-gray-300 cursor-grab hover:text-gray-500 drag-handle text-lg"></i>
+                            </td>
+                            <td class="p-3">
+                                <div class="flex items-center gap-2">
+                                    <button onclick="window.toggleInlineChecklist('${task.id}')" class="text-gray-400 hover:text-[#00839b] bg-gray-50 dark:bg-gray-700 w-6 h-6 rounded flex items-center justify-center transition"><i id="icon-chk-${task.id}" class="fa-solid fa-chevron-left text-xs"></i></button>
+                                    <span class="font-bold text-gray-800 dark:text-white">${escapeHTML(task.title)}</span>
+                                    ${task.isHighPriority ? '<i class="fa-solid fa-fire text-orange-500 text-xs ml-1"></i>' : ''}
+                                </div>
+                            </td>
+                            <td class="p-3"><span class="px-3 py-1 text-xs rounded-full ${statusClass}">${statusText}</span></td>
+                            <td class="p-3 text-xs font-bold">${deadlineBadge}</td>
+                            <td class="p-3">
+                                <div class="flex items-center gap-2 justify-end">
+                                    <span class="text-xs text-gray-600 dark:text-gray-400">${escapeHTML(creator ? creator.name : 'System')}</span>
+                                    <img src="${creatorPhoto}" class="w-6 h-6 rounded-full border border-gray-200">
+                                </div>
+                            </td>
+                            <td class="p-3">
+                                <div class="flex items-center gap-2 justify-end">
+                                    <span class="text-xs font-bold text-[#002d74] dark:text-blue-300">${escapeHTML(task.assigneeName)}</span>
+                                    <img src="${assigneePhoto}" class="w-6 h-6 rounded-full border border-[#002d74]">
+                                </div>
+                            </td>
+                            <td class="p-3 text-center">
+                                <button onclick="window.openTaskModal(); /* logic for edit */" class="text-gray-400 hover:text-[#00839b] p-1"><i class="fa-solid fa-pen"></i></button>
+                            </td>
+                        </tr>
+                        <tr id="checklist-row-${task.id}" class="hidden bg-gray-50/80 dark:bg-gray-900/50 shadow-inner">
+                            <td colspan="7" class="p-4 border-r-4 border-[#00839b]">
+                                <div class="text-xs font-bold text-[#002d74] dark:text-secondary mb-2 flex items-center gap-2"><i class="fa-solid fa-list-check"></i> قائمة التحقق:</div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 px-4">
+                                    ${checklistsHtml}
+                                </div>
+                            </td>
+                        </tr>
+                    `;
                 });
             }
-        });
 
-        window.clearTaskAttachment = () => {
-            pendingTaskAttachment = null;
-            pendingTaskAttachmentType = null;
-            pendingTaskAttachmentName = null;
-            document.getElementById('taskAttachmentInput').value = '';
-            document.getElementById('attachmentNameDisplay').classList.add('hidden');
-        };
+            // ================= 2. RENDER DEADLINE VIEW =================
+            const dlColumns = {
+                'overdue': document.getElementById('col-dl-overdue'),
+                'today': document.getElementById('col-dl-today'),
+                'week': document.getElementById('col-dl-week'),
+                'next': document.getElementById('col-dl-next'),
+                'none': document.getElementById('col-dl-none')
+            };
+            let dlCounts = { 'overdue':0, 'today':0, 'week':0, 'next':0, 'none':0 };
+            
+            Object.values(dlColumns).forEach(col => { if(col) col.innerHTML = ''; });
 
-        window.filterTasksList = () => {
-    const query = document.getElementById('taskSearchInput').value.toLowerCase();
-    document.querySelectorAll('.task-card').forEach(el => {
-        const title = el.querySelector('h4').innerText.toLowerCase();
-        const assignee = el.querySelector('span[title]').innerText.toLowerCase();
-        
-        if(title.includes(query) || assignee.includes(query)) {
-            el.style.display = 'block';
-        } else {
-            el.style.display = 'none';
-        }
-    });
-};
+            const nowObj = new Date();
+            nowObj.setHours(0,0,0,0);
+            const todayTime = nowObj.getTime();
+            const tomorrowTime = todayTime + 86400000;
+            const nextWeekTime = todayTime + (86400000 * 7);
+            const nextTwoWeeksTime = todayTime + (86400000 * 14);
 
-        window.toggleTaskDetailsList = (id) => {
-            const detailsDiv = document.getElementById(`task-details-${id}`);
-            const icon = document.getElementById(`task-chevron-${id}`);
-            if (detailsDiv) {
-                detailsDiv.classList.toggle('open');
-                if (icon) icon.classList.toggle('rotate-180');
-            }
-        };
+            activeTasks.forEach(task => {
+                const assignee = globalUsers.find(u => u.uid === task.assigneeId);
+                const aPhoto = assignee ? assignee.photoURL : '';
+                
+                let targetCol = 'none';
+                if(task.deadline) {
+                    if(task.deadline < todayTime) targetCol = 'overdue';
+                    else if(task.deadline >= todayTime && task.deadline < tomorrowTime) targetCol = 'today';
+                    else if(task.deadline >= tomorrowTime && task.deadline < nextWeekTime) targetCol = 'week';
+                    else if(task.deadline >= nextWeekTime && task.deadline < nextTwoWeeksTime) targetCol = 'next';
+                    else targetCol = 'none';
+                }
 
-        window.updateTaskStatusFromCheckbox = async (id, title, isCompleted) => {
-            if(isCompleted) {
-                const task = globalTasks.find(t => t.id === id);
-                if(task && task.checklists && task.checklists.length > 0) {
-                    const uncompletedItems = task.checklists.filter(c => !c.isCompleted).length;
-                    if(uncompletedItems > 0) {
-                        showToast(`يجب وضع علامة "صح" على جميع عناصر قائمة التحقق أولاً`, 'warning');
-                        const cb = document.querySelector(`.task-row-item[data-id="${id}"] .custom-checkbox`);
-                        if(cb) cb.checked = false;
-                        return;
-                    }
-                }
-                document.getElementById('reportTaskId').value = id;
-                document.getElementById('reportTaskTitle').value = title;
-                const isSelfAssigned = task && task.createdBy === currentUserData.uid;
-                document.getElementById('reportTextLabel').innerText = isSelfAssigned ? "تفاصيل التقرير (اختياري)" : "تفاصيل التقرير (إلزامي)";
-                document.getElementById('reportText').required = !isSelfAssigned;
-                document.getElementById('reportText').value = '';
-                document.getElementById('reportFileInput').value = '';
-                window.openModal('taskReportModal');
-            } else {
-                try {
-                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', id), { status: 'in-progress', completedAt: null });
-                    showToast('تم إعادة فتح المهمة', 'info');
-                } catch(e) { console.error(e); }
-            }
-        };
+                dlCounts[targetCol]++;
+                if(dlColumns[targetCol]) {
+                    dlColumns[targetCol].innerHTML += `
+                        <div class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 cursor-grab task-card" data-id="${task.id}">
+                            <h4 class="text-sm font-bold text-gray-800 dark:text-white mb-2">${escapeHTML(task.title)}</h4>
+                            <div class="flex justify-between items-center">
+                                <span class="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold">${task.deadline ? new Date(task.deadline).toLocaleString('en-US', {month:'short', day:'numeric'}) : 'No date'}</span>
+                                <img src="${aPhoto}" class="w-5 h-5 rounded-full border border-gray-200">
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            for(let key in dlCounts) {
+                const badge = document.getElementById(`count-dl-${key}`);
+                if(badge) badge.innerText = dlCounts[key];
+            }
+
+            // ================= 3. RENDER PLANNER VIEW =================
+            const plColumns = {
+                'pending': document.getElementById('col-pl-pending'),
+                'in-progress': document.getElementById('col-pl-progress'),
+                'pending_approval': document.getElementById('col-pl-review'),
+                'completed': document.getElementById('col-pl-completed')
+            };
+            let plCounts = { 'pending':0, 'in-progress':0, 'pending_approval':0, 'completed':0 };
+            
+            Object.values(plColumns).forEach(col => { if(col) col.innerHTML = ''; });
+
+            allKanbanTasks.forEach(task => {
+                let targetCol = task.status;
+                if(!plColumns[targetCol]) targetCol = 'pending';
+                
+                plCounts[targetCol]++;
+                const assignee = globalUsers.find(u => u.uid === task.assigneeId);
+                const aPhoto = assignee ? assignee.photoURL : '';
+                
+                if(plColumns[targetCol]) {
+                    plColumns[targetCol].innerHTML += `
+                        <div class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 cursor-grab task-card" data-id="${task.id}">
+                            <h4 class="text-sm font-bold text-gray-800 dark:text-white mb-2">${escapeHTML(task.title)}</h4>
+                            <div class="flex justify-between items-center">
+                                <span class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded text-[10px] font-bold">${task.deadline ? new Date(task.deadline).toLocaleString('en-US', {month:'short', day:'numeric'}) : 'No deadline'}</span>
+                                <img src="${aPhoto}" class="w-5 h-5 rounded-full border border-gray-200">
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            for(let key in plCounts) {
+                let domKey = key === 'in-progress' ? 'progress' : (key === 'pending_approval' ? 'review' : key);
+                const badge = document.getElementById(`count-pl-${domKey}`);
+                if(badge) badge.innerText = plCounts[key];
+            }
+
+            // تهيئة السحب والإفلات
+            window.initTaskDragAndDrop();
+        };
+
+        window.initTaskDragAndDrop = () => {
+            // السحب والإفلات للـ List View لتحديث الترتيب
+            const listTbody = document.getElementById('tasksListTbody');
+            if(listTbody && !listTbody.sortableInstance) {
+                listTbody.sortableInstance = new Sortable(listTbody, {
+                    handle: '.drag-handle',
+                    animation: 150,
+                    ghostClass: 'bg-gray-100',
+                    onEnd: function (evt) {
+                        const rows = Array.from(listTbody.querySelectorAll('.task-list-row'));
+                        rows.forEach((row, index) => {
+                            const id = row.getAttribute('data-id');
+                            import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(({ doc, updateDoc }) => {
+                                updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', id), { orderIndex: index }).catch(()=>{});
+                            });
+                        });
+                    }
+                });
+            }
+
+            // السحب والإفلات لـ Planner
+            const plannerCols = ['col-pl-pending', 'col-pl-progress', 'col-pl-review', 'col-pl-completed'];
+            plannerCols.forEach(colId => {
+                const el = document.getElementById(colId);
+                if(el && !el.sortableInstance) {
+                    el.sortableInstance = new Sortable(el, {
+                        group: 'planner-tasks',
+                        animation: 150,
+                        ghostClass: 'opacity-50',
+                        onEnd: async function (evt) {
+                            const itemEl = evt.item;
+                            const toColumn = evt.to;
+                            const taskId = itemEl.getAttribute('data-id');
+                            const newStatus = toColumn.getAttribute('data-status');
+                            if(taskId && newStatus) {
+                                try {
+                                    const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                                    let updateData = { status: newStatus };
+                                    if(newStatus === 'in-progress') updateData.startedAt = Date.now();
+                                    if(newStatus === 'completed' || newStatus === 'pending_approval') updateData.completedAt = Date.now();
+                                    if(newStatus === 'pending') updateData.completedAt = null;
+                                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), updateData);
+                                } catch(e) {}
+                            }
+                        }
+                    });
+                }
+            });
+        };
+
+        window.openTaskModal = () => {
+            document.getElementById('addTaskForm').reset();
+            creationChecklists = [];
+            window.renderCreationChecklists();
+            
+            const select = document.getElementById('taskAssignee');
+            select.innerHTML = '';
+            const isCEO = currentUserData.role === 'CEO';
+            const canAssign = currentUserData.permissions?.canAssignTasks;
+
+            if (isCEO || canAssign) {
+                select.innerHTML = '<option value="">-- اختر موظف --</option>';
+                globalUsers.forEach(emp => {
+                    if (emp.status !== 'pending' && emp.status !== 'rejected') {
+                        select.innerHTML += `<option value="${emp.uid}">${escapeHTML(emp.name)} (${escapeHTML(emp.role)})</option>`;
+                    }
+                });
+                select.disabled = false;
+            } else {
+                select.innerHTML = `<option value="${currentUserData.uid}" selected>${escapeHTML(currentUserData.name)} (أنت)</option>`;
+                select.disabled = false;
+            }
+            window.openModal('taskModal');
+        };
+
+        window.filterTasksList = () => {
+            const query = document.getElementById('taskSearchInput').value.toLowerCase();
+            // تصفية في الـ List
+            document.querySelectorAll('.task-list-row').forEach(el => {
+                const text = el.innerText.toLowerCase();
+                if(text.includes(query)) {
+                    el.style.display = 'table-row';
+                } else {
+                    el.style.display = 'none';
+                    const chkRow = document.getElementById(`checklist-row-${el.getAttribute('data-id')}`);
+                    if(chkRow) chkRow.classList.add('hidden');
+                }
+            });
+            // تصفية في الـ Planner & Deadline
+            document.querySelectorAll('.task-card').forEach(el => {
+                const text = el.innerText.toLowerCase();
+                el.style.display = text.includes(query) ? 'block' : 'none';
+            });
+        };
+
+        window.toggleTaskDetailsList = (id) => {
+            // متوافق مع المودال الجانبي أو توسيع البطاقة إذا أردت
+            window.openTaskModal(); // مجرد مثال، يمكنك تخصيصها لفتح نافذة التفاصيل
+        };
+
+        window.updateTaskStatusFromCheckbox = async (id, title, isCompleted) => {
+            // نفس الدالة السابقة دون تغيير
+            if(isCompleted) {
+                const task = globalTasks.find(t => t.id === id);
+                if(task && task.checklists && task.checklists.length > 0) {
+                    const uncompletedItems = task.checklists.filter(c => !c.isCompleted).length;
+                    if(uncompletedItems > 0) {
+                        showToast(`يجب وضع علامة "صح" على جميع عناصر قائمة التحقق أولاً`, 'warning');
+                        const cb = document.querySelector(`.task-list-row[data-id="${id}"] .custom-checkbox`);
+                        if(cb) cb.checked = false;
+                        return;
+                    }
+                }
+                document.getElementById('reportTaskId').value = id;
+                document.getElementById('reportTaskTitle').value = title;
+                const isSelfAssigned = task && task.createdBy === currentUserData.uid;
+                document.getElementById('reportTextLabel').innerText = isSelfAssigned ? "تفاصيل التقرير (اختياري)" : "تفاصيل التقرير (إلزامي)";
+                document.getElementById('reportText').required = !isSelfAssigned;
+                document.getElementById('reportText').value = '';
+                document.getElementById('reportFileInput').value = '';
+                window.openModal('taskReportModal');
+            } else {
+                try {
+                    const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', id), { status: 'in-progress', completedAt: null });
+                    showToast('تم إعادة فتح المهمة', 'info');
+                } catch(e) { console.error(e); }
+            }
+        };
 
         window.startTask = async (taskId) => {
             try {
+                const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { status: 'in-progress', startedAt: Date.now() });
                 showToast('تم البدء بتنفيذ المهمة، بالتوفيق!', 'success');
             } catch(e) { console.error(e); }
         };
 
-        window.toggleTaskChecklistItem = async (taskId, itemIndex, isChecked) => {
-            if(!currentUserData) return;
-            const task = globalTasks.find(t => t.id === taskId);
-            if(!task || !task.checklists) return;
-            if(task.status === 'pending' && isChecked) {
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { status: 'in-progress', startedAt: Date.now() });
-            }
-            const updatedChecklists = [...task.checklists];
-            updatedChecklists[itemIndex].isCompleted = isChecked;
+        window.toggleTaskChecklistItem = async (taskId, itemIndex, isChecked) => {
+            if(!currentUserData) return;
+            const task = globalTasks.find(t => t.id === taskId);
+            if(!task || !task.checklists) return;
+            
             try {
+                const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                if(task.status === 'pending' && isChecked) {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { status: 'in-progress', startedAt: Date.now() });
+                }
+                const updatedChecklists = [...task.checklists];
+                updatedChecklists[itemIndex].isCompleted = isChecked;
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { checklists: updatedChecklists });
                 
-                // فحص إذا تم تحديد جميع المربعات لإنهاء المهمة وفتح التقرير تلقائياً
                 const allCompleted = updatedChecklists.length > 0 && updatedChecklists.every(c => c.isCompleted);
                 if (allCompleted) {
                     setTimeout(() => {
                         const taskTitle = task.title.replace(/'/g, "\\'");
                         window.updateTaskStatusFromCheckbox(taskId, taskTitle, true);
-                    }, 500); // تأخير نصف ثانية لجمالية الحركة
+                    }, 500);
                 }
             } catch(e) { console.error(e); }
-        };
+        };
 
-        window.undoTaskCompletion = async () => {
-            const id = document.getElementById('reportTaskId').value;
-            try {
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', id), { status: 'in-progress', completedAt: null });
-                showToast('تم التراجع', 'info');
-                window.closeModal('taskReportModal');
-            } catch(e) { console.error(e); }
-        };
+        window.undoTaskCompletion = async () => {
+            const id = document.getElementById('reportTaskId').value;
+            try {
+                const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', id), { status: 'in-progress', completedAt: null });
+                showToast('تم التراجع', 'info');
+                window.closeModal('taskReportModal');
+            } catch(e) { console.error(e); }
+        };
 
-        window.approveTask = async (taskId) => {
+        window.approveTask = async (taskId) => {
             if(confirm('هل أنت متأكد من الموافقة على هذا التقرير واعتماده؟')) {
                 try {
+                    const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
                     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { status: 'completed' });
                     showToast('تم الموافقة على المهمة', 'success');
                     
-                    // إرسال إشعار للموظف
                     const task = globalTasks.find(t => t.id === taskId);
                     if(task && task.assigneeId !== currentUserData.uid) {
                         window.sendSystemNotification(task.assigneeId, 'تم اعتماد المهمة', `أحسنت! تمت الموافقة على مهمتك (${task.title}) واعتمادها بنجاح.`, 'tasks', 'tasks');
@@ -7542,225 +7629,73 @@ if(assignedUser && assignedUser.email && assignedUser.email !== 'no-email@compan
             }
         };
 
-        window.openRejectTaskModal = (taskId) => {
-            document.getElementById('rejectModalTaskId').value = taskId;
-            window.openModal('rejectTaskModal');
-        };
+        window.openRejectTaskModal = (taskId) => {
+            document.getElementById('rejectModalTaskId').value = taskId;
+            window.openModal('rejectTaskModal');
+        };
 
-        window.deleteTask = async (id) => {
-            if(currentUserData.role !== 'CEO' && !globalTasks.find(t => t.id === id && t.createdBy === currentUserData.uid)) return;
-            if(confirm('حذف هذه المهمة نهائياً؟')) {
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', id)).catch(e => console.error(e));
-            }
-        };
-
-        window.toggleCeoReportsInline = () => {
-            const mainView = document.getElementById('tasksMainView');
-            const inlineReports = document.getElementById('inlineCeoReports');
-            
-            if (inlineReports.classList.contains('hidden')) {
-                mainView.classList.add('hidden');
-                inlineReports.classList.remove('hidden');
-                
-                // تعبئة القائمة المنسدلة بالموظفين
-                const select = document.getElementById('ceoReportEmpSelect');
-                if(select) {
-                    select.innerHTML = '<option value="">-- اختر موظفاً لعرض مهامه --</option>';
-                    globalUsers.forEach(u => {
-                        if(u.role !== 'CEO' && u.status !== 'pending' && u.status !== 'rejected') {
-                            select.innerHTML += `<option value="${u.uid}">${escapeHTML(u.name)} (${escapeHTML(u.role)})</option>`;
-                        }
-                    });
-                }
-                document.getElementById('ceoReportTasksDetails').innerHTML = `<div class="flex flex-col items-center justify-center h-full text-gray-400 mt-10"><i class="fa-solid fa-hand-pointer text-4xl mb-3"></i><p class="font-bold">قم باختيار موظف من القائمة لعرض مهامه المنجزة</p></div>`;
-            } else {
-                mainView.classList.remove('hidden');
-                inlineReports.classList.add('hidden');
+        window.deleteTask = async (id) => {
+            if(currentUserData.role !== 'CEO' && !globalTasks.find(t => t.id === id && t.createdBy === currentUserData.uid)) return;
+            if(confirm('حذف هذه المهمة نهائياً؟')) {
+                const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', id)).catch(e => console.error(e));
             }
         };
 
-        window.renderCeoEmployeeTasks = (empId, empName) => {
-            document.querySelectorAll('.ceo-emp-item').forEach(el => el.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'border-r-4', 'border-primary'));
-            const activeItem = document.getElementById(`ceo-emp-item-${empId}`);
-            if(activeItem) activeItem.classList.add('bg-gray-200', 'dark:bg-gray-700', 'border-r-4', 'border-primary');
+        window.toggleCeoReportsInline = () => {
+            // دالة قديمة لم تعد مستخدمة في التصميم الجديد للتبويبات
+        };
 
-            const container = document.getElementById('ceoReportTasksDetails');
-            const empTasks = globalTasks.filter(t => t.assigneeId === empId && (t.status === 'completed' || t.status === 'pending_approval')).sort((a,b) => (b.completedAt || 0) - (a.completedAt || 0));
-            
-            if(empTasks.length === 0) {
-                container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-gray-400"><i class="fa-solid fa-folder-open text-4xl mb-3"></i><p>لا توجد مهام منجزة لهذا الموظف</p></div>`;
-                return;
-            }
+        window.renderCeoEmployeeTasks = (empId, empName) => {
+            const container = document.getElementById('ceoReportTasksDetails');
+            const empTasks = globalTasks.filter(t => t.assigneeId === empId && (t.status === 'completed' || t.status === 'pending_approval')).sort((a,b) => (b.completedAt || 0) - (a.completedAt || 0));
+            
+            if(empTasks.length === 0) {
+                container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-gray-400 mt-10"><i class="fa-solid fa-folder-open text-5xl mb-4 text-[#00839b]/50"></i><p class="font-bold text-lg text-[#002d74] dark:text-gray-300">لا توجد مهام منجزة لهذا الموظف</p></div>`;
+                return;
+            }
 
-            let html = `<h4 class="font-bold text-primary dark:text-secondary mb-4 border-b dark:border-gray-700 pb-2">تقارير المهام لـ: ${escapeHTML(empName)}</h4><div class="space-y-4">`;
-            empTasks.forEach(t => {
-                const dateStr = t.completedAt ? new Date(t.completedAt).toLocaleString('ar-EG') : 'غير محدد';
-                let fileHtml = '';
-                if(t.reportFileData) {
-                    if(t.reportFileType && t.reportFileType.startsWith('image/')) {
-                        fileHtml = `<img src="${escapeHTML(t.reportFileData)}" class="mt-3 rounded-lg max-w-[200px] cursor-pointer border shadow" onclick="window.openMedia('${escapeHTML(t.reportFileData)}', '${escapeHTML(t.reportFileType)}')">`;
-                    } else {
-                        fileHtml = `<a href="${escapeHTML(t.reportFileData)}" download="مرفق_مهمة" class="inline-block mt-3 bg-secondary text-white text-xs px-3 py-1.5 rounded"><i class="fa-solid fa-download"></i> تحميل المرفق</a>`;
-                    }
-                }
-                let approvalHtml = '';
-                if(t.status === 'pending_approval') {
-                    approvalHtml = `
-                        <div class="mt-4 flex gap-2 border-t border-gray-200 dark:border-gray-600 pt-3">
-                            <button onclick="window.approveTask('${t.id}')" class="flex-1 bg-green-500 text-white px-4 py-2 rounded-lg font-bold shadow text-sm">موافقة واعتماد</button>
-                            <button onclick="window.openRejectTaskModal('${t.id}')" class="flex-1 bg-red-500 text-white px-4 py-2 rounded-lg font-bold shadow text-sm">رفض وتعديل</button>
-                        </div>
-                    `;
-                }
-                html += `
-                    <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm">
-                        <h5 class="font-bold text-gray-800 dark:text-gray-100 mb-2">${escapeHTML(t.title)}</h5>
-                        <p class="text-xs text-gray-600 dark:text-gray-400 mb-3 whitespace-pre-wrap">${escapeHTML(t.desc)}</p>
-                        <div class="border-t border-gray-200 dark:border-gray-600 pt-3">
-                            <h6 class="text-xs font-bold text-green-600 dark:text-green-400 mb-1">تقرير الموظف:</h6>
-                            <p class="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-line">${escapeHTML(t.reportText)}</p>
-                            ${fileHtml}
-                        </div>
-                        ${approvalHtml}
-                    </div>
-                `;
-            });
-            html += `</div>`;
-            container.innerHTML = html;
-        };
-
-        window.renderTasks = function() {
-    const colPending = document.getElementById('column-pending');
-    const colInProgress = document.getElementById('column-in-progress');
-    const colApproval = document.getElementById('column-pending_approval');
-    const colCompleted = document.getElementById('column-completed');
-    
-    if(!colPending) return;
-
-    // تفريغ القوائم
-    colPending.innerHTML = '';
-    colInProgress.innerHTML = '';
-    colApproval.innerHTML = '';
-    colCompleted.innerHTML = '';
-
-    const isCEO = currentUserData.role === 'CEO';
-    let tasksToRender = globalTasks.filter(t => {
-        const isSelfAssigned = t.assigneeId === t.createdBy;
-        if (isSelfAssigned) return t.assigneeId === currentUserData.uid; 
-        if (isCEO) return true;
-        const hasAssignPerm = currentUserData.permissions && currentUserData.permissions.canAssignTasks;
-        if (hasAssignPerm) return true; 
-        return t.assigneeId === currentUserData.uid || t.createdBy === currentUserData.uid;
-    });
-
-    // ترتيب تنازلي (الأحدث أولاً)
-    tasksToRender.sort((a, b) => b.timestamp - a.timestamp);
-
-    // عدادات القوائم
-    let counts = { 'pending': 0, 'in-progress': 0, 'pending_approval': 0, 'completed': 0 };
-
-    tasksToRender.forEach(task => {
-        if(counts[task.status] !== undefined) counts[task.status]++;
-
-        const isMyTask = task.assigneeId === currentUserData.uid;
-        const deadlineStr = task.deadline ? new Date(task.deadline).toLocaleString('ar-EG', {month: 'short', day: 'numeric', hour:'2-digit'}) : 'بدون موعد';
-        const isLate = new Date(task.deadline).getTime() < Date.now() && task.status !== 'completed' && task.status !== 'pending_approval';
-        
-        // شريط الأولوية الجانبي
-        const priorityColor = task.isHighPriority ? 'bg-orange-500' : 'bg-[#00839b]';
-        const lateBadge = isLate ? `<span class="absolute top-2 left-2 bg-red-100 text-red-600 text-[9px] font-bold px-2 py-1 rounded animate-pulse">متأخرة!</span>` : '';
-
-        // تصميم الكرت (Card) الواقعي
-        const cardHtml = `
-            <div class="task-card bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing relative transition-all group" data-id="${task.id}">
-                <div class="absolute right-0 top-3 bottom-3 w-1.5 rounded-l-full ${priorityColor}"></div>
-                ${lateBadge}
-                
-                <h4 class="font-bold text-sm text-[#002d74] dark:text-white mb-2 pr-2">${escapeHTML(task.title)}</h4>
-                <p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 pr-2 mb-3 leading-relaxed">${escapeHTML(task.desc)}</p>
-                
-                <div class="flex justify-between items-end border-t border-gray-100 dark:border-gray-700 pt-3 pr-2">
-                    <div class="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 px-2 py-1 rounded-lg border border-gray-100 dark:border-gray-600">
-                        <div class="w-5 h-5 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center shrink-0">
-                            <i class="fa-solid fa-user text-[10px] text-gray-500"></i>
-                        </div>
-                        <span class="text-[10px] font-bold text-gray-700 dark:text-gray-300 truncate max-w-[80px]" title="${escapeHTML(task.assigneeName)}">${escapeHTML(task.assigneeName)}</span>
-                    </div>
-                    
-                    <div class="text-[10px] font-bold ${isLate ? 'text-red-500' : 'text-gray-400'} flex items-center gap-1">
-                        <i class="fa-regular fa-clock"></i> ${deadlineStr}
-                    </div>
-                </div>
-                
-                <button onclick="window.toggleTaskDetailsList('${task.id}')" class="absolute -bottom-3 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-full w-6 h-6 flex items-center justify-center shadow-md z-10">
-                    <i class="fa-solid fa-expand text-[10px] text-gray-500"></i>
-                </button>
-            </div>
-        `;
-
-        if(task.status === 'pending') colPending.innerHTML += cardHtml;
-        else if(task.status === 'in-progress') colInProgress.innerHTML += cardHtml;
-        else if(task.status === 'pending_approval') colApproval.innerHTML += cardHtml;
-        else if(task.status === 'completed') colCompleted.innerHTML += cardHtml;
-    });
-
-    // تحديث الأرقام
-    document.getElementById('count-pending').innerText = counts['pending'];
-    document.getElementById('count-in-progress').innerText = counts['in-progress'];
-    document.getElementById('count-pending_approval').innerText = counts['pending_approval'];
-    document.getElementById('count-completed').innerText = counts['completed'];
-
-    // تهيئة نظام السحب والإفلات (SortableJS) للمجموعات الأربعة
-    initDragAndDrop();
-};
-
-// دالة تفعيل السحب والإفلات
-function initDragAndDrop() {
-    const columns = [
-        document.getElementById('column-pending'),
-        document.getElementById('column-in-progress'),
-        document.getElementById('column-pending_approval'),
-        document.getElementById('column-completed')
-    ];
-
-    columns.forEach(col => {
-        if(col) {
-            new Sortable(col, {
-                group: 'shared-tasks', // السماح بالسحب بين القوائم
-                animation: 150,
-                ghostClass: 'opacity-50',
-                dragClass: 'shadow-2xl',
-                onEnd: async function (evt) {
-                    const itemEl = evt.item;  // الكرت المسحوب
-                    const toColumn = evt.to;  // العمود الجديد
-                    
-                    const taskId = itemEl.getAttribute('data-id');
-                    const newStatus = toColumn.getAttribute('data-status');
-                    
-                    if(taskId && newStatus) {
-                        try {
-                            const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-                            
-                            let updateData = { status: newStatus };
-                            
-                            // تحديث الوقت حسب الحالة الجديدة
-                            if(newStatus === 'in-progress') updateData.startedAt = Date.now();
-                            if(newStatus === 'completed' || newStatus === 'pending_approval') updateData.completedAt = Date.now();
-                            if(newStatus === 'pending') updateData.completedAt = null;
-
-                            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), updateData);
-                            
-                            // تحديث الواجهة تلقائياً سيتم من خلال Listener قاعدة البيانات الموجود في الكود الأصلي
-                        } catch(e) {
-                            console.error("خطأ أثناء تغيير حالة المهمة بالسحب:", e);
-                            window.renderTasks(); // إعادة الرندرة لحالتها الأصلية في حال الفشل
-                        }
+            let html = `<h4 class="font-bold text-[#002d74] dark:text-[#00b0f0] mb-4 border-b dark:border-gray-700 pb-2">تقارير المهام المنجزة للموظف: ${escapeHTML(empName)}</h4><div class="space-y-4 pb-10">`;
+            empTasks.forEach(t => {
+                const dateStr = t.completedAt ? new Date(t.completedAt).toLocaleString('ar-EG') : 'غير محدد';
+                let fileHtml = '';
+                if(t.reportFileData) {
+                    if(t.reportFileType && t.reportFileType.startsWith('image/')) {
+                        fileHtml = `<img src="${escapeHTML(t.reportFileData)}" class="mt-3 rounded-lg max-w-[200px] cursor-pointer border shadow" onclick="window.openMedia('${escapeHTML(t.reportFileData)}', '${escapeHTML(t.reportFileType)}')">`;
+                    } else {
+                        fileHtml = `<a href="${escapeHTML(t.reportFileData)}" download="مرفق_مهمة" class="inline-block mt-3 bg-[#00839b] hover:bg-[#002d74] transition text-white text-xs px-3 py-1.5 rounded"><i class="fa-solid fa-download"></i> تحميل المرفق</a>`;
                     }
-                },
+                }
+                let approvalHtml = '';
+                if(t.status === 'pending_approval') {
+                    approvalHtml = `
+                        <div class="mt-4 flex gap-2 border-t border-gray-200 dark:border-gray-600 pt-3">
+                            <button onclick="window.approveTask('${t.id}')" class="flex-1 bg-green-500 hover:bg-green-600 transition text-white px-4 py-2 rounded-lg font-bold shadow text-sm"><i class="fa-solid fa-check mx-1"></i> اعتماد وموافقة</button>
+                            <button onclick="window.openRejectTaskModal('${t.id}')" class="flex-1 bg-red-500 hover:bg-red-600 transition text-white px-4 py-2 rounded-lg font-bold shadow text-sm"><i class="fa-solid fa-xmark mx-1"></i> رفض ومطالبة بالتعديل</button>
+                        </div>
+                    `;
+                } else {
+                    approvalHtml = `<div class="mt-4 border-t dark:border-gray-600 pt-3 text-center"><span class="text-xs font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full"><i class="fa-solid fa-check-double mx-1"></i> معتمدة ومكتملة</span></div>`;
+                }
+
+                html += `
+                    <div class="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm relative">
+                        ${t.status === 'pending_approval' ? '<span class="absolute top-0 right-0 bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded-bl-lg font-bold animate-pulse">جديد</span>' : ''}
+                        <h5 class="font-bold text-gray-800 dark:text-gray-100 mb-2">${escapeHTML(t.title)}</h5>
+                        <p class="text-xs text-gray-600 dark:text-gray-400 mb-3 whitespace-pre-wrap">${escapeHTML(t.desc)}</p>
+                        <div class="border-t border-gray-200 dark:border-gray-600 pt-3 bg-white dark:bg-gray-800 p-3 rounded-lg mt-2">
+                            <h6 class="text-xs font-bold text-green-600 dark:text-green-400 mb-2"><i class="fa-solid fa-clipboard-check mx-1"></i>تقرير الموظف:</h6>
+                            <p class="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-line leading-relaxed">${escapeHTML(t.reportText)}</p>
+                            ${fileHtml}
+                        </div>
+                        ${approvalHtml}
+                    </div>
+                `;
             });
-        }
-    });
-}
+            html += `</div>`;
+            container.innerHTML = html;
+        };
+        // ==========================================
         
         // --- دوال العهد والتوقيع ---
         window.renderCustody = () => {
