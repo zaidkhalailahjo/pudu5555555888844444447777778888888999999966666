@@ -3478,11 +3478,50 @@ window.verifyOTP = async () => {
 
         document.getElementById('manualLocForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const text = document.getElementById('manualLocText').value;
+            const text = document.getElementById('manualLocText').value.trim();
             const base64Data = document.getElementById('manualLocPhotoBase64').value;
             
             if (!text) { showToast('يرجى كتابة موقعك', 'warning'); return; }
-            if (!base64Data) { showToast('يرجى التقاط صورة إثبات التواجد من الكاميرا', 'warning'); return; }
+
+            // --- بداية نظام مكتشف الكلام العشوائي (Gibberish Detector) ---
+            
+            // 1. فحص إذا كان النص عبارة عن أرقام أو رموز فقط (لا يوجد حروف عربية أو إنجليزية)
+            const hasLetters = /[a-zA-Z\u0600-\u06FF]/.test(text);
+            if (!hasLetters) {
+                showToast('مرفوض: يجب كتابة اسم الموقع بحروف واضحة ومفهومة وليس أرقام أو رموز فقط.', 'error');
+                return;
+            }
+
+            // 2. فحص تكرار الحروف (مثل ههههه أو ثثثثث أو ----- )
+            if (/(.)\1{4,}/.test(text)) {
+                showToast('مرفوض: يرجى عدم تكرار الحروف بشكل عشوائي، اكتب موقعاً حقيقياً.', 'warning');
+                return;
+            }
+
+            // 3. فحص الكلمات الطويلة جداً بدون مسافات (خبط عشوائي على الكيبورد مثل يهاؤقكخثرقكهثعلب)
+            const words = text.split(/\s+/);
+            for (let w of words) {
+                if (w.length > 12) {
+                    showToast('مرفوض: تم اكتشاف كلام غير مفهوم (خبط على اللوحة)، يرجى كتابة اسم الموقع بشكل صحيح.', 'warning');
+                    return;
+                }
+            }
+
+            // 4. فحص الطول الأدنى (يجب أن يكون أكثر من 3 حروف ليكون اسماً حقيقياً)
+            if (text.length < 4) {
+                showToast('الوصف قصير جداً، يرجى توضيح مكانك بدقة أكبر.', 'warning');
+                return;
+            }
+
+            // 5. كلمات ممنوعة صريحة (يمكنك إضافة أي كلمات هنا)
+            const blockedWords = ['هبل', 'تجربة', 'اي كلام', 'بطيخ', 'لا شيء', 'test'];
+            if (blockedWords.some(bw => text.includes(bw))) {
+                showToast('مرفوض: يرجى إدخال اسم موقع عملك الحقيقي بجدية.', 'error');
+                return;
+            }
+            // --- نهاية نظام مكتشف الكلام العشوائي ---
+
+            if (!base64Data) { showToast('يرجى التقاط صورة إثبات التواجد المباشرة من الكاميرا', 'warning'); return; }
 
             const submitBtn = e.target.querySelector('button[type="submit"]');
             submitBtn.disabled = true;
