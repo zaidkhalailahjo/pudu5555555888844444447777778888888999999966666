@@ -2272,6 +2272,8 @@ document.getElementById('rentalForm').addEventListener('submit', async (e) => {
                 }
                 printDiv.innerHTML = htmlContent;
                 window.print();
+                // مسح التقرير من الخلفية بعد انتهاء الحفظ لتخفيف العبء على المتصفح
+                setTimeout(() => { if(printDiv.parentNode) printDiv.parentNode.removeChild(printDiv); }, 1000);
             }
 
             const exportTime = Date.now();
