@@ -7402,18 +7402,23 @@ if(assignedUser && assignedUser.email && assignedUser.email !== 'no-email@compan
 
             const rejectForm = document.getElementById('rejectTaskForm');
             if(rejectForm) {
-                rejectForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const taskId = document.getElementById('rejectModalTaskId').value;
-                    const reason = document.getElementById('rejectReasonInput').value;
-                    try {
-                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { status: 'in-progress', rejectReason: reason, completedAt: null });
-                        window.closeModal('rejectTaskModal');
-                        showToast('تم رفض المهمة وإعادتها للموظف', 'success');
-                    } catch(e) { console.error(e); }
-                });
-            }
-        });
+                rejectForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const taskId = document.getElementById('rejectModalTaskId').value;
+                    const reason = document.getElementById('rejectReasonInput').value;
+                    try {
+                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { status: 'in-progress', rejectReason: reason, completedAt: null });
+                        window.closeModal('rejectTaskModal');
+                        showToast('تم رفض المهمة وإعادتها للموظف', 'success');
+                        
+                        // إرسال إشعار للموظف
+                        const task = globalTasks.find(t => t.id === taskId);
+                        if(task && task.assigneeId !== currentUserData.uid) {
+                            window.sendSystemNotification(task.assigneeId, 'إعادة مهمة للتعديل', `تم رفض إنجازك للمهمة (${task.title}). السبب: ${reason}`, 'tasks', 'tasks');
+                        }
+                    } catch(e) { console.error(e); }
+                });
+            }
 
         window.clearTaskAttachment = () => {
             pendingTaskAttachment = null;
