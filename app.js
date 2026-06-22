@@ -7454,20 +7454,13 @@ if(assignedUser && assignedUser.email && assignedUser.email !== 'no-email@compan
         };
 
         window.toggleTaskDetailsList = (id) => {
-            const detailsDiv = document.getElementById(`task-details-${id}`);
-            const icon = document.getElementById(`task-chevron-${id}`);
-            if (detailsDiv) {
-                detailsDiv.classList.toggle('open');
-                if (icon) icon.classList.toggle('rotate-180');
-            }
-            
-            // إخفاء علامة "جديد" وحفظ أنها شوهدت
-            const newBadge = document.getElementById(`new-badge-${id}`);
-            if (newBadge) {
-                newBadge.classList.add('hidden');
-                localStorage.setItem('viewed_task_' + id, 'true');
-            }
-        };
+            const detailsDiv = document.getElementById(`task-details-${id}`);
+            const icon = document.getElementById(`task-chevron-${id}`);
+            if (detailsDiv) {
+                detailsDiv.classList.toggle('open');
+                if (icon) icon.classList.toggle('rotate-180');
+            }
+        };
 
         window.updateTaskStatusFromCheckbox = async (id, title, isCompleted) => {
             if(isCompleted) {
@@ -7648,16 +7641,20 @@ if(assignedUser && assignedUser.email && assignedUser.email !== 'no-email@compan
     const isCEO = currentUserData.role === 'CEO';
     let tasksToRender = globalTasks.filter(t => {
             const isSelfAssigned = t.assigneeId === t.createdBy;
+            // إذا كان الشخص هو من أسند المهمة لنفسه، لا يراها أحد غيره (حتى المدير)
             if (isSelfAssigned) {
                 return t.assigneeId === currentUserData.uid; 
             }
+            // باقي المهام يراها المدير بشكل طبيعي
             if (isCEO) return true;
             
+            // السماح لمن يملك صلاحية (إسناد المهام) برؤية المهام المكتملة أو التي بانتظار الموافقة
             const hasAssignPerm = currentUserData.permissions && currentUserData.permissions.canAssignTasks;
             if (hasAssignPerm && (t.status === 'completed' || t.status === 'pending_approval')) {
                 return true; 
             }
             
+            // والموظف العادي يرى المهام التي أسندت إليه أو التي أسندها لغيره
             return t.assigneeId === currentUserData.uid || t.createdBy === currentUserData.uid;
         });
 
@@ -7668,8 +7665,11 @@ if(assignedUser && assignedUser.email && assignedUser.email !== 'no-email@compan
     }
 
     tasksToRender.sort((a, b) => {
+        // رفع المهام التي بانتظار الموافقة للأعلى دائماً
         if (a.status === 'pending_approval' && b.status !== 'pending_approval') return -1;
         if (b.status === 'pending_approval' && a.status !== 'pending_approval') return 1;
+        
+        // باقي المهام ترتب حسب الأحدث
         return b.timestamp - a.timestamp;
     });
 
@@ -7721,22 +7721,24 @@ if(assignedUser && assignedUser.email && assignedUser.email !== 'no-email@compan
         let checklistHtml = '';
         if(task.checklists && task.checklists.length > 0) {
             let clItemsHtml = task.checklists.map((cl, idx) => `
-                <label class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-[#00839b]/50 transition-all cursor-pointer shadow-sm hover:shadow">
-                    <div class="flex items-center justify-center w-6 h-6 rounded bg-white border border-gray-200 dark:border-gray-600 shrink-0">
+                <label class="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-[#00839b]/50 transition-all cursor-pointer shadow-sm hover:shadow">
+                    <div class="flex items-center justify-center w-6 h-6 rounded bg-gray-50 border border-gray-200 dark:border-gray-600 shrink-0">
                         <input type="checkbox" class="custom-checkbox w-4 h-4 rounded-sm m-0" ${cl.isCompleted ? 'checked' : ''} ${!canCheck || isPendingApproval || isCompleted ? 'disabled' : ''} onchange="window.toggleTaskChecklistItem('${task.id}', ${idx}, this.checked)">
                     </div>
                     <span class="text-sm font-semibold ${cl.isCompleted ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'}">${escapeHTML(cl.text)}</span>
                 </label>
             `).join('');
-            checklistHtml = `<div class="mt-4"><div class="grid grid-cols-1 md:grid-cols-2 gap-3">${clItemsHtml}</div></div>`;
+            checklistHtml = `<div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700/50"><div class="grid grid-cols-1 md:grid-cols-2 gap-3">${clItemsHtml}</div></div>`;
         }
 
+        // --- عرض أوقات الإنجاز، وسبب الرفض، والتقرير ---
         let approvalDetailsHtml = '';
         
+        // عرض سبب الرفض بشكل متقارب إذا تم رفضها
         if (task.rejectReason && task.status === 'in-progress') {
             approvalDetailsHtml += `
                 <div class="mt-4 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border-l-4 border-red-500 shadow-sm flex flex-col gap-1">
-                    <span class="text-xs font-bold text-red-700 dark:text-red-400"><i class="fa-solid fa-triangle-exclamation mx-1"></i>ملاحظات الإدارة للتعديل:</span>
+                    <span class="text-xs font-bold text-red-700 dark:text-red-400"><i class="fa-solid fa-triangle-exclamation mx-1"></i>سبب رفض تقرير المهمة:</span>
                     <span class="text-sm text-red-600 dark:text-red-300 font-medium whitespace-pre-wrap">${escapeHTML(task.rejectReason)}</span>
                 </div>
             `;
@@ -7762,24 +7764,26 @@ if(assignedUser && assignedUser.email && assignedUser.email !== 'no-email@compan
             if (isPendingApproval && (isCEO || (currentUserData.permissions && currentUserData.permissions.canAssignTasks))) {
                 ceoActionBtns = `
                     <div class="flex gap-2 mt-4 pt-3 border-t border-orange-200 dark:border-orange-800/50">
-                        <button onclick="event.stopPropagation(); window.approveTask('${task.id}')" class="flex-1 bg-green-500 text-white text-xs px-3 py-2 rounded-lg font-bold shadow transition hover:bg-green-600"><i class="fa-solid fa-check mx-1"></i> اعتماد المهمة</button>
-                        <button onclick="event.stopPropagation(); window.openRejectTaskModal('${task.id}')" class="flex-1 bg-red-500 text-white text-xs px-3 py-2 rounded-lg font-bold shadow transition hover:bg-red-600"><i class="fa-solid fa-xmark mx-1"></i> إعادة للتعديل</button>
+                        <button onclick="event.stopPropagation(); window.approveTask('${task.id}')" class="flex-1 bg-green-500 text-white text-xs px-3 py-2 rounded-lg font-bold shadow transition hover:bg-green-600"><i class="fa-solid fa-check mx-1"></i> موافقة واعتماد</button>
+                        <button onclick="event.stopPropagation(); window.openRejectTaskModal('${task.id}')" class="flex-1 bg-red-500 text-white text-xs px-3 py-2 rounded-lg font-bold shadow transition hover:bg-red-600"><i class="fa-solid fa-xmark mx-1"></i> رفض وتعديل</button>
                     </div>
                 `;
             }
 
-            const boxColor = isPendingApproval ? 'bg-orange-50 border-orange-200 dark:bg-orange-900/20' : 'bg-gray-50 border-gray-200 dark:bg-gray-800/50';
+            const ceoTitleHtml = isCEO && isPendingApproval ? `<p class="text-xs font-bold text-orange-700 dark:text-orange-400 mb-3"><i class="fa-solid fa-hourglass-half mx-1"></i> تفاصيل إنجاز الموظف (بانتظار موافقتك)</p>` : '';
+            const boxColor = isPendingApproval ? 'bg-orange-50 border-orange-200 dark:bg-orange-900/20 dark:border-orange-800' : 'bg-gray-50 border-gray-200 dark:bg-gray-800/50 dark:border-gray-700';
 
             approvalDetailsHtml += `
                 <div class="mt-4 p-4 rounded-xl border ${boxColor}">
+                    ${ceoTitleHtml}
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3 text-[11px] text-gray-700 dark:text-gray-300 text-center font-bold">
-                        <div class="bg-white dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700 shadow-sm"><span class="text-gray-400">بدأت:</span> <br><span dir="ltr">${startStr}</span></div>
-                        <div class="bg-white dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700 shadow-sm"><span class="text-gray-400">انتهت:</span> <br><span dir="ltr">${endStr}</span></div>
+                        <div class="bg-white dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700 shadow-sm"><span class="text-gray-400">وقت البدء:</span> <br><span dir="ltr">${startStr}</span></div>
+                        <div class="bg-white dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700 shadow-sm"><span class="text-gray-400">وقت الانتهاء:</span> <br><span dir="ltr">${endStr}</span></div>
                         <div class="bg-white dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700 shadow-sm"><span class="text-gray-400">المدة المستغرقة:</span> <br><span>${durationStr}</span></div>
                     </div>
                     <div class="text-sm bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm">
-                        <span class="font-bold text-[#002d74] dark:text-secondary"><i class="fa-solid fa-clipboard-check mx-1"></i>تقرير الإنجاز: </span><br>
-                        <span class="whitespace-pre-wrap mt-1 inline-block">${escapeHTML(task.reportText)}</span>
+                        <span class="font-bold text-[#002d74] dark:text-secondary">تفاصيل التقرير: </span><br>
+                        <span class="whitespace-pre-wrap">${escapeHTML(task.reportText)}</span>
                         ${fileHtml}
                     </div>
                     ${ceoActionBtns}
@@ -7787,85 +7791,73 @@ if(assignedUser && assignedUser.email && assignedUser.email !== 'no-email@compan
             `;
         }
 
-        // --- الميزة السحرية (شرط عرض كلمة جديد) ---
-        // المهمة تُعتبر جديدة إذا كان وقت إنشائها أكبر من وقت إنشاء حساب الموظف، ولم يقم بفتحها مسبقاً.
-        const userJoinTime = currentUserData.timestamp || 0;
-        const isTaskNewToUser = task.timestamp > userJoinTime && !localStorage.getItem('viewed_task_' + task.id);
-        
-        const newBadgeHtml = isTaskNewToUser ? `<span id="new-badge-${task.id}" class="absolute -top-3 -right-3 bg-red-500 text-white text-[10px] px-3 py-1 rounded-full animate-bounce shadow-lg z-20 border-2 border-white dark:border-gray-800">جديد ✨</span>` : '';
-
-        // --- التصميم الجديد المعتمد على الـ Planner / Deadline ---
         listBody.innerHTML += `
-            <div class="task-row-item bg-white dark:bg-gray-800 rounded-2xl p-0 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-lg transition-all duration-300 group relative flex flex-col cursor-pointer overflow-hidden" data-id="${task.id}" data-title="${escapeHTML(task.title)}" data-assignee="${escapeHTML(task.assigneeName)}" data-project="${escapeHTML(task.project || '')}" onclick="window.toggleTaskDetailsList('${task.id}')">
-                ${newBadgeHtml}
-                
-                <div class="flex flex-col md:flex-row w-full">
-                    <div class="w-full md:w-2 ${task.isHighPriority ? 'bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.5)]' : 'bg-[#002d74]'} h-2 md:h-auto shrink-0"></div>
-                    
-                    <div class="flex-1 p-5 md:pr-6 flex flex-col justify-center">
-                        <div class="flex items-center gap-3 mb-2 flex-wrap">
+            <div class="task-row-item bg-white dark:bg-gray-800 rounded-2xl p-5 border border-transparent shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.1)] hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-300 group relative flex flex-col gap-4 cursor-pointer" data-id="${task.id}" data-title="${escapeHTML(task.title)}" data-assignee="${escapeHTML(task.assigneeName)}" data-project="${escapeHTML(task.project || '')}" onclick="window.toggleTaskDetailsList('${task.id}')">
+                <div class="absolute right-0 top-6 bottom-6 w-1.5 rounded-l-full ${task.isHighPriority ? 'bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.5)]' : 'bg-[#002d74]'}"></div>
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pr-3">
+                    <div class="flex items-start gap-4">
+                        <div class="mt-1" onclick="event.stopPropagation()">
+                            <input type="checkbox" class="custom-checkbox w-6 h-6 rounded-md border-2" ${isCompleted || isPendingApproval ? 'checked' : ''} ${!canCheck || isPendingApproval || isCompleted ? 'disabled' : ''} onchange="window.updateTaskStatusFromCheckbox('${task.id}', '${escapeHTML(task.title.replace(/'/g, "\\'"))}', this.checked)">
+                        </div>
+                        <div class="flex flex-col">
                             <h3 class="font-bold text-lg text-[#002d74] dark:text-white ${isCompleted ? 'line-through opacity-60' : ''}">
                                 ${task.isHighPriority ? '<i class="fa-solid fa-fire text-orange-500 ml-1"></i>' : ''}
                                 ${escapeHTML(task.title)}
                             </h3>
-                            <span class="px-3 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1.5 ${statusBg} ${statusTextColor} shadow-sm border border-gray-100 dark:border-gray-700">
-                                <div class="w-1.5 h-1.5 rounded-full ${statusDotClass}"></div>
-                                ${statusText}
-                            </span>
+                            <div class="flex items-center gap-3 mt-1.5 flex-wrap">
+                                <span class="px-3 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 ${statusBg} ${statusTextColor}">
+                                    <div class="w-1.5 h-1.5 rounded-full ${statusDotClass}"></div>
+                                    ${statusText}
+                                </span>
+                            </div>
+                            ${startTaskBtnHtml}
                         </div>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed ml-4">${escapeHTML(task.desc || 'لا يوجد وصف للمهمة')}</p>
-                        ${startTaskBtnHtml}
                     </div>
-
-                    <div class="bg-gray-50 dark:bg-gray-900/50 p-4 md:p-5 flex flex-row md:flex-col items-center justify-between md:justify-center border-t md:border-t-0 md:border-r border-gray-100 dark:border-gray-700 min-w-[220px] shrink-0 gap-3">
-                        <div class="flex flex-col items-center md:items-end w-full">
-                            <span class="text-[10px] text-gray-400 font-bold mb-1 uppercase tracking-wider">DEADLINE</span>
-                            <div class="flex items-center gap-2 text-sm font-bold ${isLate ? 'text-red-600 bg-red-100 px-3 py-1.5 rounded-lg animate-pulse shadow-sm' : 'text-[#002d74] dark:text-white bg-white dark:bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm'}">
-                                <i class="fa-regular fa-clock"></i> <span dir="ltr">${deadlineStr}</span>
+                    <div class="flex items-center gap-6 self-start md:self-auto mr-10 md:mr-0 border-t md:border-none border-gray-100 dark:border-gray-700 pt-3 md:pt-0">
+                        <div class="flex flex-col text-right">
+                            <span class="text-[10px] text-gray-400 font-bold mb-1">الموعد النهائي</span>
+                            <div class="flex items-center gap-1.5 text-xs font-bold ${isLate ? 'text-red-600 bg-red-50 px-2 py-1 rounded-md animate-pulse' : 'text-gray-600 dark:text-gray-300'}">
+                                <i class="fa-regular fa-clock"></i> ${deadlineStr}
                             </div>
                         </div>
-                        
-                        <div class="flex items-center gap-2 mt-0 md:mt-2 w-full justify-end">
-                            <div class="flex flex-col items-end">
-                                <span class="text-[9px] text-gray-400 font-bold">المسؤول</span>
-                                <span class="text-xs font-bold text-gray-700 dark:text-gray-200">${escapeHTML(task.assigneeName)}</span>
+                        <div class="flex flex-col text-right">
+                            <span class="text-[10px] text-gray-400 font-bold mb-1">الشخص المسؤول</span>
+                            <div class="flex items-center gap-2 bg-white border border-gray-100 dark:bg-gray-800 dark:border-gray-600 px-2 py-1 rounded-xl shadow-sm">
+                                <div class="w-7 h-7 bg-gray-50 dark:bg-gray-700 border border-gray-100 dark:border-gray-600 rounded-lg flex items-center justify-center shrink-0">
+                                    <i class="fa-solid fa-user text-[#00839b] text-[11px]"></i>
+                                </div>
+                                <span class="text-xs font-bold text-[#002d74] dark:text-white">${escapeHTML(task.assigneeName)}</span>
                             </div>
-                            <div class="w-8 h-8 rounded-full bg-white border-2 border-gray-200 dark:border-gray-600 flex justify-center items-center overflow-hidden shadow-sm shrink-0">
-                                <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(task.assigneeName)}&background=00839b&color=fff" class="w-full h-full object-cover">
-                            </div>
+                        </div>
+                        <div class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center h-full" onclick="event.stopPropagation()">
+                            ${isCEO || task.createdBy === currentUserData.uid ? `<button onclick="window.deleteTask('${task.id}')" class="w-9 h-9 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white border border-red-100 hover:border-red-500 rounded-xl transition-all flex items-center justify-center shadow-sm"><i class="fa-solid fa-trash text-sm"></i></button>` : ''}
                         </div>
                     </div>
                 </div>
 
-                <div id="task-details-${task.id}" class="slide-down w-full px-5">
-                    <div class="pb-5 pt-3 border-t border-gray-100 dark:border-gray-700 mt-2">
-                        <div class="flex items-center gap-3 bg-[#00839b]/5 border border-[#00839b]/20 p-3 rounded-xl mb-4">
-                            <div class="mt-1" onclick="event.stopPropagation()">
-                                <input type="checkbox" class="custom-checkbox w-5 h-5 rounded-md border-2 border-[#00839b]" ${isCompleted || isPendingApproval ? 'checked' : ''} ${!canCheck || isPendingApproval || isCompleted ? 'disabled' : ''} onchange="window.updateTaskStatusFromCheckbox('${task.id}', '${escapeHTML(task.title.replace(/'/g, "\\'"))}', this.checked)">
-                            </div>
-                            <div class="flex flex-col">
-                                <span class="text-sm font-bold text-[#002d74] dark:text-white">إنجاز المهمة ورفع التقرير</span>
-                                <span class="text-[10px] text-gray-500">حدد هذا المربع عند الانتهاء لتسليم المهمة.</span>
-                            </div>
+                <div id="task-details-${task.id}" class="slide-down">
+                    <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                        <div class="flex items-center gap-2 mb-3">
+                            <i class="fa-solid fa-align-right text-gray-400 text-sm"></i>
+                            <h5 class="text-xs font-bold text-gray-500">تفاصيل المهمة بالكامل</h5>
                         </div>
+                        <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-loose font-medium bg-gray-50/50 dark:bg-gray-900/30 p-4 rounded-xl border border-gray-100 dark:border-gray-700/50">${escapeHTML(task.desc || 'لا توجد تفاصيل إضافية')}</p>
                         ${checklistHtml}
                         ${approvalDetailsHtml}
                     </div>
                 </div>
-
-                <div class="absolute bottom-3 left-4 flex gap-2 z-10" onclick="event.stopPropagation()">
-                    ${isCEO || task.createdBy === currentUserData.uid ? `<button onclick="window.deleteTask('${task.id}')" class="w-8 h-8 bg-white dark:bg-gray-800 text-gray-400 hover:bg-red-500 hover:text-white border border-gray-200 dark:border-gray-600 hover:border-red-500 rounded-full transition-all flex items-center justify-center shadow-sm"><i class="fa-solid fa-trash text-[10px]"></i></button>` : ''}
-                </div>
                 
-                <div class="absolute -bottom-3 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                    <div class="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-full w-7 h-7 flex items-center justify-center shadow-md text-primary dark:text-secondary">
-                        <i id="task-chevron-${task.id}" class="fa-solid fa-chevron-down text-[11px] transition-transform duration-300"></i>
+                <div class="absolute -bottom-3 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full w-6 h-6 flex items-center justify-center shadow-sm">
+                        <i id="task-chevron-${task.id}" class="fa-solid fa-chevron-down text-[10px] text-gray-400 transition-transform duration-300"></i>
                     </div>
                 </div>
             </div>
         `;
     });
 };
+
+        // ==========================================
         
         // --- دوال العهد والتوقيع ---
         window.renderCustody = () => {
