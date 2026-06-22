@@ -7709,6 +7709,7 @@ if(assignedUser && assignedUser.email && assignedUser.email !== 'no-email@compan
                                     ${statusText}
                                 </span>
                             </div>
+                            ${startTaskBtnHtml}
                         </div>
                     </div>
                     <div class="flex items-center gap-6 self-start md:self-auto mr-10 md:mr-0 border-t md:border-none border-gray-100 dark:border-gray-700 pt-3 md:pt-0">
