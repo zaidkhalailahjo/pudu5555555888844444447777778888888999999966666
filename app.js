@@ -7505,6 +7505,36 @@ window.markNoticeRead = (id) => {
             });
         };
 
+       // دوال قوائم التحقق عند إنشاء مهمة جديدة
+        window.renderCreationChecklists = () => {
+            const container = document.getElementById('creationChecklistsContainer');
+            if (!container) return; // حماية الكود إذا لم يكن العنصر موجوداً في HTML
+            
+            container.innerHTML = '';
+            creationChecklists.forEach((item, index) => {
+                container.innerHTML += `
+                    <div class="flex items-center gap-2 mb-2">
+                        <input type="text" value="${escapeHTML(item.text)}" onchange="window.updateCreationChecklist(${index}, this.value)" placeholder="اكتب المهمة الفرعية هنا..." class="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm dark:bg-gray-700 dark:text-white focus:border-[#00839b] outline-none" required>
+                        <button type="button" onclick="window.removeCreationChecklist(${index})" class="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded transition"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                `;
+            });
+        };
+
+        window.addCreationChecklist = () => {
+            creationChecklists.push({ text: '', isCompleted: false });
+            window.renderCreationChecklists();
+        };
+
+        window.updateCreationChecklist = (index, value) => {
+            creationChecklists[index].text = value;
+        };
+
+        window.removeCreationChecklist = (index) => {
+            creationChecklists.splice(index, 1);
+            window.renderCreationChecklists();
+        };
+
         window.openTaskModal = () => {
             document.getElementById('addTaskForm').reset();
             creationChecklists = [];
