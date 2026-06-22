@@ -7705,27 +7705,30 @@ window.handleChecklistEnter = (e) => {
         };
 
         window.renderCeoEmployeeTasks = (empId, empName) => {
-            const container = document.getElementById('ceoReportTasksDetails');
-            
-            // جلب المهام بذكاء بناءً على نوع الطلب
-            let empTasks = [];
-            if (empId === 'all_pending') {
-                // للمدير: جلب جميع المهام التي بانتظار الاعتماد من جميع الموظفين
-                empTasks = globalTasks.filter(t => t.status === 'pending_approval' && (currentUserData.role === 'CEO' || t.createdBy === currentUserData.uid));
-            } else {
-                // للموظف: جلب مهامه هو فقط
-                empTasks = globalTasks.filter(t => t.assigneeId === empId && (t.status === 'completed' || t.status === 'pending_approval'));
-            }
-            
-            empTasks.sort((a,b) => (b.completedAt || 0) - (a.completedAt || 0));
-            
-            if(empTasks.length === 0) {
-                container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-gray-400 mt-10"><i class="fa-solid fa-folder-open text-5xl mb-4 text-[#00839b]/50"></i><p class="font-bold text-lg text-[#002d74] dark:text-gray-300">لا توجد مهام منجزة لهذا الموظف</p></div>`;
-                return;
-            }
+    const container = document.getElementById('ceoReportTasksDetails');
+    
+    let empTasks = [];
+    if (empId === 'all') {
+        // عرض جميع المهام المنجزة للموظفين
+        empTasks = globalTasks.filter(t => (t.status === 'completed' || t.status === 'pending_approval'));
+    } else {
+        // عرض مهام موظف محدد (يجب أن يكون قد أسندها له المدير، أو أنك أنت المدير المطلق CEO)
+        empTasks = globalTasks.filter(t => 
+            t.assigneeId === empId && 
+            (t.status === 'completed' || t.status === 'pending_approval') &&
+            (currentUserData.role === 'CEO' || t.createdBy === currentUserData.uid)
+        );
+    }
+    
+    empTasks.sort((a,b) => (b.completedAt || 0) - (a.completedAt || 0));
+    
+    if(empTasks.length === 0) {
+        container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-gray-400 mt-10"><i class="fa-solid fa-folder-open text-5xl mb-4 text-[#00839b]/50"></i><p class="font-bold text-lg text-[#002d74] dark:text-gray-300">لا توجد مهام منجزة لهذا الموظف</p></div>`;
+        return;
+    }
 
-            let html = `<h4 class="font-bold text-[#002d74] dark:text-[#00b0f0] mb-4 border-b dark:border-gray-700 pb-2">تقارير المهام المنجزة للموظف: ${escapeHTML(empName)}</h4><div class="space-y-4 pb-10">`;
-            empTasks.forEach(t => {
+    let html = `<h4 class="font-bold text-[#002d74] dark:text-[#00b0f0] mb-4 border-b dark:border-gray-700 pb-2">تقارير المهام لـ: ${escapeHTML(empName)}</h4><div class="space-y-4 pb-10">`;
+    empTasks.forEach(t => {
                 const dateStr = t.completedAt ? new Date(t.completedAt).toLocaleString('ar-EG') : 'غير محدد';
                 let fileHtml = '';
                 if(t.reportFileData) {
