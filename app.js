@@ -6153,8 +6153,17 @@ onSnapshot(getColRef('tasks'), (snapshot) => {
         const taskData = { id: doc.id, ...doc.data() };
         globalTasks.push(taskData);
         
-        if (taskData.assigneeId === currentUserData.uid && (taskData.status === 'pending' || taskData.status === 'in-progress' || taskData.status === 'pending_approval')) {
+        const isTaskManager = currentUserData.role === 'CEO' || (currentUserData.permissions && currentUserData.permissions.canAssignTasks);
+        
+        // حساب مهام الموظف العادية
+        if (taskData.assigneeId === currentUserData.uid && (taskData.status === 'pending' || taskData.status === 'in-progress')) {
             pendingTasksForMe++;
+        }
+        // حساب المهام التي تنتظر موافقة المسؤول ليظهر له الإشعار
+        if (isTaskManager && taskData.status === 'pending_approval') {
+            if (currentUserData.role === 'CEO' || taskData.createdBy === currentUserData.uid) {
+                pendingTasksForMe++;
+            }
         }
 
         if (!initialTaskLoad && !knownTaskIds.has(taskData.id)) {
