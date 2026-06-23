@@ -7679,10 +7679,9 @@ window.handleChecklistEnter = (e) => {
             document.getElementById('taskAssigneeDropdown').classList.remove('open');
         };
 
-        // إغلاق القائمة عند النقر خارجها
         document.addEventListener('click', () => {
             const drop = document.getElementById('taskAssigneeDropdown');
-            if(drop && !drop.classList.contains('hidden')) drop.classList.add('hidden');
+            if(drop && drop.classList.contains('open')) drop.classList.remove('open');
         });
 
         window.openTaskModal = () => {
