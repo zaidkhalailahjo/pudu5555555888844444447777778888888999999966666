@@ -7167,17 +7167,27 @@ window.markNoticeRead = (id) => {
             const btnList = document.getElementById('btn-view-list');
             const btnDeadline = document.getElementById('btn-view-deadline');
             const btnPlanner = document.getElementById('btn-view-planner');
+            const indicator = document.getElementById('taskSubViewIndicator');
             
             const viewList = document.getElementById('tasks-list-view');
             const viewDeadline = document.getElementById('tasks-deadline-view');
             const viewPlanner = document.getElementById('tasks-planner-view');
 
-            const activeClass = "px-4 py-1.5 text-xs font-bold rounded-md bg-white dark:bg-gray-600 shadow-sm text-[#002d74] dark:text-white transition-all";
-            const inactiveClass = "px-4 py-1.5 text-xs font-bold rounded-md text-gray-500 hover:text-[#002d74] dark:hover:text-white transition-all";
+            const activeClass = "relative z-10 text-sm font-bold text-[#002d74] dark:text-white transition-colors duration-300";
+            const inactiveClass = "relative z-10 text-sm font-bold text-gray-400 hover:text-[#002d74] dark:hover:text-white transition-colors duration-300";
 
             btnList.className = viewName === 'list' ? activeClass : inactiveClass;
             btnDeadline.className = viewName === 'deadline' ? activeClass : inactiveClass;
             btnPlanner.className = viewName === 'planner' ? activeClass : inactiveClass;
+
+            // تحريك الخط (RTL Calculation)
+            const activeBtn = viewName === 'list' ? btnList : (viewName === 'deadline' ? btnDeadline : btnPlanner);
+            if(activeBtn && indicator) {
+                indicator.style.width = activeBtn.offsetWidth + 'px';
+                const parentRight = activeBtn.parentElement.getBoundingClientRect().right;
+                const btnRight = activeBtn.getBoundingClientRect().right;
+                indicator.style.right = (parentRight - btnRight) + 'px';
+            }
 
             viewList.classList.toggle('hidden', viewName !== 'list');
             viewDeadline.classList.toggle('hidden', viewName !== 'deadline');
