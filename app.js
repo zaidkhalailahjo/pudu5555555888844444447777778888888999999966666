@@ -7709,15 +7709,19 @@ window.handleChecklistEnter = (e) => {
     
     let empTasks = [];
     if (empId === 'all') {
-        // عرض جميع المهام المنجزة للموظفين
-        empTasks = globalTasks.filter(t => (t.status === 'completed' || t.status === 'pending_approval'));
+        // عرض جميع المهام المنجزة للموظفين (مع استثناء المهام الذاتية للآخرين)
+        empTasks = globalTasks.filter(t => {
+            if (t.assigneeId === t.createdBy && t.assigneeId !== currentUserData.uid) return false;
+            return (t.status === 'completed' || t.status === 'pending_approval');
+        });
     } else {
         // عرض مهام موظف محدد (يجب أن يكون قد أسندها له المدير، أو أنك أنت المدير المطلق CEO)
-        empTasks = globalTasks.filter(t => 
-            t.assigneeId === empId && 
-            (t.status === 'completed' || t.status === 'pending_approval') &&
-            (currentUserData.role === 'CEO' || t.createdBy === currentUserData.uid)
-        );
+        empTasks = globalTasks.filter(t => {
+            if (t.assigneeId === t.createdBy && t.assigneeId !== currentUserData.uid) return false;
+            return t.assigneeId === empId && 
+                   (t.status === 'completed' || t.status === 'pending_approval') &&
+                   (currentUserData.role === 'CEO' || t.createdBy === currentUserData.uid);
+        });
     }
     
     empTasks.sort((a,b) => (b.completedAt || 0) - (a.completedAt || 0));
