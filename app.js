@@ -7610,34 +7610,58 @@ window.handleChecklistEnter = (e) => {
             window.renderCreationChecklists();
         };
 
-        // === 1. إصلاح دالة فتح النافذة لتصفير كافة الخانات ===
+        // دالة لاختيار الموظف من القائمة الخرافية
+        window.selectTaskAssigneeUI = (uid, name, photo) => {
+            document.getElementById('taskAssignee').value = uid;
+            document.getElementById('taskAssigneeSelected').innerHTML = `
+                <img src="${photo}" class="w-6 h-6 rounded-full object-cover shadow-sm">
+                <span class="text-sm font-bold text-gray-800 dark:text-white">${escapeHTML(name)}</span>
+            `;
+            document.getElementById('taskAssigneeDropdown').classList.add('hidden');
+        };
+
+        // إغلاق القائمة عند النقر خارجها
+        document.addEventListener('click', () => {
+            const drop = document.getElementById('taskAssigneeDropdown');
+            if(drop && !drop.classList.contains('hidden')) drop.classList.add('hidden');
+        });
+
         window.openTaskModal = () => {
             document.getElementById('addTaskForm').reset();
             creationChecklists = [];
             window.renderCreationChecklists();
-            window.clearTaskAttachment(); // تصفير المرفقات السابقة
+            window.clearTaskAttachment(); 
             
-            // تصفير زر النار (الأولوية)
             document.getElementById('isTaskHighPriority').value = 'false';
             document.getElementById('taskPriorityToggle').classList.add('text-gray-400');
             document.getElementById('taskPriorityToggle').classList.remove('text-orange-500');
             
-            const select = document.getElementById('taskAssignee');
-            select.innerHTML = '';
+            const dropContainer = document.getElementById('taskAssigneeDropdown');
+            dropContainer.innerHTML = '';
+            
             const isCEO = currentUserData.role === 'CEO';
-            const canAssign = currentUserData.permissions?.canAssignTasks;
+            const canAssign = currentUserData.permissions && currentUserData.permissions.canAssignTasks;
+
+            document.getElementById('taskAssigneeSelected').innerHTML = `<span class="text-sm font-bold text-gray-700 dark:text-gray-200">-- اختر موظف --</span>`;
+            document.getElementById('taskAssignee').value = '';
 
             if (isCEO || canAssign) {
-                select.innerHTML = '<option value="">-- اختر موظف --</option>';
                 globalUsers.forEach(emp => {
                     if (emp.status !== 'pending' && emp.status !== 'rejected') {
-                        select.innerHTML += `<option value="${emp.uid}">${escapeHTML(emp.name)} (${escapeHTML(emp.role)})</option>`;
+                        dropContainer.innerHTML += `
+                            <div onclick="window.selectTaskAssigneeUI('${emp.uid}', '${escapeHTML(emp.name)}', '${emp.photoURL}')" class="flex items-center gap-3 p-3 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition">
+                                <img src="${emp.photoURL}" class="w-8 h-8 rounded-full object-cover shadow-sm">
+                                <div>
+                                    <p class="text-sm font-bold text-gray-800 dark:text-white">${escapeHTML(emp.name)}</p>
+                                    <p class="text-[10px] text-gray-500">${escapeHTML(emp.role)}</p>
+                                </div>
+                            </div>
+                        `;
                     }
                 });
-                select.disabled = false;
             } else {
-                select.innerHTML = `<option value="${currentUserData.uid}" selected>${escapeHTML(currentUserData.name)} (أنت)</option>`;
-                select.disabled = false;
+                // الموظف العادي يرى نفسه فقط
+                window.selectTaskAssigneeUI(currentUserData.uid, currentUserData.name, currentUserData.photoURL);
             }
             window.openModal('taskModal');
         };
