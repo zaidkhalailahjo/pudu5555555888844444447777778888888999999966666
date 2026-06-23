@@ -1892,6 +1892,22 @@
                 <div id="employeesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-8"></div>
             </section>
 
+            <section id="surprise" class="section-content hidden animate-fade-in p-4 md:p-10 flex items-center justify-center min-h-[70vh]">
+                <div class="relative w-full max-w-2xl text-center group cursor-pointer perspective-1000">
+                    <div class="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 z-20 shadow-2xl rounded-3xl transition-all duration-700 ease-in-out origin-top group-hover:-translate-y-full group-hover:opacity-0 flex flex-col items-center justify-center border-4 border-white/20 backdrop-blur-md" style="box-shadow: 0 30px 60px rgba(0,0,0,0.4);">
+                        <i class="fa-solid fa-lock text-7xl text-white/50 mb-6 drop-shadow-lg animate-bounce"></i>
+                        <h2 class="text-4xl md:text-5xl font-extrabold text-white drop-shadow-lg tracking-widest">قريباً جداً...</h2>
+                        <p class="text-white/80 mt-4 font-bold text-lg">ميزة جديدة قيد التطوير والبرمجة 🚀</p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 p-10 rounded-3xl shadow-xl h-80 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-600 relative z-10 scale-95 group-hover:scale-100 transition-transform duration-500 delay-100">
+                        <i class="fa-solid fa-wand-magic-sparkles text-6xl text-purple-400 mb-4"></i>
+                        <h3 class="text-2xl font-bold text-gray-800 dark:text-white">جاري تحضير السحر!</h3>
+                        <p class="text-gray-500 mt-2 font-semibold">سيتم إزالة الستار عن هذه القائمة قريباً.</p>
+                    </div>
+                </div>
+            </section>
+            <div id="editEmployeeModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-[60] p-4">
+
             <div id="editEmployeeModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-[60] p-4">
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
                     <div class="bg-red-600 text-white p-4 flex justify-between items-center flex-shrink-0">
