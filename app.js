@@ -7656,7 +7656,7 @@ window.handleChecklistEnter = (e) => {
                 <img src="${photo}" class="w-6 h-6 rounded-full object-cover shadow-sm">
                 <span class="text-sm font-bold text-gray-800 dark:text-white">${escapeHTML(name)}</span>
             `;
-            document.getElementById('taskAssigneeDropdown').classList.add('hidden');
+            document.getElementById('taskAssigneeDropdown').classList.remove('open');
         };
 
         // إغلاق القائمة عند النقر خارجها
