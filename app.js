@@ -7489,14 +7489,20 @@ window.markNoticeRead = (id) => {
                     const taskId = itemEl.getAttribute('data-id');
                     const newStatus = toColumn.getAttribute('data-status');
                     if(taskId && newStatus) {
-                        try {
-                            const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-                            let updateData = { status: newStatus };
-                            if(newStatus === 'in-progress') updateData.startedAt = Date.now();
-                            if(newStatus === 'completed' || newStatus === 'pending_approval') updateData.completedAt = Date.now();
-                            if(newStatus === 'pending') updateData.completedAt = null;
-                            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), updateData);
-                        } catch(e) {}
+                        const rows = Array.from(toColumn.querySelectorAll('.task-card'));
+                        rows.forEach((row, index) => {
+                            const id = row.getAttribute('data-id');
+                            import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(({ doc, updateDoc }) => {
+                                let updateData = { orderIndex: index };
+                                if (id === taskId) {
+                                    updateData.status = newStatus;
+                                    if(newStatus === 'in-progress') updateData.startedAt = Date.now();
+                                    if(newStatus === 'completed' || newStatus === 'pending_approval') updateData.completedAt = Date.now();
+                                    if(newStatus === 'pending') updateData.completedAt = null;
+                                }
+                                updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', id), updateData).catch(()=>{});
+                            });
+                        });
                     }
                 }
             });
