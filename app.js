@@ -7754,10 +7754,11 @@ window.handleChecklistEnter = (e) => {
                     approvalHtml = `<div class="mt-4 border-t dark:border-gray-600 pt-3 text-center"><span class="text-xs font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full"><i class="fa-solid fa-check-double mx-1"></i> معتمدة ومكتملة</span></div>`;
                 }
 
+                const assigneeNameHtml = empId === 'all' ? `<span class="text-[10px] bg-[#00839b]/10 text-[#00839b] px-2 py-0.5 rounded-full mr-2 shadow-sm font-bold">بواسطة: ${escapeHTML(t.assigneeName)}</span>` : '';
                 html += `
                     <div class="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm relative">
-                        ${t.status === 'pending_approval' ? '<span class="absolute top-0 right-0 bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded-bl-lg font-bold animate-pulse">جديد</span>' : ''}
-                        <h5 class="font-bold text-gray-800 dark:text-gray-100 mb-2">${escapeHTML(t.title)}</h5>
+                        ${t.status === 'pending_approval' ? '<span class="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-bl-lg font-bold animate-pulse z-50 shadow-md">جديد</span>' : ''}
+                        <h5 class="font-bold text-gray-800 dark:text-gray-100 mb-2 flex items-center">${escapeHTML(t.title)} ${assigneeNameHtml}</h5>
                         <p class="text-xs text-gray-600 dark:text-gray-400 mb-3 whitespace-pre-wrap">${escapeHTML(t.desc)}</p>
                         <div class="border-t border-gray-200 dark:border-gray-600 pt-3 bg-white dark:bg-gray-800 p-3 rounded-lg mt-2">
                             <h6 class="text-xs font-bold text-green-600 dark:text-green-400 mb-2"><i class="fa-solid fa-clipboard-check mx-1"></i>تقرير الموظف:</h6>
