@@ -235,11 +235,19 @@ function formatDurationArabic(ms) {
             if (typeof flatpickr !== 'undefined') {
                 flatpickr("#taskDeadline", {
                     enableTime: true,
-                    dateFormat: "Y-m-d h:i K", // تعديل ليصبح بنظام 12 ساعة (AM/PM)
-                    time_24hr: false, // تعطيل نظام 24 ساعة
+                    dateFormat: "Y-m-d h:i K", 
+                    time_24hr: false,
                     locale: "ar",
                     minDate: "today",
-                    disableMobile: "true"
+                    disableMobile: "true",
+                    onChange: function(selectedDates, dateStr, instance) {
+                        if(selectedDates[0]) {
+                            if(selectedDates[0].getTime() < Date.now()) {
+                                showToast('لا يمكنك إسناد مهمة في وقت ماضي! تم تصفير التاريخ.', 'error');
+                                instance.clear();
+                            }
+                        }
+                    }
                 });
             }
             
