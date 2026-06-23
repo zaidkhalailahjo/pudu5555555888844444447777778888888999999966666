@@ -7566,10 +7566,17 @@ window.handleChecklistEnter = (e) => {
             window.renderCreationChecklists();
         };
 
+        // === 1. إصلاح دالة فتح النافذة لتصفير كافة الخانات ===
         window.openTaskModal = () => {
             document.getElementById('addTaskForm').reset();
             creationChecklists = [];
             window.renderCreationChecklists();
+            window.clearTaskAttachment(); // تصفير المرفقات السابقة
+            
+            // تصفير زر النار (الأولوية)
+            document.getElementById('isTaskHighPriority').value = 'false';
+            document.getElementById('taskPriorityToggle').classList.add('text-gray-400');
+            document.getElementById('taskPriorityToggle').classList.remove('text-orange-500');
             
             const select = document.getElementById('taskAssignee');
             select.innerHTML = '';
@@ -7590,6 +7597,132 @@ window.handleChecklistEnter = (e) => {
             }
             window.openModal('taskModal');
         };
+
+        // === 2. إصلاح زر فتح قوائم التحقق ===
+        window.toggleChecklistSection = () => {
+            const section = document.getElementById('checklistSection');
+            if (section) {
+                section.classList.toggle('hidden');
+            }
+        };
+
+        // === 3. إصلاح أيقونة النار (الأولوية القصوى) ===
+        window.toggleTaskPriority = () => {
+            const input = document.getElementById('isTaskHighPriority');
+            const btn = document.getElementById('taskPriorityToggle');
+            if (input.value === 'false') {
+                input.value = 'true';
+                btn.classList.remove('text-gray-400');
+                btn.classList.add('text-orange-500');
+                showToast('تم تعيين المهمة كأولوية قصوى', 'info');
+            } else {
+                input.value = 'false';
+                btn.classList.add('text-gray-400');
+                btn.classList.remove('text-orange-500');
+            }
+        };
+
+        // === 4. إدارة مرفقات المهمة الجديدة ===
+        let currentTaskFile = null;
+        const taskAttachInput = document.getElementById('taskAttachmentInput');
+        if(taskAttachInput) {
+            taskAttachInput.addEventListener('change', (e) => {
+                currentTaskFile = e.target.files[0];
+                const display = document.getElementById('attachmentNameDisplay');
+                if (currentTaskFile) {
+                    display.innerHTML = `<span><i class="fa-solid fa-paperclip mx-1"></i> ${escapeHTML(currentTaskFile.name)}</span> <button type="button" onclick="window.clearTaskAttachment()" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-xmark"></i></button>`;
+                    display.classList.remove('hidden');
+                    display.classList.add('flex');
+                }
+            });
+        }
+
+        window.clearTaskAttachment = () => {
+            currentTaskFile = null;
+            if(document.getElementById('taskAttachmentInput')) document.getElementById('taskAttachmentInput').value = '';
+            const display = document.getElementById('attachmentNameDisplay');
+            if(display) {
+                display.classList.add('hidden');
+                display.classList.remove('flex');
+            }
+        };
+
+        // === 5. إصلاح زر الإنشاء وإرسال البيانات للفايربيس ===
+        const addTaskForm = document.getElementById('addTaskForm');
+        if(addTaskForm) {
+            addTaskForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!currentUserData) return;
+
+                const btn = document.getElementById('taskSubmitBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الإنشاء...';
+
+                const title = document.getElementById('taskTitle').value.trim();
+                const desc = document.getElementById('taskDesc').value.trim();
+                const assigneeSelect = document.getElementById('taskAssignee');
+                const assigneeId = assigneeSelect.value;
+                const assigneeName = assigneeSelect.options[assigneeSelect.selectedIndex].text.split(' (')[0];
+                const deadlineVal = document.getElementById('taskDeadline').value;
+                const isHighPriority = document.getElementById('isTaskHighPriority').value === 'true';
+
+                let deadlineTimestamp = null;
+                if (deadlineVal) {
+                    deadlineTimestamp = new Date(deadlineVal).getTime();
+                }
+
+                try {
+                    let fileUrl = null;
+                    let fileType = null;
+                    let fileName = null;
+
+                    if (currentTaskFile) {
+                        showToast('جاري رفع المرفق...', 'info');
+                        fileUrl = await window.uploadToFirebase(currentTaskFile, 'tasks_attachments');
+                        fileType = currentTaskFile.type;
+                        fileName = currentTaskFile.name;
+                    }
+
+                    const newTaskData = {
+                        title: title,
+                        desc: desc,
+                        assigneeId: assigneeId,
+                        assigneeName: assigneeName,
+                        createdBy: currentUserData.uid,
+                        creatorName: currentUserData.name,
+                        deadline: deadlineTimestamp,
+                        isHighPriority: isHighPriority,
+                        checklists: creationChecklists || [],
+                        status: 'pending',
+                        timestamp: Date.now(),
+                        orderIndex: globalTasks.length,
+                        attachmentUrl: fileUrl,
+                        attachmentType: fileType,
+                        attachmentName: fileName
+                    };
+
+                    await addDoc(getColRef('tasks'), newTaskData);
+
+                    showToast('تم إسناد المهمة بنجاح', 'success');
+                    window.closeModal('taskModal');
+                    window.clearTaskAttachment();
+                    
+                    // إرسال إشعار للموظف المستلم إذا لم تكن المهمة لك
+                    if (assigneeId !== currentUserData.uid) {
+                        window.sendSystemNotification(assigneeId, 'مهمة جديدة', `تم إسناد مهمة جديدة لك: ${title}`, 'tasks', 'tasks');
+                    }
+
+                    window.logAction('المهام', `قام بإنشاء مهمة جديدة: ${title}`);
+
+                } catch (error) {
+                    console.error("Error adding task: ", error);
+                    showToast('حدث خطأ أثناء حفظ المهمة', 'error');
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = 'إنشاء';
+                }
+            });
+        }
 
         window.filterTasksList = () => {
             const query = document.getElementById('taskSearchInput').value.toLowerCase();
