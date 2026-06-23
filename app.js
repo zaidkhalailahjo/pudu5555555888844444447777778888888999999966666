@@ -7797,9 +7797,11 @@ window.handleChecklistEnter = (e) => {
                     window.closeModal('taskModal');
                     window.clearTaskAttachment();
                     
-                    // إرسال إشعار للموظف المستلم إذا لم تكن المهمة لك
+                    // إرسال إشعار للموظف المستلم بناءً على الأولوية
                     if (assigneeId !== currentUserData.uid) {
-                        window.sendSystemNotification(assigneeId, 'مهمة جديدة', `تم إسناد مهمة جديدة لك: ${title}`, 'tasks', 'tasks');
+                        const notifTitle = isHighPriority ? '🔥 مهمة أولوية قصوى!' : 'مهمة جديدة';
+                        const notifBody = isHighPriority ? `عاجل جداً: تم إسناد مهمة جديدة بأولوية قصوى لك: ${title}` : `تم إسناد مهمة جديدة لك: ${title}`;
+                        window.sendSystemNotification(assigneeId, notifTitle, notifBody, 'tasks', 'tasks');
                     }
 
                     window.logAction('المهام', `قام بإنشاء مهمة جديدة: ${title}`);
