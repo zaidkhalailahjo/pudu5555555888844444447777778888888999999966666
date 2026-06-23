@@ -7320,7 +7320,9 @@ window.markNoticeRead = (id) => {
                     if(task.status === 'in-progress') { statusText = 'In progress'; statusClass = 'bg-[#00839b]/10 text-[#00839b] border border-[#00839b]/20 font-bold'; }
                     
                     let checklistsHtml = '';
+                    let hasPendingChecklist = false;
                     if(task.checklists && task.checklists.length > 0) {
+                        hasPendingChecklist = task.checklists.some(c => !c.isCompleted);
                         checklistsHtml = task.checklists.map((cl, idx) => `
                             <div class="flex items-center gap-2 mb-1">
                                 <input type="checkbox" class="w-3.5 h-3.5 text-[#00839b]" ${cl.isCompleted ? 'checked' : ''} disabled>
