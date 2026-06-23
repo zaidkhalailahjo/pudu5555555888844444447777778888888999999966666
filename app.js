@@ -232,14 +232,14 @@ function formatDurationArabic(ms) {
         document.addEventListener("DOMContentLoaded", () => {
             applyLanguageToDOM();
             
-            // تفعيل التقويم الاحترافي (Flatpickr) على حقول التاريخ
             if (typeof flatpickr !== 'undefined') {
                 flatpickr("#taskDeadline", {
                     enableTime: true,
-                    dateFormat: "Y-m-d H:i",
+                    dateFormat: "Y-m-d h:i K", // تعديل ليصبح بنظام 12 ساعة (AM/PM)
+                    time_24hr: false, // تعطيل نظام 24 ساعة
                     locale: "ar",
                     minDate: "today",
-                    disableMobile: "true" // لإجبار الهاتف على استخدام هذا التصميم المذهل
+                    disableMobile: "true"
                 });
             }
             
