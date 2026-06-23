@@ -7125,6 +7125,29 @@ window.markNoticeRead = (id) => {
     }
 };
 // ========================================================
+
+                // PWA Installation Logic
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const installBtn = document.getElementById('installAppBtn');
+            if(installBtn) installBtn.classList.remove('hidden');
+        });
+
+        const installBtnEl = document.getElementById('installAppBtn');
+        if (installBtnEl) {
+            installBtnEl.addEventListener('click', async () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    if (outcome === 'accepted') {
+                        installBtnEl.classList.add('hidden');
+                    }
+                    deferredPrompt = null;
+                }
+            });
+        }
             
             startDatabaseListeners();
             
