@@ -7871,6 +7871,54 @@ window.handleChecklistEnter = (e) => {
             }
         };
 
+        document.getElementById('taskReportForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitReportBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mx-1"></i> جاري الإرسال...';
+            
+            const taskId = document.getElementById('reportTaskId').value;
+            const text = document.getElementById('reportText').value.trim();
+            const fileInput = document.getElementById('reportFileInput');
+            const file = fileInput ? fileInput.files[0] : null;
+
+            try {
+                const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                const task = globalTasks.find(t => t.id === taskId);
+                
+                let fileUrl = null, fileType = null;
+                if (file) {
+                    fileUrl = await window.uploadToFirebase(file, 'task_reports');
+                    fileType = file.type;
+                }
+                
+                const isSelfAssigned = task.createdBy === currentUserData.uid;
+                const newStatus = isSelfAssigned ? 'completed' : 'pending_approval';
+
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { 
+                    status: newStatus, 
+                    completedAt: Date.now(),
+                    reportText: text,
+                    reportFileData: fileUrl,
+                    reportFileType: fileType
+                });
+
+                if (!isSelfAssigned) {
+                    // تبليغ المدير / منشئ المهمة
+                    window.sendSystemNotification(task.createdBy, 'مهمة بانتظار الاعتماد', `أنهى الموظف ${currentUserData.name} مهمة (${task.title}) وبانتظار اعتمادك.`, 'tasks', 'tasks');
+                }
+
+                showToast(isSelfAssigned ? 'تم إنجاز المهمة بنجاح' : 'تم إرسال المهمة للاعتماد', 'success');
+                window.closeModal('taskReportModal');
+            } catch(e) {
+                console.error(e);
+                showToast('حدث خطأ أثناء الإرسال', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> إرسال واعتماد';
+            }
+        });
+
         window.startTask = async (taskId) => {
             try {
                 const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
