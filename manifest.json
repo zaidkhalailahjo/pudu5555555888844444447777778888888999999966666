@@ -1,0 +1,23 @@
+{
+  "name": "Quill System",
+  "short_name": "Quill",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#002d74",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://uploads.onecompiler.io/44krdug5q/1782237931102/New-Project-9-1-1%20(1).png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://uploads.onecompiler.io/44krdug5q/1782237931102/New-Project-9-1-1%20(1).png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
