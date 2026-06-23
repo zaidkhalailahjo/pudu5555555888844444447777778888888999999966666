@@ -232,6 +232,17 @@ function formatDurationArabic(ms) {
         document.addEventListener("DOMContentLoaded", () => {
             applyLanguageToDOM();
             
+            // تفعيل التقويم الاحترافي (Flatpickr) على حقول التاريخ
+            if (typeof flatpickr !== 'undefined') {
+                flatpickr("#taskDeadline", {
+                    enableTime: true,
+                    dateFormat: "Y-m-d H:i",
+                    locale: "ar",
+                    minDate: "today",
+                    disableMobile: "true" // لإجبار الهاتف على استخدام هذا التصميم المذهل
+                });
+            }
+            
             // حل مشكلة الدخول من الرابط مباشرة إلى صفحة تسجيل الدخول
             if (window.location.pathname.includes('/login') || window.location.hash === '#login' || window.location.href.includes('login')) {
                 setTimeout(() => {
