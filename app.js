@@ -7162,39 +7162,43 @@ window.markNoticeRead = (id) => {
         window.currentTaskSubView = 'list';
         
         window.switchTaskSubView = (viewName) => {
-            window.currentTaskSubView = viewName;
-            
-            const btnList = document.getElementById('btn-view-list');
-            const btnDeadline = document.getElementById('btn-view-deadline');
-            const btnPlanner = document.getElementById('btn-view-planner');
-            const indicator = document.getElementById('taskSubViewIndicator');
-            
-            const viewList = document.getElementById('tasks-list-view');
-            const viewDeadline = document.getElementById('tasks-deadline-view');
-            const viewPlanner = document.getElementById('tasks-planner-view');
+    // الانتقال التلقائي السلس إلى المهام الحالية إذا كنت في المهام المنجزة
+    if (window.currentTaskTab === 'reports') {
+        window.switchTaskTab('active');
+    }
 
-            const activeClass = "relative z-10 text-sm font-bold text-[#002d74] dark:text-white transition-colors duration-300";
-            const inactiveClass = "relative z-10 text-sm font-bold text-gray-400 hover:text-[#002d74] dark:hover:text-white transition-colors duration-300";
+    window.currentTaskSubView = viewName;
+    
+    const btnList = document.getElementById('btn-view-list');
+    const btnDeadline = document.getElementById('btn-view-deadline');
+    const btnPlanner = document.getElementById('btn-view-planner');
+    const indicator = document.getElementById('taskSubViewIndicator');
+    
+    const viewList = document.getElementById('tasks-list-view');
+    const viewDeadline = document.getElementById('tasks-deadline-view');
+    const viewPlanner = document.getElementById('tasks-planner-view');
 
-            btnList.className = viewName === 'list' ? activeClass : inactiveClass;
-            btnDeadline.className = viewName === 'deadline' ? activeClass : inactiveClass;
-            btnPlanner.className = viewName === 'planner' ? activeClass : inactiveClass;
+    const activeClass = "relative z-10 text-sm font-bold text-[#002d74] dark:text-white transition-colors duration-300";
+    const inactiveClass = "relative z-10 text-sm font-bold text-gray-400 hover:text-[#002d74] dark:hover:text-white transition-colors duration-300";
 
-            // تحريك الخط (RTL Calculation)
-            const activeBtn = viewName === 'list' ? btnList : (viewName === 'deadline' ? btnDeadline : btnPlanner);
-            if(activeBtn && indicator) {
-                indicator.style.width = activeBtn.offsetWidth + 'px';
-                const parentRight = activeBtn.parentElement.getBoundingClientRect().right;
-                const btnRight = activeBtn.getBoundingClientRect().right;
-                indicator.style.right = (parentRight - btnRight) + 'px';
-            }
+    btnList.className = viewName === 'list' ? activeClass : inactiveClass;
+    btnDeadline.className = viewName === 'deadline' ? activeClass : inactiveClass;
+    btnPlanner.className = viewName === 'planner' ? activeClass : inactiveClass;
 
-            viewList.classList.toggle('hidden', viewName !== 'list');
-            viewDeadline.classList.toggle('hidden', viewName !== 'deadline');
-            viewPlanner.classList.toggle('hidden', viewName !== 'planner');
-            
-            window.renderTasks();
-        };
+    const activeBtn = viewName === 'list' ? btnList : (viewName === 'deadline' ? btnDeadline : btnPlanner);
+    if(activeBtn && indicator) {
+        indicator.style.width = activeBtn.offsetWidth + 'px';
+        const parentRight = activeBtn.parentElement.getBoundingClientRect().right;
+        const btnRight = activeBtn.getBoundingClientRect().right;
+        indicator.style.right = (parentRight - btnRight) + 'px';
+    }
+
+    viewList.classList.toggle('hidden', viewName !== 'list');
+    viewDeadline.classList.toggle('hidden', viewName !== 'deadline');
+    viewPlanner.classList.toggle('hidden', viewName !== 'planner');
+    
+    window.renderTasks();
+};
 
         window.switchTaskTab = (tabName) => {
     window.currentTaskTab = tabName;
