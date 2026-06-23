@@ -7781,9 +7781,9 @@ window.handleChecklistEnter = (e) => {
 
                 const title = document.getElementById('taskTitle').value.trim();
                 const desc = document.getElementById('taskDesc').value.trim();
-                const assigneeSelect = document.getElementById('taskAssignee');
-                const assigneeId = assigneeSelect.value;
-                const assigneeName = assigneeSelect.options[assigneeSelect.selectedIndex].text.split(' (')[0];
+                const assigneeId = document.getElementById('taskAssignee').value;
+                const assigneeNameEl = document.querySelector('#taskAssigneeSelected span');
+                const assigneeName = assigneeNameEl ? assigneeNameEl.innerText : 'غير محدد';
                 const deadlineVal = document.getElementById('taskDeadline').value;
                 const isHighPriority = document.getElementById('isTaskHighPriority').value === 'true';
 
