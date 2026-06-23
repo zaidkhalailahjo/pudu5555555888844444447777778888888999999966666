@@ -7637,6 +7637,15 @@ window.handleChecklistEnter = (e) => {
             });
         }
 
+        window.checkTaskDeadline = (input) => {
+    if(input.value) {
+        const selectedTime = new Date(input.value).getTime();
+        if(selectedTime < Date.now()) {
+            showToast('تنبيه: لقد قمت باختيار وقت وتاريخ في الماضي!', 'warning');
+        }
+    }
+};
+
         window.clearTaskAttachment = () => {
             currentTaskFile = null;
             if(document.getElementById('taskAttachmentInput')) document.getElementById('taskAttachmentInput').value = '';
