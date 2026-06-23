@@ -14,6 +14,29 @@
     <script src="https://meet.jit.si/external_api.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/ar.js"></script>
+    <style>
+        /* تخصيص ألوان الكلندر لتطابق هوية النظام Quill */
+        .flatpickr-calendar { font-family: 'Cairo', sans-serif !important; border-radius: 16px !important; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important; border: 1px solid #e5e7eb !important; overflow: hidden; padding: 0 !important; }
+        .dark .flatpickr-calendar { background: #1f2937 !important; border-color: #374151 !important; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5) !important; }
+        .flatpickr-day.selected { background: #00839b !important; border-color: #00839b !important; font-weight: bold; }
+        .flatpickr-months .flatpickr-month { background: #002d74 !important; color: white !important; fill: white !important; height: 50px; }
+        .flatpickr-current-month .flatpickr-monthDropdown-months { background: #002d74 !important; }
+        .flatpickr-current-month .numInputWrapper span.arrowUp:after { border-bottom-color: white !important; }
+        .flatpickr-current-month .numInputWrapper span.arrowDown:after { border-top-color: white !important; }
+        .flatpickr-weekdays { background: #002d74 !important; height: 35px; }
+        span.flatpickr-weekday { color: rgba(255,255,255,0.9) !important; font-weight: bold !important; }
+        .flatpickr-time { border-top: 1px solid #e5e7eb !important; background: #f9fafb !important; }
+        .dark .flatpickr-time { border-top-color: #374151 !important; background: #111827 !important; color: white !important; }
+        .dark .flatpickr-day { color: #d1d5db; }
+        .dark .flatpickr-day:hover { background: #374151; }
+        .dark .flatpickr-day.prevMonthDay, .dark .flatpickr-day.nextMonthDay { color: #6b7280; }
+        .dark .flatpickr-time input { color: white !important; }
+        .dark .flatpickr-time .flatpickr-am-pm { color: white !important; }
+    </style>
+    
     <script>
         tailwind.config = {
             darkMode: 'class', 
