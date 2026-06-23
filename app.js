@@ -7339,13 +7339,14 @@ window.markNoticeRead = (id) => {
                     const creatorPhoto = creator ? creator.photoURL : 'https://ui-avatars.com/api/?name=U';
                     const assigneePhoto = assignee ? assignee.photoURL : 'https://ui-avatars.com/api/?name=U';
                     
-                    const deadlineStr = task.deadline ? new Date(task.deadline).toLocaleString('en-US', {month: 'short', day: 'numeric', hour:'2-digit', minute:'2-digit'}) : 'No Deadline';
-                    const isLate = new Date(task.deadline).getTime() < Date.now() && task.status !== 'completed';
-                    const deadlineBadge = isLate ? `<span class="bg-red-100 text-red-600 px-2 py-1 rounded-full">${deadlineStr}</span>` : `<span class="bg-blue-50 text-blue-600 px-2 py-1 rounded-full border border-blue-100">${deadlineStr}</span>`;
+                    // استخدام نظام 12 ساعة
+                    const deadlineStr = task.deadline ? new Date(task.deadline).toLocaleString('ar-EG', {month: 'short', day: 'numeric', hour:'2-digit', minute:'2-digit', hour12: true}) : 'بدون موعد';
+                    const isLate = task.deadline && new Date(task.deadline).getTime() < Date.now() && task.status !== 'completed';
+                    const deadlineBadge = isLate ? `<span class="bg-red-100 text-red-600 px-2 py-1 rounded-full border border-red-200">${deadlineStr}</span>` : `<span class="bg-blue-50 text-blue-600 px-2 py-1 rounded-full border border-blue-100">${deadlineStr}</span>`;
 
-                    let statusText = 'Pending';
+                    let statusText = 'قيد الانتظار';
                     let statusClass = 'bg-gray-100 text-gray-600';
-                    if(task.status === 'in-progress') { statusText = 'In progress'; statusClass = 'bg-[#00839b]/10 text-[#00839b] border border-[#00839b]/20 font-bold'; }
+                    if(task.status === 'in-progress') { statusText = 'قيد التنفيذ'; statusClass = 'bg-[#00839b]/10 text-[#00839b] border border-[#00839b]/20 font-bold'; }
                     
                     let checklistsHtml = '';
                     let hasPendingChecklist = false;
@@ -7358,10 +7359,17 @@ window.markNoticeRead = (id) => {
                             </div>
                         `).join('');
                     } else {
-                        checklistsHtml = '<span class="text-gray-400">لا توجد قوائم تحقق مرتبطة.</span>';
+                        checklistsHtml = '<span class="text-gray-400 text-xs">لا توجد قوائم تحقق مرتبطة.</span>';
                     }
 
-                    // إضافة مجموعة (group) لصف الجدول ليظهر زر الحذف عند التمرير
+                    // التعديل هنا: النقطة الحمراء تظهر إذا كان هناك وصف أو قائمة تحقق غير مكتملة
+                    const hasDescription = task.desc && task.desc.trim() !== '';
+                    const showRedDot = hasPendingChecklist || hasDescription;
+
+                    // التعديل هنا: منع الموظف العادي من الحذف تماماً
+                    const canDelete = isCEO || (currentUserData.permissions && currentUserData.permissions.canAssignTasks && task.createdBy === currentUserData.uid);
+                    const deleteBtnHtml = canDelete ? `<button onclick="window.deleteTask('${task.id}')" class="text-red-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/30 transition-all opacity-0 group-hover:opacity-100" title="حذف المهمة"><i class="fa-solid fa-trash"></i></button>` : '';
+
                     listTbody.innerHTML += `
                         <tr class="task-list-row group bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 transition border-b border-gray-100 dark:border-gray-700" data-id="${task.id}">
                             <td class="p-3 text-center align-middle">
@@ -7371,14 +7379,14 @@ window.markNoticeRead = (id) => {
                                 <div class="flex items-center gap-2">
                                     <button onclick="window.toggleInlineChecklist('${task.id}')" class="relative text-gray-400 hover:text-[#00839b] bg-gray-50 dark:bg-gray-700 w-6 h-6 rounded flex items-center justify-center transition focus:outline-none">
                                        <i id="icon-chk-${task.id}" class="fa-solid fa-chevron-left text-xs transition-transform duration-300"></i>
-                                       ${hasPendingChecklist ? '<span class="absolute -top-1 -right-1 flex h-2.5 w-2.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span></span>' : ''}
+                                       ${showRedDot ? '<span class="absolute -top-1 -right-1 flex h-2.5 w-2.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span></span>' : ''}
                                     </button>
                                     <span class="font-bold text-gray-800 dark:text-white">${escapeHTML(task.title)}</span>
-                                    ${task.isHighPriority ? '<i class="fa-solid fa-fire text-orange-500 text-xs ml-1"></i>' : ''}
+                                    ${task.isHighPriority ? '<i class="fa-solid fa-fire text-orange-500 text-xs ml-1" title="أولوية قصوى"></i>' : ''}
                                 </div>
                             </td>
                             <td class="p-3"><span class="px-3 py-1 text-xs rounded-full ${statusClass} shadow-sm">${statusText}</span></td>
-                            <td class="p-3 text-xs font-bold">${deadlineBadge}</td>
+                            <td class="p-3 text-xs font-bold" dir="ltr">${deadlineBadge}</td>
                             <td class="p-3">
                                 <div class="flex items-center gap-2 justify-end">
                                     <span class="text-xs text-gray-600 dark:text-gray-400">${escapeHTML(creator ? creator.name : 'System')}</span>
@@ -7392,17 +7400,17 @@ window.markNoticeRead = (id) => {
                                 </div>
                             </td>
                             <td class="p-3 text-center">
-                                <button onclick="window.deleteTask('${task.id}')" class="text-red-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/30 transition-all opacity-0 group-hover:opacity-100" title="حذف المهمة"><i class="fa-solid fa-trash"></i></button>
+                                ${deleteBtnHtml}
                             </td>
                         </tr>
                         <tr id="checklist-row-${task.id}" class="hidden bg-gray-50/80 dark:bg-gray-900/50 shadow-inner">
                             <td colspan="7" class="p-0">
                                 <div id="checklist-content-${task.id}" class="max-h-0 overflow-hidden transition-all duration-300 ease-out px-4">
                                     <div class="border-r-4 border-[#00839b] pr-4 my-2">
-                                        <div class="mb-4 text-sm font-semibold text-gray-600 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">${escapeHTML(task.desc) || '<span class="text-gray-400 italic">لا يوجد وصف للمهمة.</span>'}</div>
+                                        ${hasDescription ? `<div class="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed bg-white dark:bg-gray-800 p-3 rounded-lg border dark:border-gray-700 shadow-sm">${escapeHTML(task.desc)}</div>` : ''}
                                         
                                         <div class="text-xs font-bold text-[#002d74] dark:text-secondary mb-2 flex items-center gap-2 border-b dark:border-gray-700 pb-1 w-max"><i class="fa-solid fa-list-check"></i> قائمة التحقق المطلوبة:</div>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 pb-2">
                                             ${checklistsHtml}
                                         </div>
                                     </div>
