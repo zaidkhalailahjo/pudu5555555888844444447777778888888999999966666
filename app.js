@@ -8069,7 +8069,7 @@ window.handleChecklistEnter = (e) => {
                 const assigneeNameHtml = empId === 'all' ? `<span class="text-[10px] bg-[#00839b]/10 text-[#00839b] px-2 py-0.5 rounded-full mr-2 shadow-sm font-bold">بواسطة: ${escapeHTML(t.assigneeName)}</span>` : '';
                 html += `
                     <div class="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm relative">
-                        ${t.status === 'pending_approval' ? '<span class="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-bl-lg font-bold animate-pulse z-50 shadow-md">جديد</span>' : ''}
+                        ${t.status === 'pending_approval' ? '<span class="absolute -top-3 -right-2 bg-red-500 text-white text-[10px] px-2 py-1 rounded-lg font-bold animate-pulse z-[60] shadow-md border border-white dark:border-gray-800">جديد</span>' : ''}
                         <h5 class="font-bold text-gray-800 dark:text-gray-100 mb-2 flex items-center">${escapeHTML(t.title)} ${assigneeNameHtml}</h5>
                         <p class="text-xs text-gray-600 dark:text-gray-400 mb-3 whitespace-pre-wrap">${escapeHTML(t.desc)}</p>
                         <div class="border-t border-gray-200 dark:border-gray-600 pt-3 bg-white dark:bg-gray-800 p-3 rounded-lg mt-2">
