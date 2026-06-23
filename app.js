@@ -7661,7 +7661,12 @@ window.handleChecklistEnter = (e) => {
     if(input.value) {
         const selectedTime = new Date(input.value).getTime();
         if(selectedTime < Date.now()) {
-            showToast('تنبيه: لقد قمت باختيار وقت وتاريخ في الماضي!', 'warning');
+            showToast('لا يمكنك إسناد مهمة في وقت ماضي! تم تصفير التاريخ.', 'error');
+            input.value = ''; // تصفير التاريخ فوراً
+            // تحديث الـ Flatpickr ليظهر فارغاً
+            if (input._flatpickr) {
+                input._flatpickr.clear();
+            }
         }
     }
 };
