@@ -7358,47 +7358,54 @@ window.markNoticeRead = (id) => {
                             </div>
                         `).join('');
                     } else {
-                        checklistsHtml = '<span class="text-gray-400">لا توجد قوائم تحقق</span>';
+                        checklistsHtml = '<span class="text-gray-400">لا توجد قوائم تحقق مرتبطة.</span>';
                     }
 
+                    // إضافة مجموعة (group) لصف الجدول ليظهر زر الحذف عند التمرير
                     listTbody.innerHTML += `
-                        <tr class="task-list-row bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 transition border-b border-gray-100 dark:border-gray-700" data-id="${task.id}">
+                        <tr class="task-list-row group bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 transition border-b border-gray-100 dark:border-gray-700" data-id="${task.id}">
                             <td class="p-3 text-center align-middle">
                                 <i class="fa-solid fa-bars text-gray-300 cursor-grab hover:text-gray-500 drag-handle text-lg"></i>
                             </td>
                             <td class="p-3">
                                 <div class="flex items-center gap-2">
-                                    <button onclick="window.toggleInlineChecklist('${task.id}')" class="relative text-gray-400 hover:text-[#00839b] bg-gray-50 dark:bg-gray-700 w-6 h-6 rounded flex items-center justify-center transition">
-                                       <i id="icon-chk-${task.id}" class="fa-solid fa-chevron-left text-xs"></i>
-                                       ${hasPendingChecklist ? '<span class="absolute -top-1 -right-1 flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span></span>' : ''}
+                                    <button onclick="window.toggleInlineChecklist('${task.id}')" class="relative text-gray-400 hover:text-[#00839b] bg-gray-50 dark:bg-gray-700 w-6 h-6 rounded flex items-center justify-center transition focus:outline-none">
+                                       <i id="icon-chk-${task.id}" class="fa-solid fa-chevron-left text-xs transition-transform duration-300"></i>
+                                       ${hasPendingChecklist ? '<span class="absolute -top-1 -right-1 flex h-2.5 w-2.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span></span>' : ''}
                                     </button>
                                     <span class="font-bold text-gray-800 dark:text-white">${escapeHTML(task.title)}</span>
                                     ${task.isHighPriority ? '<i class="fa-solid fa-fire text-orange-500 text-xs ml-1"></i>' : ''}
                                 </div>
                             </td>
-                            <td class="p-3"><span class="px-3 py-1 text-xs rounded-full ${statusClass}">${statusText}</span></td>
+                            <td class="p-3"><span class="px-3 py-1 text-xs rounded-full ${statusClass} shadow-sm">${statusText}</span></td>
                             <td class="p-3 text-xs font-bold">${deadlineBadge}</td>
                             <td class="p-3">
                                 <div class="flex items-center gap-2 justify-end">
                                     <span class="text-xs text-gray-600 dark:text-gray-400">${escapeHTML(creator ? creator.name : 'System')}</span>
-                                    <img src="${creatorPhoto}" class="w-6 h-6 rounded-full border border-gray-200">
+                                    <img src="${creatorPhoto}" class="w-6 h-6 rounded-full border border-gray-200 object-cover">
                                 </div>
                             </td>
                             <td class="p-3">
                                 <div class="flex items-center gap-2 justify-end">
                                     <span class="text-xs font-bold text-[#002d74] dark:text-blue-300">${escapeHTML(task.assigneeName)}</span>
-                                    <img src="${assigneePhoto}" class="w-6 h-6 rounded-full border border-[#002d74]">
+                                    <img src="${assigneePhoto}" class="w-6 h-6 rounded-full border border-[#002d74] object-cover">
                                 </div>
                             </td>
                             <td class="p-3 text-center">
-                                <button onclick="window.openTaskModal(); /* logic for edit */" class="text-gray-400 hover:text-[#00839b] p-1"><i class="fa-solid fa-pen"></i></button>
+                                <button onclick="window.deleteTask('${task.id}')" class="text-red-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/30 transition-all opacity-0 group-hover:opacity-100" title="حذف المهمة"><i class="fa-solid fa-trash"></i></button>
                             </td>
                         </tr>
                         <tr id="checklist-row-${task.id}" class="hidden bg-gray-50/80 dark:bg-gray-900/50 shadow-inner">
-                            <td colspan="7" class="p-4 border-r-4 border-[#00839b]">
-                                <div class="text-xs font-bold text-[#002d74] dark:text-secondary mb-2 flex items-center gap-2"><i class="fa-solid fa-list-check"></i> قائمة التحقق:</div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 px-4">
-                                    ${checklistsHtml}
+                            <td colspan="7" class="p-0">
+                                <div id="checklist-content-${task.id}" class="max-h-0 overflow-hidden transition-all duration-300 ease-out px-4">
+                                    <div class="border-r-4 border-[#00839b] pr-4 my-2">
+                                        <div class="mb-4 text-sm font-semibold text-gray-600 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">${escapeHTML(task.desc) || '<span class="text-gray-400 italic">لا يوجد وصف للمهمة.</span>'}</div>
+                                        
+                                        <div class="text-xs font-bold text-[#002d74] dark:text-secondary mb-2 flex items-center gap-2 border-b dark:border-gray-700 pb-1 w-max"><i class="fa-solid fa-list-check"></i> قائمة التحقق المطلوبة:</div>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                                            ${checklistsHtml}
+                                        </div>
+                                    </div>
                                 </div>
                             </td>
                         </tr>
