@@ -3641,7 +3641,20 @@
         </div>
     </div>
       
-     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <div id="pwaInstallBanner" class="fixed bottom-0 left-0 w-full bg-[#002d74] text-white p-4 z-[9999] transform translate-y-full transition-transform duration-500 flex justify-between items-center shadow-[0_-4px_20px_rgba(0,0,0,0.3)] border-t border-[#00839b]">
+        <div class="flex items-center gap-3">
+            <img src="https://uploads.onecompiler.io/44krdug5q/1782237931102/New-Project-9-1-1%20(1).png" class="w-12 h-12 object-contain bg-white rounded-lg p-1 shadow">
+            <div>
+                <h4 class="font-bold text-sm text-white">تثبيت تطبيق Quill</h4>
+                <p class="text-xs text-gray-300">قم بتثبيت التطبيق على جهازك لسهولة وسرعة الوصول.</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <button id="pwaInstallConfirmBtn" class="bg-[#00839b] hover:bg-[#00b0f0] text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md transition">تثبيت الآن</button>
+            <button onclick="document.getElementById('pwaInstallBanner').classList.remove('translate-y-0')" class="text-gray-300 hover:text-white p-2"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script type="module" src="app.js"></script>
 </body>
 </html>
