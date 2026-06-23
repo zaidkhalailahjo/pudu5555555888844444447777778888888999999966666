@@ -7134,28 +7134,48 @@ window.markNoticeRead = (id) => {
 };
 // ========================================================
 
-                // PWA Installation Logic
-        let deferredPrompt;
+                let deferredPrompt;
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
+            
+            // إظهار زر التثبيت في الأعلى
             const installBtn = document.getElementById('installAppBtn');
             if(installBtn) installBtn.classList.remove('hidden');
+
+            // إظهار البانر المخصص في الأسفل بعد 3 ثواني
+            const banner = document.getElementById('pwaInstallBanner');
+            if(banner) {
+                setTimeout(() => {
+                    banner.classList.remove('translate-y-full');
+                    banner.classList.add('translate-y-0');
+                }, 3000);
+            }
         });
 
-        const installBtnEl = document.getElementById('installAppBtn');
-        if (installBtnEl) {
-            installBtnEl.addEventListener('click', async () => {
-                if (deferredPrompt) {
-                    deferredPrompt.prompt();
-                    const { outcome } = await deferredPrompt.userChoice;
-                    if (outcome === 'accepted') {
-                        installBtnEl.classList.add('hidden');
+        const handleInstallAction = async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    const installBtnEl = document.getElementById('installAppBtn');
+                    if(installBtnEl) installBtnEl.classList.add('hidden');
+                    
+                    const banner = document.getElementById('pwaInstallBanner');
+                    if(banner) {
+                        banner.classList.add('translate-y-full');
+                        banner.classList.remove('translate-y-0');
                     }
-                    deferredPrompt = null;
                 }
-            });
-        }
+                deferredPrompt = null;
+            }
+        };
+
+        const installBtnEl = document.getElementById('installAppBtn');
+        if (installBtnEl) installBtnEl.addEventListener('click', handleInstallAction);
+        
+        const pwaInstallConfirmBtn = document.getElementById('pwaInstallConfirmBtn');
+        if (pwaInstallConfirmBtn) pwaInstallConfirmBtn.addEventListener('click', handleInstallAction);
             
             startDatabaseListeners();
             
