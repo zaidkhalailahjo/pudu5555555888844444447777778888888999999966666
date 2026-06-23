@@ -1205,10 +1205,11 @@
                         </div>
                         
                         <!-- أزرار التبديل بين طرق العرض -->
-                        <div class="flex gap-1 bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
-                            <button onclick="window.switchTaskSubView('list')" id="btn-view-list" class="px-4 py-1.5 text-xs font-bold rounded-md bg-white dark:bg-gray-600 shadow-sm text-[#002d74] dark:text-white transition-all">List</button>
-                            <button onclick="window.switchTaskSubView('deadline')" id="btn-view-deadline" class="px-4 py-1.5 text-xs font-bold rounded-md text-gray-500 hover:text-[#002d74] dark:hover:text-white transition-all">Deadline</button>
-                            <button onclick="window.switchTaskSubView('planner')" id="btn-view-planner" class="px-4 py-1.5 text-xs font-bold rounded-md text-gray-500 hover:text-[#002d74] dark:hover:text-white transition-all">Planner</button>
+                        <div class="relative flex gap-6 border-b border-gray-200 dark:border-gray-700 pb-2">
+                            <button onclick="window.switchTaskSubView('list')" id="btn-view-list" class="relative z-10 text-sm font-bold text-[#002d74] dark:text-white transition-colors duration-300">List</button>
+                            <button onclick="window.switchTaskSubView('deadline')" id="btn-view-deadline" class="relative z-10 text-sm font-bold text-gray-400 hover:text-[#002d74] dark:hover:text-white transition-colors duration-300">Deadline</button>
+                            <button onclick="window.switchTaskSubView('planner')" id="btn-view-planner" class="relative z-10 text-sm font-bold text-gray-400 hover:text-[#002d74] dark:hover:text-white transition-colors duration-300">Planner</button>
+                            <div id="taskSubViewIndicator" class="absolute -bottom-[1px] h-0.5 bg-[#00839b] transition-all duration-300 rounded-t-md" style="width: 25px; right: 0;"></div>
                         </div>
                     </div>
                     
