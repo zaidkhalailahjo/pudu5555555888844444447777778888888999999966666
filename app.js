@@ -7830,9 +7830,12 @@ window.handleChecklistEnter = (e) => {
 
                 const title = document.getElementById('taskTitle').value.trim();
                 const desc = document.getElementById('taskDesc').value.trim();
-                const assigneeId = document.getElementById('taskAssignee').value;
-                const assigneeNameEl = document.querySelector('#taskAssigneeSelected span');
-                const assigneeName = assigneeNameEl ? assigneeNameEl.innerText : 'غير محدد';
+                if (window.selectedTaskAssignees.length === 0) {
+                    showToast('يرجى اختيار موظف واحد على الأقل', 'warning');
+                    btn.disabled = false;
+                    btn.innerHTML = 'إنشاء';
+                    return;
+                }
                 const deadlineVal = document.getElementById('taskDeadline').value;
                 const isHighPriority = document.getElementById('isTaskHighPriority').value === 'true';
 
