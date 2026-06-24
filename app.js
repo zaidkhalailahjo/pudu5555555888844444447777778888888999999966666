@@ -7730,8 +7730,8 @@ window.handleChecklistEnter = (e) => {
             const isCEO = currentUserData.role === 'CEO';
             const canAssign = currentUserData.permissions && currentUserData.permissions.canAssignTasks;
 
-            document.getElementById('taskAssigneeSelected').innerHTML = `<span class="text-sm font-bold text-gray-700 dark:text-gray-200">-- اختر موظف --</span>`;
-            document.getElementById('taskAssignee').value = '';
+            window.selectedTaskAssignees = [];
+            window.renderTaskAssigneesTags();
 
             if (isCEO || canAssign) {
                 globalUsers.forEach(emp => {
