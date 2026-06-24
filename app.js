@@ -7671,14 +7671,38 @@ window.handleChecklistEnter = (e) => {
             window.renderCreationChecklists();
         };
 
-        // دالة لاختيار الموظف من القائمة الخرافية
+        window.selectedTaskAssignees = [];
+        
         window.selectTaskAssigneeUI = (uid, name, photo) => {
-            document.getElementById('taskAssignee').value = uid;
-            document.getElementById('taskAssigneeSelected').innerHTML = `
-                <img src="${photo}" class="w-6 h-6 rounded-full object-cover shadow-sm">
-                <span class="text-sm font-bold text-gray-800 dark:text-white">${escapeHTML(name)}</span>
-            `;
-            document.getElementById('taskAssigneeDropdown').classList.remove('open');
+            // إضافة الموظف إذا لم يكن موجوداً مسبقاً في القائمة
+            if(!window.selectedTaskAssignees.find(a => a.uid === uid)) {
+                window.selectedTaskAssignees.push({uid, name, photo});
+            }
+            window.renderSelectedAssigneesUI();
+        };
+
+        window.removeTaskAssigneeUI = (uid, event) => {
+            if(event) event.stopPropagation(); // منع إغلاق القائمة عند الحذف
+            window.selectedTaskAssignees = window.selectedTaskAssignees.filter(a => a.uid !== uid);
+            window.renderSelectedAssigneesUI();
+        };
+
+        window.renderSelectedAssigneesUI = () => {
+            const container = document.getElementById('taskAssigneeSelected');
+            if(window.selectedTaskAssignees.length === 0) {
+                container.innerHTML = `<span class="text-sm font-bold text-gray-700 dark:text-gray-200">-- اختر موظف --</span>`;
+                return;
+            }
+            let html = '';
+            window.selectedTaskAssignees.forEach(emp => {
+                html += `
+                <div class="flex items-center gap-1 bg-blue-50 border border-blue-200 text-blue-700 px-2 py-1 rounded-full shadow-sm" onclick="event.stopPropagation()">
+                    <img src="${emp.photo}" class="w-5 h-5 rounded-full object-cover shadow-sm">
+                    <span class="text-xs font-bold">${escapeHTML(emp.name)}</span>
+                    <i class="fa-solid fa-xmark text-red-500 ml-1 cursor-pointer hover:text-red-700 transition" onclick="window.removeTaskAssigneeUI('${emp.uid}', event)"></i>
+                </div>`;
+            });
+            container.innerHTML = html;
         };
 
         document.addEventListener('click', () => {
