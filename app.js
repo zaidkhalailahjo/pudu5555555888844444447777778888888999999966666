@@ -232,10 +232,11 @@ function formatDurationArabic(ms) {
         document.addEventListener("DOMContentLoaded", () => {
             applyLanguageToDOM();
             
-            if (typeof flatpickr !== 'undefined') {
-                flatpickr("#taskDeadline", {
+            flatpickr("#taskDeadline", {
                     enableTime: true,
-                    dateFormat: "Y-m-d h:i K", 
+                    altInput: true,
+                    altFormat: "Y-m-d h:i K",
+                    dateFormat: "Z", 
                     time_24hr: false,
                     locale: "ar",
                     minDate: "today",
