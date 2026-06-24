@@ -235,7 +235,9 @@ function formatDurationArabic(ms) {
             if (typeof flatpickr !== 'undefined') {
                 flatpickr("#taskDeadline", {
                     enableTime: true,
-                    dateFormat: "Y-m-d h:i K", 
+                    dateFormat: "Y-m-dTH:i", 
+                    altInput: true,
+                    altFormat: "Y-m-d h:i K",
                     time_24hr: false,
                     locale: "ar",
                     minDate: "today",
