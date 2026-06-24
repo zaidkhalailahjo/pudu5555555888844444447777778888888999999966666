@@ -7461,6 +7461,18 @@ window.markNoticeRead = (id) => {
                                     <div class="border-r-4 border-[#00839b] pr-4 my-2">
                                         ${hasDescription ? `<div class="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed bg-white dark:bg-gray-800 p-3 rounded-lg border dark:border-gray-700 shadow-sm">${escapeHTML(task.desc)}</div>` : ''}
                                         
+                                        ${task.attachmentUrl ? `
+                                        <div class="mb-4 bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800 shadow-sm flex items-center justify-between">
+                                            <div class="flex items-center gap-2">
+                                                <i class="fa-solid fa-paperclip text-blue-500 text-lg"></i>
+                                                <span class="text-sm font-bold text-blue-800 dark:text-blue-300">${escapeHTML(task.attachmentName || 'ملف مرفق')}</span>
+                                            </div>
+                                            <a href="${task.attachmentUrl}" target="_blank" download="${escapeHTML(task.attachmentName || 'file')}" class="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg shadow font-bold transition flex items-center gap-1">
+                                                <i class="fa-solid fa-download"></i> تحميل المرفق
+                                            </a>
+                                        </div>
+                                        ` : ''}
+
                                         <div class="text-xs font-bold text-[#002d74] dark:text-secondary mb-2 flex items-center gap-2 border-b dark:border-gray-700 pb-1 w-max"><i class="fa-solid fa-list-check"></i> قائمة التحقق المطلوبة:</div>
                                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 pb-2">
                                             ${checklistsHtml}
