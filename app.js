@@ -7670,13 +7670,42 @@ window.handleChecklistEnter = (e) => {
             window.renderCreationChecklists();
         };
 
-        // دالة لاختيار الموظف من القائمة الخرافية
+        window.selectedTaskAssignees = []; // مصفوفة لتخزين الموظفين المختارين
+
+        // دالة لرسم الموظفين كـ Tags
+        window.renderTaskAssigneesTags = () => {
+            const container = document.getElementById('taskAssigneeSelected');
+            if (!container) return;
+            container.innerHTML = '';
+            if (window.selectedTaskAssignees.length === 0) {
+                container.innerHTML = '<span class="text-xs text-gray-400 font-bold mt-1">لم يتم اختيار أحد بعد</span>';
+                return;
+            }
+            window.selectedTaskAssignees.forEach(emp => {
+                container.innerHTML += `
+                    <div class="flex items-center gap-1 bg-[#00839b]/10 border border-[#00839b]/30 text-[#002d74] dark:text-white px-2 py-1 rounded-full shadow-sm transition">
+                        <img src="${emp.photo}" class="w-5 h-5 rounded-full object-cover">
+                        <span class="text-xs font-bold">${escapeHTML(emp.name)}</span>
+                        <button type="button" class="text-red-500 hover:text-red-700 cursor-pointer ml-1 outline-none" onclick="event.stopPropagation(); window.removeTaskAssignee('${emp.uid}')">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                `;
+            });
+        };
+
+        window.removeTaskAssignee = (uid) => {
+            window.selectedTaskAssignees = window.selectedTaskAssignees.filter(emp => emp.uid !== uid);
+            window.renderTaskAssigneesTags();
+        };
+
         window.selectTaskAssigneeUI = (uid, name, photo) => {
-            document.getElementById('taskAssignee').value = uid;
-            document.getElementById('taskAssigneeSelected').innerHTML = `
-                <img src="${photo}" class="w-6 h-6 rounded-full object-cover shadow-sm">
-                <span class="text-sm font-bold text-gray-800 dark:text-white">${escapeHTML(name)}</span>
-            `;
+            // التحقق من أن الموظف لم يتم اختياره مسبقاً
+            if (!window.selectedTaskAssignees.find(emp => emp.uid === uid)) {
+                window.selectedTaskAssignees.push({ uid, name, photo });
+                window.renderTaskAssigneesTags();
+            }
+            // أغلقنا القائمة بعد الاختيار، يمكنك إزالة السطر التالي إذا أردت إبقاءها مفتوحة لتحديد سريع
             document.getElementById('taskAssigneeDropdown').classList.remove('open');
         };
 
