@@ -7462,6 +7462,20 @@ window.markNoticeRead = (id) => {
                                     <div class="border-r-4 border-[#00839b] pr-4 my-2">
                                         ${hasDescription ? `<div class="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed bg-white dark:bg-gray-800 p-3 rounded-lg border dark:border-gray-700 shadow-sm">${escapeHTML(task.desc)}</div>` : ''}
                                         
+                                        ${task.attachmentUrl ? `
+                                        <div class="mb-4 p-3 bg-blue-50 dark:bg-gray-800 border border-blue-200 dark:border-gray-600 rounded-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-sm">
+                                            <div class="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                                                <i class="fa-solid fa-file-arrow-down text-xl"></i>
+                                                <div class="flex flex-col">
+                                                    <span class="text-xs font-bold">مرفق مع المهمة:</span>
+                                                    <span class="text-sm font-bold truncate max-w-[200px]" dir="ltr">${escapeHTML(task.attachmentName || 'ملف مرفق')}</span>
+                                                </div>
+                                            </div>
+                                            <a href="${task.attachmentUrl}" target="_blank" download class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors font-bold text-xs flex items-center gap-2 shadow w-full md:w-auto justify-center">
+                                                <i class="fa-solid fa-download"></i> تحميل / عرض
+                                            </a>
+                                        </div>` : ''}
+
                                         <div class="text-xs font-bold text-[#002d74] dark:text-secondary mb-2 flex items-center gap-2 border-b dark:border-gray-700 pb-1 w-max"><i class="fa-solid fa-list-check"></i> قائمة التحقق المطلوبة:</div>
                                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 pb-2">
                                             ${checklistsHtml}
