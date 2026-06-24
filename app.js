@@ -232,11 +232,10 @@ function formatDurationArabic(ms) {
         document.addEventListener("DOMContentLoaded", () => {
             applyLanguageToDOM();
             
-            flatpickr("#taskDeadline", {
+            if (typeof flatpickr !== 'undefined') {
+                flatpickr("#taskDeadline", {
                     enableTime: true,
-                    altInput: true,
-                    altFormat: "Y-m-d h:i K",
-                    dateFormat: "Z", 
+                    dateFormat: "Y-m-d h:i K", 
                     time_24hr: false,
                     locale: "ar",
                     minDate: "today",
@@ -7461,18 +7460,6 @@ window.markNoticeRead = (id) => {
                                     <div class="border-r-4 border-[#00839b] pr-4 my-2">
                                         ${hasDescription ? `<div class="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed bg-white dark:bg-gray-800 p-3 rounded-lg border dark:border-gray-700 shadow-sm">${escapeHTML(task.desc)}</div>` : ''}
                                         
-                                        ${task.attachmentUrl ? `
-                                        <div class="mb-4 bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800 shadow-sm flex items-center justify-between">
-                                            <div class="flex items-center gap-2">
-                                                <i class="fa-solid fa-paperclip text-blue-500 text-lg"></i>
-                                                <span class="text-sm font-bold text-blue-800 dark:text-blue-300">${escapeHTML(task.attachmentName || 'ملف مرفق')}</span>
-                                            </div>
-                                            <a href="${task.attachmentUrl}" target="_blank" download="${escapeHTML(task.attachmentName || 'file')}" class="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg shadow font-bold transition flex items-center gap-1">
-                                                <i class="fa-solid fa-download"></i> تحميل المرفق
-                                            </a>
-                                        </div>
-                                        ` : ''}
-
                                         <div class="text-xs font-bold text-[#002d74] dark:text-secondary mb-2 flex items-center gap-2 border-b dark:border-gray-700 pb-1 w-max"><i class="fa-solid fa-list-check"></i> قائمة التحقق المطلوبة:</div>
                                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 pb-2">
                                             ${checklistsHtml}
@@ -7682,42 +7669,13 @@ window.handleChecklistEnter = (e) => {
             window.renderCreationChecklists();
         };
 
-        window.selectedTaskAssignees = []; // مصفوفة لتخزين الموظفين المختارين
-
-        // دالة لرسم الموظفين كـ Tags
-        window.renderTaskAssigneesTags = () => {
-            const container = document.getElementById('taskAssigneeSelected');
-            if (!container) return;
-            container.innerHTML = '';
-            if (window.selectedTaskAssignees.length === 0) {
-                container.innerHTML = '<span class="text-xs text-gray-400 font-bold mt-1">لم يتم اختيار أحد بعد</span>';
-                return;
-            }
-            window.selectedTaskAssignees.forEach(emp => {
-                container.innerHTML += `
-                    <div class="flex items-center gap-1 bg-[#00839b]/10 border border-[#00839b]/30 text-[#002d74] dark:text-white px-2 py-1 rounded-full shadow-sm transition">
-                        <img src="${emp.photo}" class="w-5 h-5 rounded-full object-cover">
-                        <span class="text-xs font-bold">${escapeHTML(emp.name)}</span>
-                        <button type="button" class="text-red-500 hover:text-red-700 cursor-pointer ml-1 outline-none" onclick="event.stopPropagation(); window.removeTaskAssignee('${emp.uid}')">
-                            <i class="fa-solid fa-xmark"></i>
-                        </button>
-                    </div>
-                `;
-            });
-        };
-
-        window.removeTaskAssignee = (uid) => {
-            window.selectedTaskAssignees = window.selectedTaskAssignees.filter(emp => emp.uid !== uid);
-            window.renderTaskAssigneesTags();
-        };
-
+        // دالة لاختيار الموظف من القائمة الخرافية
         window.selectTaskAssigneeUI = (uid, name, photo) => {
-            // التحقق من أن الموظف لم يتم اختياره مسبقاً
-            if (!window.selectedTaskAssignees.find(emp => emp.uid === uid)) {
-                window.selectedTaskAssignees.push({ uid, name, photo });
-                window.renderTaskAssigneesTags();
-            }
-            // أغلقنا القائمة بعد الاختيار، يمكنك إزالة السطر التالي إذا أردت إبقاءها مفتوحة لتحديد سريع
+            document.getElementById('taskAssignee').value = uid;
+            document.getElementById('taskAssigneeSelected').innerHTML = `
+                <img src="${photo}" class="w-6 h-6 rounded-full object-cover shadow-sm">
+                <span class="text-sm font-bold text-gray-800 dark:text-white">${escapeHTML(name)}</span>
+            `;
             document.getElementById('taskAssigneeDropdown').classList.remove('open');
         };
 
@@ -7742,8 +7700,8 @@ window.handleChecklistEnter = (e) => {
             const isCEO = currentUserData.role === 'CEO';
             const canAssign = currentUserData.permissions && currentUserData.permissions.canAssignTasks;
 
-            window.selectedTaskAssignees = [];
-            window.renderTaskAssigneesTags();
+            document.getElementById('taskAssigneeSelected').innerHTML = `<span class="text-sm font-bold text-gray-700 dark:text-gray-200">-- اختر موظف --</span>`;
+            document.getElementById('taskAssignee').value = '';
 
             if (isCEO || canAssign) {
                 globalUsers.forEach(emp => {
@@ -7842,12 +7800,9 @@ window.handleChecklistEnter = (e) => {
 
                 const title = document.getElementById('taskTitle').value.trim();
                 const desc = document.getElementById('taskDesc').value.trim();
-                if (window.selectedTaskAssignees.length === 0) {
-                    showToast('يرجى اختيار موظف واحد على الأقل', 'warning');
-                    btn.disabled = false;
-                    btn.innerHTML = 'إنشاء';
-                    return;
-                }
+                const assigneeId = document.getElementById('taskAssignee').value;
+                const assigneeNameEl = document.querySelector('#taskAssigneeSelected span');
+                const assigneeName = assigneeNameEl ? assigneeNameEl.innerText : 'غير محدد';
                 const deadlineVal = document.getElementById('taskDeadline').value;
                 const isHighPriority = document.getElementById('isTaskHighPriority').value === 'true';
 
@@ -7886,24 +7841,18 @@ window.handleChecklistEnter = (e) => {
                         attachmentName: fileName
                     };
 
-                    // إنشاء نسخة من المهمة لكل موظف تم تحديده
-                    for (const assignee of window.selectedTaskAssignees) {
-                        const taskCopy = { ...newTaskData };
-                        taskCopy.assigneeId = assignee.uid;
-                        taskCopy.assigneeName = assignee.name;
-                        await addDoc(getColRef('tasks'), taskCopy);
+                    await addDoc(getColRef('tasks'), newTaskData);
 
-                        // إرسال الإشعار
-                        if (assignee.uid !== currentUserData.uid) {
-                            const notifTitle = isHighPriority ? '🔥 مهمة أولوية قصوى!' : 'مهمة جديدة';
-                            const notifBody = isHighPriority ? `عاجل جداً: تم إسناد مهمة جديدة بأولوية قصوى لك: ${title}` : `تم إسناد مهمة جديدة لك: ${title}`;
-                            window.sendSystemNotification(assignee.uid, notifTitle, notifBody, 'tasks', 'tasks');
-                        }
-                    }
-
-                    showToast('تم إسناد المهمة للموظفين بنجاح', 'success');
+                    showToast('تم إسناد المهمة بنجاح', 'success');
                     window.closeModal('taskModal');
                     window.clearTaskAttachment();
+                    
+                    // إرسال إشعار للموظف المستلم بناءً على الأولوية
+                    if (assigneeId !== currentUserData.uid) {
+                        const notifTitle = isHighPriority ? '🔥 مهمة أولوية قصوى!' : 'مهمة جديدة';
+                        const notifBody = isHighPriority ? `عاجل جداً: تم إسناد مهمة جديدة بأولوية قصوى لك: ${title}` : `تم إسناد مهمة جديدة لك: ${title}`;
+                        window.sendSystemNotification(assigneeId, notifTitle, notifBody, 'tasks', 'tasks');
+                    }
 
                     window.logAction('المهام', `قام بإنشاء مهمة جديدة: ${title}`);
 
