@@ -7874,18 +7874,24 @@ window.handleChecklistEnter = (e) => {
                         attachmentName: fileName
                     };
 
-                    await addDoc(getColRef('tasks'), newTaskData);
+                    // إنشاء نسخة من المهمة لكل موظف تم تحديده
+                    for (const assignee of window.selectedTaskAssignees) {
+                        const taskCopy = { ...newTaskData };
+                        taskCopy.assigneeId = assignee.uid;
+                        taskCopy.assigneeName = assignee.name;
+                        await addDoc(getColRef('tasks'), taskCopy);
 
-                    showToast('تم إسناد المهمة بنجاح', 'success');
+                        // إرسال الإشعار
+                        if (assignee.uid !== currentUserData.uid) {
+                            const notifTitle = isHighPriority ? '🔥 مهمة أولوية قصوى!' : 'مهمة جديدة';
+                            const notifBody = isHighPriority ? `عاجل جداً: تم إسناد مهمة جديدة بأولوية قصوى لك: ${title}` : `تم إسناد مهمة جديدة لك: ${title}`;
+                            window.sendSystemNotification(assignee.uid, notifTitle, notifBody, 'tasks', 'tasks');
+                        }
+                    }
+
+                    showToast('تم إسناد المهمة للموظفين بنجاح', 'success');
                     window.closeModal('taskModal');
                     window.clearTaskAttachment();
-                    
-                    // إرسال إشعار للموظف المستلم بناءً على الأولوية
-                    if (assigneeId !== currentUserData.uid) {
-                        const notifTitle = isHighPriority ? '🔥 مهمة أولوية قصوى!' : 'مهمة جديدة';
-                        const notifBody = isHighPriority ? `عاجل جداً: تم إسناد مهمة جديدة بأولوية قصوى لك: ${title}` : `تم إسناد مهمة جديدة لك: ${title}`;
-                        window.sendSystemNotification(assigneeId, notifTitle, notifBody, 'tasks', 'tasks');
-                    }
 
                     window.logAction('المهام', `قام بإنشاء مهمة جديدة: ${title}`);
 
