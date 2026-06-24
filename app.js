@@ -7837,49 +7837,59 @@ window.handleChecklistEnter = (e) => {
                     deadlineTimestamp = new Date(deadlineVal).getTime();
                 }
 
+                if (window.selectedTaskAssignees.length === 0) {
+                    showToast('يرجى اختيار موظف واحد على الأقل من القائمة', 'warning');
+                    btn.disabled = false;
+                    btn.innerHTML = 'إنشاء';
+                    return;
+                }
+
                 try {
                     let fileUrl = null;
                     let fileType = null;
                     let fileName = null;
 
                     if (currentTaskFile) {
-                        showToast('جاري رفع المرفق...', 'info');
+                        showToast('جاري رفع المرفق لخوادم النظام...', 'info');
                         fileUrl = await window.uploadToFirebase(currentTaskFile, 'tasks_attachments');
                         fileType = currentTaskFile.type;
                         fileName = currentTaskFile.name;
                     }
 
-                    const newTaskData = {
-                        title: title,
-                        desc: desc,
-                        assigneeId: assigneeId,
-                        assigneeName: assigneeName,
-                        createdBy: currentUserData.uid,
-                        creatorName: currentUserData.name,
-                        deadline: deadlineTimestamp,
-                        isHighPriority: isHighPriority,
-                        checklists: creationChecklists || [],
-                        status: 'pending',
-                        timestamp: Date.now(),
-                        orderIndex: globalTasks.length,
-                        attachmentUrl: fileUrl,
-                        attachmentType: fileType,
-                        attachmentName: fileName
-                    };
+                    // إنشاء مهمة منفصلة لكل موظف تم تحديده ليعمل عليها بشكل مستقل
+                    await Promise.all(window.selectedTaskAssignees.map(async (assignee) => {
+                        const newTaskData = {
+                            title: title,
+                            desc: desc,
+                            assigneeId: assignee.uid,
+                            assigneeName: assignee.name,
+                            createdBy: currentUserData.uid,
+                            creatorName: currentUserData.name,
+                            deadline: deadlineTimestamp,
+                            isHighPriority: isHighPriority,
+                            checklists: creationChecklists || [],
+                            status: 'pending',
+                            timestamp: Date.now(),
+                            orderIndex: globalTasks.length,
+                            attachmentUrl: fileUrl,
+                            attachmentType: fileType,
+                            attachmentName: fileName
+                        };
 
-                    await addDoc(getColRef('tasks'), newTaskData);
+                        await addDoc(getColRef('tasks'), newTaskData);
 
-                    showToast('تم إسناد المهمة بنجاح', 'success');
+                        // إرسال الإشعارات
+                        if (assignee.uid !== currentUserData.uid) {
+                            const notifTitle = isHighPriority ? '🔥 مهمة أولوية قصوى!' : 'مهمة جديدة';
+                            const notifBody = isHighPriority ? `عاجل جداً: تم إسناد مهمة جديدة بأولوية قصوى لك: ${title}` : `تم إسناد مهمة جديدة لك: ${title}`;
+                            window.sendSystemNotification(assignee.uid, notifTitle, notifBody, 'tasks', 'tasks');
+                        }
+                    }));
+
+                    showToast('تم إسناد المهمة للموظفين بنجاح', 'success');
                     window.closeModal('taskModal');
                     window.clearTaskAttachment();
                     
-                    // إرسال إشعار للموظف المستلم بناءً على الأولوية
-                    if (assigneeId !== currentUserData.uid) {
-                        const notifTitle = isHighPriority ? '🔥 مهمة أولوية قصوى!' : 'مهمة جديدة';
-                        const notifBody = isHighPriority ? `عاجل جداً: تم إسناد مهمة جديدة بأولوية قصوى لك: ${title}` : `تم إسناد مهمة جديدة لك: ${title}`;
-                        window.sendSystemNotification(assigneeId, notifTitle, notifBody, 'tasks', 'tasks');
-                    }
-
                     window.logAction('المهام', `قام بإنشاء مهمة جديدة: ${title}`);
 
                 } catch (error) {
