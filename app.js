@@ -7846,8 +7846,10 @@ window.handleChecklistEnter = (e) => {
                 const deadlineVal = document.getElementById('taskDeadline').value;
                 const isHighPriority = document.getElementById('isTaskHighPriority').value === 'true';
 
-                let deadlineTimestamp = null;
-                if (deadlineVal) {
+               let deadlineTimestamp = null;
+                if (document.getElementById('taskDeadline')._flatpickr && document.getElementById('taskDeadline')._flatpickr.selectedDates[0]) {
+                    deadlineTimestamp = document.getElementById('taskDeadline')._flatpickr.selectedDates[0].getTime();
+                } else if (deadlineVal) {
                     deadlineTimestamp = new Date(deadlineVal).getTime();
                 }
 
@@ -7863,6 +7865,7 @@ window.handleChecklistEnter = (e) => {
                     let fileType = null;
                     let fileName = null;
 
+                    // الرفع الحقيقي للـ Storage
                     if (currentTaskFile) {
                         showToast('جاري رفع المرفق لخوادم النظام...', 'info');
                         fileUrl = await window.uploadToFirebase(currentTaskFile, 'tasks_attachments');
@@ -7870,7 +7873,7 @@ window.handleChecklistEnter = (e) => {
                         fileName = currentTaskFile.name;
                     }
 
-                    // إنشاء مهمة منفصلة لكل موظف تم تحديده ليعمل عليها بشكل مستقل
+                    // إنشاء مهمة منفصلة لكل موظف تم تحديده
                     await Promise.all(window.selectedTaskAssignees.map(async (assignee) => {
                         const newTaskData = {
                             title: title,
@@ -7892,7 +7895,6 @@ window.handleChecklistEnter = (e) => {
 
                         await addDoc(getColRef('tasks'), newTaskData);
 
-                        // إرسال الإشعارات
                         if (assignee.uid !== currentUserData.uid) {
                             const notifTitle = isHighPriority ? '🔥 مهمة أولوية قصوى!' : 'مهمة جديدة';
                             const notifBody = isHighPriority ? `عاجل جداً: تم إسناد مهمة جديدة بأولوية قصوى لك: ${title}` : `تم إسناد مهمة جديدة لك: ${title}`;
@@ -7900,10 +7902,9 @@ window.handleChecklistEnter = (e) => {
                         }
                     }));
 
-                    showToast('تم إسناد المهمة للموظفين بنجاح', 'success');
+                    showToast('تم إسناد المهمة وحفظ المرفقات بنجاح', 'success');
                     window.closeModal('taskModal');
                     window.clearTaskAttachment();
-                    
                     window.logAction('المهام', `قام بإنشاء مهمة جديدة: ${title}`);
 
                 } catch (error) {
@@ -7914,7 +7915,7 @@ window.handleChecklistEnter = (e) => {
                     btn.innerHTML = 'إنشاء';
                 }
             });
-        }
+        } 
 
         window.filterTasksList = () => {
             const query = document.getElementById('taskSearchInput').value.toLowerCase();
