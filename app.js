@@ -4468,7 +4468,7 @@ async function autoDeleteOldAttendance() {
             jitsiApi = new JitsiMeetExternalAPI(domain, options);
             logMeetingEvent(meetingId, 'joined');
 
-            if (currentUserData.role === 'CEO') {
+            if (window.isSuperAdmin()) {
                 const meeting = globalMeetings.find(m => m.id === meetingId);
                 if (meeting && meeting.status === 'scheduled') {
                     updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'meetings', meetingId), { status: 'active', startedAt: Date.now() });
@@ -7125,7 +7125,7 @@ window.renderNotices = () => {
 };
 
 window.markNoticeRead = (id) => {
-    if (currentUserData.role === 'CEO') return;
+    if (window.isSuperAdmin()) return;
     if (!groupReadTimestamps[`notice_${id}`]) {
         groupReadTimestamps[`notice_${id}`] = Date.now();
         updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), {
