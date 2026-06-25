@@ -4300,7 +4300,7 @@ async function autoDeleteOldAttendance() {
                 
                 if(empFilterSelect && empFilterSelect.options.length <= 1 && globalUsers.length > 0) {
                     globalUsers.forEach(u => {
-                        if(u.role !== 'CEO') empFilterSelect.innerHTML += `<option value="${u.uid}">${u.name}</option>`;
+                        if(u.role !== 'CEO' && u.role !== 'مطور' && u.role !== 'Developer') empFilterSelect.innerHTML += `<option value="${u.uid}">${u.name}</option>`;
                     });
                 }
             } else {
@@ -4682,7 +4682,7 @@ async function autoDeleteOldAttendance() {
 
             if (isManager && empFilterSelect && empFilterSelect.options.length <= 1) {
                 globalUsers.forEach(u => {
-                    if(u.role !== 'CEO') empFilterSelect.innerHTML += `<option value="${u.uid}">${escapeHTML(u.name)}</option>`;
+                    if(u.role !== 'CEO' && u.role !== 'مطور' && u.role !== 'Developer') empFilterSelect.innerHTML += `<option value="${u.uid}">${escapeHTML(u.name)}</option>`;
                 });
             }
 
@@ -5926,7 +5926,7 @@ async function autoDeleteOldAttendance() {
                 if(select2) {
                     select2.innerHTML = '<option value="">-- عرض الجميع --</option>';
                     globalUsers.forEach(u => { 
-                        if (u.role !== 'CEO') {
+                        if (u.role !== 'CEO' && u.role !== 'مطور' && u.role !== 'Developer') {
                             // إخفاء الموظف عن نفسه في القائمة (ما عدا المدير CEO)
                             if (currentUserData.role !== 'CEO' && u.uid === currentUserData.uid) return;
                             select2.innerHTML += `<option value="${u.uid}">${escapeHTML(u.name)}</option>`; 
@@ -5937,7 +5937,7 @@ async function autoDeleteOldAttendance() {
                 const select3 = document.getElementById('custodyEmpSelect');
                 if(select3) {
                     select3.innerHTML = '<option value="" disabled selected>-- اختر الموظف --</option>';
-                    globalUsers.forEach(u => { if (u.role !== 'CEO') select3.innerHTML += `<option value="${u.uid}">${escapeHTML(u.name)}</option>`; });
+                    globalUsers.forEach(u => { if (u.role !== 'CEO' && u.role !== 'مطور' && u.role !== 'Developer') select3.innerHTML += `<option value="${u.uid}">${escapeHTML(u.name)}</option>`; });
                 }
 
                 if(window.location.hash === '#trainees') window.renderTrainees();
@@ -7295,7 +7295,7 @@ window.markNoticeRead = (id) => {
                 // التغيير هنا: عرض الجميع بدلاً من عرض المهام بانتظار الاعتماد فقط
                 select.innerHTML = '<option value="all">-- عرض الجميع --</option>';
                 globalUsers.forEach(u => {
-                    if(u.role !== 'CEO' && u.status !== 'pending' && u.status !== 'rejected') {
+                    if((u.role !== 'CEO' && u.role !== 'مطور' && u.role !== 'Developer')' && u.status !== 'pending' && u.status !== 'rejected') {
                         select.innerHTML += `<option value="${u.uid}">${escapeHTML(u.name)}</option>`;
                     }
                 });
@@ -8267,7 +8267,7 @@ window.handleChecklistEnter = (e) => {
             const select = document.getElementById('newCustodyEmp');
             select.innerHTML = '<option value="" disabled selected>-- اختر الموظف --</option>';
             globalUsers.forEach(u => {
-                if(u.role !== 'CEO') select.innerHTML += `<option value="${u.uid}">${escapeHTML(u.name)}</option>`;
+                if(u.role !== 'CEO' && u.role !== 'مطور' && u.role !== 'Developer') select.innerHTML += `<option value="${u.uid}">${escapeHTML(u.name)}</option>`;
             });
             window.openModal('addCustodyModal');
         };
