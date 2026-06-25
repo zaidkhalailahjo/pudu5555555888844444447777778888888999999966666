@@ -8083,10 +8083,22 @@ window.handleChecklistEnter = (e) => {
 
         window.deleteTask = async (id) => {
             if(currentUserData.role !== 'CEO' && !globalTasks.find(t => t.id === id && t.createdBy === currentUserData.uid)) return;
-            if(confirm('حذف هذه المهمة نهائياً؟')) {
+            
+            document.getElementById('customConfirmMessage').innerText = 'هل أنت متأكد من حذف هذه المهمة نهائياً؟ لا يمكن التراجع عن هذا الإجراء.';
+            const modal = document.getElementById('customConfirmModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            // حركة لتكبير المودال بنعومة
+            setTimeout(() => modal.querySelector('div').classList.replace('scale-95', 'scale-100'), 10);
+
+            document.getElementById('customConfirmActionBtn').onclick = async () => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                modal.querySelector('div').classList.replace('scale-100', 'scale-95');
                 const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
                 await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', id)).catch(e => console.error(e));
-            }
+                showToast('تم حذف المهمة بنجاح', 'success');
+            };
         };
 
         window.toggleCeoReportsInline = () => {
