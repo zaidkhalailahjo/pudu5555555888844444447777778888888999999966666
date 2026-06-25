@@ -301,7 +301,7 @@ function formatDurationArabic(ms) {
                     document.getElementById('userRole').innerText = currentUserData.role === 'pending' ? (currentUserData.requestedRole || 'قيد الانتظار') : currentUserData.role;
                     document.getElementById('userAvatar').src = currentUserData.photoURL;
                     
-                    if(currentUserData.role === 'CEO' || currentUserData.role === 'مطور' || currentUserData.role === 'Developer') {
+                    if(window.isAdmin() || currentUserData.role === 'مطور' || currentUserData.role === 'Developer') {
                         document.getElementById('createMeetingBtn').classList.remove('hidden');
                         document.getElementById('ceoAttendanceView').classList.remove('hidden');
                         document.getElementById('ceoExportSection').classList.remove('hidden');
@@ -526,7 +526,7 @@ function formatDurationArabic(ms) {
             if(activeBtn) activeBtn.className = "whitespace-nowrap py-2 px-4 font-bold text-sm border-b-2 border-green-600 text-green-600 flex items-center gap-2 transition";
             
             const perms = currentUserData.permissions || {};
-            const isCEO = (currentUserData.role === 'CEO' || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
+            const isCEO = (window.isAdmin() || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
             const canManage = isCEO || perms.canManageClients;
             const canAddCon = isCEO || perms.canAddContracts;
 
@@ -549,7 +549,7 @@ function formatDurationArabic(ms) {
 
         window.renderClientsTab = () => {
             const perms = currentUserData.permissions || {};
-            const isCEO = (currentUserData.role === 'CEO' || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
+            const isCEO = (window.isAdmin() || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
             const canViewContracts = isCEO || perms.canViewContracts;
 
             // إخفاء تبويب "العملاء الموقعين" إذا لم يكن لديه صلاحية
@@ -572,7 +572,7 @@ function formatDurationArabic(ms) {
                 const now = Date.now();
                 // فلترة الزيارات لتظهر فقط الزيارات الخاصة بالموظف (إلا إذا كان مديراً)
                 let visitsToShow = globalVisits.filter(v => {
-                    const isMyVisit = currentUserData.role === 'CEO' || (v.assignedUsers && v.assignedUsers.includes(currentUserData.uid));
+                    const isMyVisit = window.isAdmin() || (v.assignedUsers && v.assignedUsers.includes(currentUserData.uid));
                     if (!isMyVisit) return false;
 
                     if(currentClientsTab === 'upcoming') return !v.completed; 
@@ -610,7 +610,7 @@ function formatDurationArabic(ms) {
 
                     let actionBtns = '';
                     const isTimePassed = v.dateTime <= Date.now();
-                    const isAssignedOrCEO = currentUserData.role === 'CEO' || (v.assignedUsers && v.assignedUsers.includes(currentUserData.uid));
+                    const isAssignedOrCEO = window.isAdmin() || (v.assignedUsers && v.assignedUsers.includes(currentUserData.uid));
 
                     if (!v.completed && isTimePassed) {
                         if (isAssignedOrCEO) {
@@ -1508,7 +1508,7 @@ window.addClientRobotRow = (name='', serial='', date='', hasWarranty=false, warr
             }
 
             const now = Date.now();
-            const isCEO = (currentUserData.role === 'CEO' || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
+            const isCEO = (window.isAdmin() || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
 
             signedClients.forEach(c => {
                 const logoHtml = c.logo ? `<img src="${c.logo}" class="w-10 h-10 rounded-full object-cover border border-gray-200 bg-white">` : `<div class="w-10 h-10 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center text-lg"><i class="fa-solid fa-building"></i></div>`;
@@ -1667,7 +1667,7 @@ window.addClientRobotRow = (name='', serial='', date='', hasWarranty=false, warr
             updateSearchBadge('robotsSearchCount', robots.length, searchTerm);
 
             // الصلاحية
-            const isCEO = (currentUserData.role === 'CEO' || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
+            const isCEO = (window.isAdmin() || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
             const canManageRobots = isCEO || (currentUserData.permissions && currentUserData.permissions.permManageRobots);
             
             // إخفاء الأزرار العلوية لإضافة الروبوتات
@@ -1722,7 +1722,7 @@ window.addClientRobotRow = (name='', serial='', date='', hasWarranty=false, warr
             updateSearchBadge('robotsSearchCount', robots.length, searchTerm);
 
             // الصلاحية
-            const isCEO = (currentUserData.role === 'CEO' || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
+            const isCEO = (window.isAdmin() || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
             const canManageRobots = isCEO || (currentUserData.permissions && currentUserData.permissions.permManageRobots);
             
             // إخفاء الأزرار العلوية لإضافة الروبوتات
@@ -1991,7 +1991,7 @@ document.getElementById('rentalForm').addEventListener('submit', async (e) => {
                 if(uncompletedVisit) {
                     const isTimePassed = uncompletedVisit.dateTime <= Date.now();
                     const isAssigned = uncompletedVisit.assignedUsers && uncompletedVisit.assignedUsers.includes(currentUserData.uid);
-                    const isCEO = (currentUserData.role === 'CEO' || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
+                    const isCEO = (window.isAdmin() || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
                     
                     if (isTimePassed) {
                         if (isAssigned || isCEO) {
@@ -2041,8 +2041,8 @@ document.getElementById('rentalForm').addEventListener('submit', async (e) => {
                             ${c.notes ? `<p class="text-[10px] text-gray-500 mt-2 p-2 bg-gray-50 dark:bg-gray-900 rounded">${escapeHTML(c.notes)}</p>` : ''}
                         </div>
                         <div class="pt-3 border-t dark:border-gray-700 flex gap-2 mt-auto">
-                            ${(currentUserData.role === 'CEO' || (currentUserData.permissions && currentUserData.permissions.canManageClients)) ? `<button onclick="window.openAddClientModal('${c.id}')" class="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs py-1.5 rounded font-bold transition"><i class="fa-solid fa-pen mx-1"></i> تعديل</button>` : '<span class="text-xs text-gray-400 font-bold mx-auto">لا تملك صلاحية التعديل</span>'}
-                            ${currentUserData.role === 'CEO' ? `<button onclick="window.deleteClient('${c.id}', '${escapeHTML(c.name.replace(/'/g, "\\'"))}')" class="flex-1 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-600 text-xs py-1.5 rounded font-bold transition border border-red-200 dark:border-red-800"><i class="fa-solid fa-trash mx-1"></i> حذف</button>` : ''}
+                            ${(window.isAdmin() || (currentUserData.permissions && currentUserData.permissions.canManageClients)) ? `<button onclick="window.openAddClientModal('${c.id}')" class="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs py-1.5 rounded font-bold transition"><i class="fa-solid fa-pen mx-1"></i> تعديل</button>` : '<span class="text-xs text-gray-400 font-bold mx-auto">لا تملك صلاحية التعديل</span>'}
+                            ${window.isAdmin() ? `<button onclick="window.deleteClient('${c.id}', '${escapeHTML(c.name.replace(/'/g, "\\'"))}')" class="flex-1 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-600 text-xs py-1.5 rounded font-bold transition border border-red-200 dark:border-red-800"><i class="fa-solid fa-trash mx-1"></i> حذف</button>` : ''}
                         </div>
                     </div>
                 `;
@@ -3255,7 +3255,7 @@ window.verifyOTP = async () => {
             pinnedContainer.innerHTML = '';
             breadcrumbs.innerHTML = '';
             
-            const isCEO = currentUserData && currentUserData.role === 'CEO';
+            const isCEO = currentUserData && window.isAdmin();
 
             if (folderHistory.length > 1) {
                 breadcrumbs.innerHTML += `<button onclick="window.navigateBackFolder()" class="text-xs bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 px-3 py-1 rounded-lg hover:bg-indigo-200 transition flex items-center gap-1 font-bold ml-2 shadow-sm"><i class="fa-solid fa-arrow-right"></i> رجوع للخلف</button>`;
@@ -3827,7 +3827,7 @@ function buildAttendanceRow(emp, record, showDate = false) {
         pOut = record.punchOut ? new Date(record.punchOut).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'}) : '<span class="text-gray-400">-</span>';
 
         if (record.reEntries && record.reEntries.length > 0) {
-            const isManager = currentUserData && currentUserData.role === 'CEO';
+            const isManager = currentUserData && window.isAdmin();
             record.reEntries.forEach((re, idx) => {
                 const reTime = new Date(re.time).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
                 
@@ -4050,7 +4050,7 @@ async function autoDeleteOldAttendance() {
         };
 
         window.saveEmpBalance = async () => {
-            const hasLeavePerm = currentUserData.role === 'CEO' || (currentUserData.permissions && currentUserData.permissions.canManageLeaves);
+            const hasLeavePerm = window.isAdmin() || (currentUserData.permissions && currentUserData.permissions.canManageLeaves);
             if(!hasLeavePerm) return;
             
             const empId = document.getElementById('balanceEmpSelect').value;
@@ -4265,7 +4265,7 @@ async function autoDeleteOldAttendance() {
                     chatBox.scrollTop = chatBox.scrollHeight;
                 }, 50);
 
-                const targetUid = (currentUserData.role === 'CEO') ? leave.uid : globalUsers.find(u => u.role === 'CEO')?.uid;
+                const targetUid = (window.isAdmin()) ? leave.uid : globalUsers.find(u => u.role === 'CEO')?.uid;
                 if(targetUid) {
                     window.sendSystemNotification(targetUid, 'رسالة جديدة في الطلب', `أرسل ${currentUserData.name} تعليقاً على طلب الإجازة.`, 'leaves', 'leaves');
                 }
@@ -4276,7 +4276,7 @@ async function autoDeleteOldAttendance() {
             const list = document.getElementById('leavesList');
             const searchTerm = document.getElementById('searchLeaves')?.value.toLowerCase() || '';
             list.innerHTML = '';
-            const isCEO = currentUserData && (currentUserData.role === 'CEO' || (currentUserData.permissions && currentUserData.permissions.canManageLeaves));
+            const isCEO = currentUserData && (window.isAdmin() || (currentUserData.permissions && currentUserData.permissions.canManageLeaves));
             
             let pendingCount = 0;
             globalLeaves.forEach(l => { if(l.status === 'pending') pendingCount++; });
@@ -4350,7 +4350,7 @@ async function autoDeleteOldAttendance() {
                 let actionHtml = '';
                 const isMyOwnLeave = l.uid === currentUserData.uid;
                 // السماح للمدير التنفيذي بقبول كل شيء، أما من يملك الصلاحية (مثل الـ HR) فيمكنه قبول إجازات الجميع باستثناء إجازته هو
-                const canApproveThisLeave = currentUserData.role === 'CEO' || ((currentUserData.permissions && currentUserData.permissions.canManageLeaves) && !isMyOwnLeave);
+                const canApproveThisLeave = window.isAdmin() || ((currentUserData.permissions && currentUserData.permissions.canManageLeaves) && !isMyOwnLeave);
 
                 if(canApproveThisLeave) {
                     if(l.status === 'pending') {
@@ -4510,12 +4510,12 @@ async function autoDeleteOldAttendance() {
             activeList.innerHTML = '';let hasPast = false, hasActive = false;
 
             globalMeetings.forEach(meeting => {
-                const isInvited = meeting.invitedUsers.includes(currentUserData.uid) || currentUserData.role === 'CEO';
+                const isInvited = meeting.invitedUsers.includes(currentUserData.uid) || window.isAdmin();
                 if(!isInvited) return;
                 
                 if(!meeting.title.toLowerCase().includes(searchTerm)) return;
 
-                const isCEO = (currentUserData.role === 'CEO' || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
+                const isCEO = (window.isAdmin() || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
                 let timeStr = meeting.scheduledFor ? new Date(meeting.scheduledFor).toLocaleString('ar-EG') : 'الآن';
                 
                 if (meeting.status === 'scheduled' || meeting.status === 'active') {
@@ -4655,7 +4655,7 @@ async function autoDeleteOldAttendance() {
             const exp = globalExpenses.find(e => e.id === id);
             if(!exp) return;
             
-            const isManager = currentUserData.role === 'CEO' || currentUserData.role === 'accountant' || (currentUserData.permissions && currentUserData.permissions.canManageExpenses);
+            const isManager = window.isAdmin() || currentUserData.role === 'accountant' || (currentUserData.permissions && currentUserData.permissions.canManageExpenses);
             
             if(!isManager && exp.uid !== currentUserData.uid) {
                 showToast('لا تملك صلاحية لحذف هذا المصروف', 'error');
@@ -4673,7 +4673,7 @@ async function autoDeleteOldAttendance() {
             const list = document.getElementById('expensesList');
             if(!list) return;
             
-            const isManager = currentUserData.role === 'CEO' || currentUserData.role === 'accountant' || (currentUserData.permissions && currentUserData.permissions.canManageExpenses);
+            const isManager = window.isAdmin() || currentUserData.role === 'accountant' || (currentUserData.permissions && currentUserData.permissions.canManageExpenses);
             const filterSection = document.getElementById('expensesManagerFilters');
             const empFilterSelect = document.getElementById('filterExpEmp');
             const dateFilterInput = document.getElementById('filterExpDate');
@@ -5020,7 +5020,7 @@ async function autoDeleteOldAttendance() {
             if(!activeCont || !pastCont) return;
 
             // تحديد الصلاحية
-            const isCEO = (currentUserData.role === 'CEO' || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
+            const isCEO = (window.isAdmin() || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
             const canManageInv = isCEO || (currentUserData.permissions && currentUserData.permissions.permManageInventory);
 
             // إخفاء الأزرار العلوية إذا لم تكن لديه صلاحية
@@ -5572,7 +5572,7 @@ async function autoDeleteOldAttendance() {
                     }
 
                     // CEO can delete
-                    const deleteBtnHtml = currentUserData.role === 'CEO' ? `<button onclick="window.deleteTrainee('${t.id}')" class="text-red-500 hover:text-red-700 p-1 transition ml-1"><i class="fa-solid fa-trash"></i></button>` : '';
+                    const deleteBtnHtml = window.isAdmin() ? `<button onclick="window.deleteTrainee('${t.id}')" class="text-red-500 hover:text-red-700 p-1 transition ml-1"><i class="fa-solid fa-trash"></i></button>` : '';
                     
                     // Evaluation Stars
                     const evalStars = (t.evaluation !== undefined) ? generateStarsHtml(t.evaluation) : '<span class="text-[10px] text-gray-400">لا يوجد تقييم</span>';
@@ -5789,7 +5789,7 @@ async function autoDeleteOldAttendance() {
     if(sectionId === 'notices') window.renderNotices();
     if(sectionId === 'attendance') {
         window.renderEmpAttendanceView();
-        if(currentUserData.role === 'CEO' || currentUserData.role === 'مطور' || currentUserData.role === 'Developer') window.renderSelectedEmpAttendance();
+        if(window.isAdmin() || currentUserData.role === 'مطور' || currentUserData.role === 'Developer') window.renderSelectedEmpAttendance();
         else window.renderMyAttendanceHistory();
     }
     
@@ -5847,7 +5847,7 @@ async function autoDeleteOldAttendance() {
             }
 
             const perms = currentUserData.permissions || {};
-            const isCEO = (currentUserData.role === 'CEO' || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
+            const isCEO = (window.isAdmin() || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
 
             // حماية الجرد
             if (hash === 'inventory' && !isCEO && !perms.permViewInventory) {
@@ -5879,7 +5879,7 @@ async function autoDeleteOldAttendance() {
                     updateNotificationBadge(currentUserData.notifications);
                     
                     // تفعيل أو تعطيل الأقسام بناءً على الصلاحيات فور وصولها
-                    const isCEO = (currentUserData.role === 'CEO' || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
+                    const isCEO = (window.isAdmin() || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
                     const isAcct = ['accountant', 'محاسب', 'مالية', 'finance'].includes((currentUserData.role || '').toLowerCase());
                     const perms = currentUserData.permissions || {};
                     
@@ -5954,7 +5954,7 @@ async function autoDeleteOldAttendance() {
                 if(window.location.hash === '#employees') window.renderAllowedEmails();
             });
 
-            const attQuery = currentUserData.role === 'CEO' ? getColRef('attendance') : query(getColRef('attendance'), where('uid', '==', currentUserData.uid));
+            const attQuery = window.isAdmin() ? getColRef('attendance') : query(getColRef('attendance'), where('uid', '==', currentUserData.uid));
             onSnapshot(attQuery, (snapshot) => {
                 window.attendanceLoadedState = true; 
                 globalAttendance = []; snapshot.forEach(d => globalAttendance.push({ id: d.id, ...d.data() }));
@@ -5973,7 +5973,7 @@ async function autoDeleteOldAttendance() {
                 // ----------------------------------------------------
                 
                 if(!document.getElementById('attendance').classList.contains('hidden')) {
-                    if(currentUserData.role === 'CEO' || currentUserData.role === 'مطور' || currentUserData.role === 'Developer') {
+                    if(window.isAdmin() || currentUserData.role === 'مطور' || currentUserData.role === 'Developer') {
                         window.renderSelectedEmpAttendance();
                     } else {
                         window.renderMyAttendanceHistory();
@@ -5981,7 +5981,7 @@ async function autoDeleteOldAttendance() {
                 }
             }, (error) => console.error(error));
 
-            const leavesQuery = currentUserData.role === 'CEO' ? getColRef('leaves') : query(getColRef('leaves'), where('uid', '==', currentUserData.uid));
+            const leavesQuery = window.isAdmin() ? getColRef('leaves') : query(getColRef('leaves'), where('uid', '==', currentUserData.uid));
             onSnapshot(leavesQuery, (snapshot) => {
                 globalLeaves = []; snapshot.forEach(d => globalLeaves.push({ id: d.id, ...d.data() }));
                 globalLeaves.sort((a,b) => b.timestamp - a.timestamp); 
@@ -6028,7 +6028,7 @@ async function autoDeleteOldAttendance() {
                 populateOldInventoryDates();
             }, (error) => console.error(error));
 
-            const custodyQuery = currentUserData.role === 'CEO' ? getColRef('custody') : query(getColRef('custody'), where('uid', '==', currentUserData.uid));
+            const custodyQuery = window.isAdmin() ? getColRef('custody') : query(getColRef('custody'), where('uid', '==', currentUserData.uid));
             onSnapshot(custodyQuery, (snapshot) => {
                 globalCustody = [];
                 let pendingSignatures = 0;
@@ -6037,7 +6037,7 @@ async function autoDeleteOldAttendance() {
                     globalCustody.push(data);
                     
                     // تحديث أرقام الإشعارات
-                    if (currentUserData.role === 'CEO' && data.status === 'signed') {
+                    if (window.isAdmin() && data.status === 'signed') {
                         pendingSignatures++; // المدير يرى التوقيعات التي بانتظار موافقته
                     } else if (currentUserData.role !== 'CEO' && data.uid === currentUserData.uid && data.status === 'pending') {
                         pendingSignatures++; // الموظف يرى العهد التي بانتظار توقيعه
@@ -6121,7 +6121,7 @@ async function autoDeleteOldAttendance() {
     <button onclick="currentGroupId='${g.id}'; document.getElementById('currentChatTitle').innerText='${escapeHTML(g.name)}'; window.cancelReply(); window.renderDiscussion();" class="flex-1 text-right flex items-center gap-2">
         <i class="fa-solid fa-users text-blue-500"></i> ${escapeHTML(g.name)}
     </button>
-    ${(g.createdBy === currentUserData.uid || currentUserData.role === 'CEO') ? `<button onclick="event.stopPropagation(); window.deleteGroup('${g.id}')" class="text-red-500 hover:text-red-700 p-1"><i class="fa-solid fa-trash"></i></button>` : ''}
+    ${(g.createdBy === currentUserData.uid || window.isAdmin()) ? `<button onclick="event.stopPropagation(); window.deleteGroup('${g.id}')" class="text-red-500 hover:text-red-700 p-1"><i class="fa-solid fa-trash"></i></button>` : ''}
 </div>
                             `;
                         }
@@ -6161,7 +6161,7 @@ async function autoDeleteOldAttendance() {
             }, (error) => console.error(error));
             
             // جلب المصاريف إذا كان الشخص مديراً، أو محاسباً، أو يمتلك صلاحية إدارة المصاريف
-            const hasExpPerm = currentUserData && (currentUserData.role === 'CEO' || currentUserData.role === 'accountant' || (currentUserData.permissions && currentUserData.permissions.canManageExpenses));
+            const hasExpPerm = currentUserData && (window.isAdmin() || currentUserData.role === 'accountant' || (currentUserData.permissions && currentUserData.permissions.canManageExpenses));
             if(hasExpPerm) {
                 onSnapshot(getColRef('expenses'), (snapshot) => {
                     globalExpenses = [];
@@ -6182,7 +6182,7 @@ onSnapshot(getColRef('tasks'), (snapshot) => {
         const taskData = { id: doc.id, ...doc.data() };
         globalTasks.push(taskData);
         
-        const isTaskManager = currentUserData.role === 'CEO' || (currentUserData.permissions && currentUserData.permissions.canAssignTasks);
+        const isTaskManager = window.isAdmin() || (currentUserData.permissions && currentUserData.permissions.canAssignTasks);
         
         // حساب مهام الموظف العادية
         if (taskData.assigneeId === currentUserData.uid && (taskData.status === 'pending' || taskData.status === 'in-progress')) {
@@ -6190,7 +6190,7 @@ onSnapshot(getColRef('tasks'), (snapshot) => {
         }
         // حساب المهام التي تنتظر موافقة المسؤول ليظهر له الإشعار
         if (isTaskManager && taskData.status === 'pending_approval') {
-            if (currentUserData.role === 'CEO' || taskData.createdBy === currentUserData.uid) {
+            if (window.isAdmin() || taskData.createdBy === currentUserData.uid) {
                 pendingTasksForMe++;
             }
         }
@@ -7018,7 +7018,7 @@ window.renderNotices = () => {
     const cont = document.getElementById('noticesContainer');
     if(!cont) return;
     cont.innerHTML = '';
-    const isCEO = (currentUserData.role === 'CEO' || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
+    const isCEO = (window.isAdmin() || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
     
     if (isCEO) document.getElementById('addNoticeBtn').classList.remove('hidden');
 
@@ -7285,7 +7285,7 @@ window.markNoticeRead = (id) => {
         mainView.classList.add('hidden');
         inlineReports.classList.remove('hidden');
         
-        const isCEO = currentUserData.role === 'CEO' || (currentUserData.permissions && currentUserData.permissions.canAssignTasks);
+        const isCEO = window.isAdmin() || (currentUserData.permissions && currentUserData.permissions.canAssignTasks);
         const select = document.getElementById('ceoReportEmpSelect');
         const selectContainer = select ? select.parentElement.parentElement : null;
         
@@ -7339,7 +7339,7 @@ window.markNoticeRead = (id) => {
         };
 
         window.renderTasks = function() {
-            const isCEO = (currentUserData.role === 'CEO' || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
+            const isCEO = (window.isAdmin() || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
             let tasksToRender = globalTasks.filter(t => {
                 const isSelfAssigned = t.assigneeId === t.createdBy;
                 if (isSelfAssigned) return t.assigneeId === currentUserData.uid; 
@@ -7737,7 +7737,7 @@ window.handleChecklistEnter = (e) => {
             const dropContainer = document.getElementById('taskAssigneeDropdown');
             dropContainer.innerHTML = '';
             
-            const isCEO = (currentUserData.role === 'CEO' || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
+            const isCEO = (window.isAdmin() || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
             const canAssign = currentUserData.permissions && currentUserData.permissions.canAssignTasks;
 
             window.selectedTaskAssignees = [];
@@ -8122,7 +8122,7 @@ window.handleChecklistEnter = (e) => {
             if (t.assigneeId === t.createdBy && t.assigneeId !== currentUserData.uid) return false;
             return t.assigneeId === empId && 
                    (t.status === 'completed' || t.status === 'pending_approval') &&
-                   (currentUserData.role === 'CEO' || t.createdBy === currentUserData.uid);
+                   (window.isAdmin() || t.createdBy === currentUserData.uid);
         });
     }
     
@@ -8182,7 +8182,7 @@ window.handleChecklistEnter = (e) => {
             if(!list) return;
             list.innerHTML = '';
             
-            const isCEO = (currentUserData.role === 'CEO' || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
+            const isCEO = (window.isAdmin() || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
             const selectedEmp = document.getElementById('custodyEmpSelect')?.value;
             
             const filtered = globalCustody.filter(c => {
@@ -8760,14 +8760,14 @@ window.handleChecklistEnter = (e) => {
 
                 // تحديد الصلاحية لإظهار زر "إضافة فعالية" في الأعلى
                 const addEventBtn = document.querySelector('button[onclick="window.openAddEventModal()"]');
-                const canManageEventsGlobal = currentUserData.role === 'CEO' || (currentUserData.permissions && currentUserData.permissions.canManageEvents);
+                const canManageEventsGlobal = window.isAdmin() || (currentUserData.permissions && currentUserData.permissions.canManageEvents);
                 if(addEventBtn) {
                     if(canManageEventsGlobal) addEventBtn.classList.remove('hidden');
                     else addEventBtn.classList.add('hidden');
                 }
 
                 // الصلاحيات (المدير أو صاحب الفعالية أو يمتلك صلاحية إدارة الفعاليات)
-                const isManager = (currentUserData.role === 'CEO') || (ev.uid === currentUserData.uid) || canManageEventsGlobal;
+                const isManager = (window.isAdmin()) || (ev.uid === currentUserData.uid) || canManageEventsGlobal;
                 let actionsHtml = '';
                 if(isManager) {
                     actionsHtml = `
@@ -9122,7 +9122,7 @@ window.handleChecklistEnter = (e) => {
             filteredUsers.forEach(u => {
                 const isCEO = u.role === 'CEO';
                 const isMe = currentUserData.uid === u.uid;
-                const amICEO = currentUserData.role === 'CEO';
+                const amICEO = window.isAdmin();
                 const ceoBadge = isCEO ? '<span class="bg-red-100 text-red-600 px-2 py-0.5 rounded text-[10px] font-bold shadow-sm">مدير النظام</span>' : '';
                 
                 // تحديد الحسابات القديمة (إذا لم تكن معتمدة ولم يكن إيميلها @quill.world)
@@ -9419,7 +9419,7 @@ window.renderDiscussion = () => {
 
         // بناء قائمة السياق (مع تمرير event.stopPropagation لمنع المشاكل)
         let menuItems = '';
-        if(isMe || currentUserData.role === 'CEO') {
+        if(isMe || window.isAdmin()) {
             menuItems += `<button onclick="event.stopPropagation(); window.chatAction('delete', '${msg.id}')" class="w-full text-right px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-red-500"><i class="fa-solid fa-trash w-4"></i> حذف</button>`;
         }
         if(msg.text) {
