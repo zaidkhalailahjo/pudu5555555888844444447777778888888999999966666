@@ -7467,12 +7467,12 @@ window.markNoticeRead = (id) => {
                                             <div class="flex items-center gap-2 text-blue-700 dark:text-blue-400">
                                                 <i class="fa-solid fa-file-arrow-down text-xl"></i>
                                                 <div class="flex flex-col">
-                                                    <span class="text-xs font-bold">مرفق مع المهمة:</span>
+                                                    <span class="text-xs font-bold">مرفق مرسل من الإدارة:</span>
                                                     <span class="text-sm font-bold truncate max-w-[200px]" dir="ltr">${escapeHTML(task.attachmentName || 'ملف مرفق')}</span>
                                                 </div>
                                             </div>
                                             <a href="${task.attachmentUrl}" target="_blank" download class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors font-bold text-xs flex items-center gap-2 shadow w-full md:w-auto justify-center">
-                                                <i class="fa-solid fa-download"></i> تحميل / عرض
+                                                <i class="fa-solid fa-download"></i> تحميل / عرض المرفق
                                             </a>
                                         </div>` : ''}
 
