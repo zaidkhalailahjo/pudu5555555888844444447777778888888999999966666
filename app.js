@@ -9235,7 +9235,7 @@ window.handleChecklistEnter = (e) => {
 
             const isMe = currentUserData.uid === uid;
             
-            if (isMe) {
+            if (isMe && currentUserData.role !== 'CEO') {
                 document.getElementById('editEmpRoleContainer').classList.add('hidden');
                 document.getElementById('editEmpPermissionsSection').classList.add('hidden');
             } else {
