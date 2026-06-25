@@ -131,7 +131,7 @@
         
         let currentUserAuth = null;
         let currentUserData = null; 
-        window.isAdmin = function() { return currentUserData && (currentUserData.role === 'CEO' || currentUserData.role === 'مطور' || currentUserData.role === 'Developer'); };
+        window.isAdmin = function() { if(!currentUserData) return false; const r = (currentUserData.role || "").toUpperCase(); return r === "CEO" || r === "مطور" || r === "DEVELOPER"; };
         let currentGeneratedOTPHash = null; 
         let otpGeneratedTime = 0;
         let otpTimerInterval = null;
@@ -1481,7 +1481,7 @@ window.addClientRobotRow = (name='', serial='', date='', hasWarranty=false, warr
         };
 
         window.acknowledgeContract = async (clientId, contractIndex) => {
-            if(currentUserData.role !== 'CEO') return;
+            if(!window.isAdmin()) return;
             const client = globalClients.find(c => c.id === clientId);
             if(!client || !client.contracts) return;
             
@@ -1946,7 +1946,7 @@ document.getElementById('rentalForm').addEventListener('submit', async (e) => {
         };
 
         window.deleteClient = async (id, name) => {
-            if (currentUserData.role !== 'CEO') return;
+            if (!window.isAdmin()) return;
             if (confirm(`هل أنت متأكد من حذف العميل (${name}) بالكامل؟\nملاحظة: سيتم فك ارتباط الروبوتات المباعة وإرجاعها للنظام كـ "مستعمل".`)) {
                 try {
                     const client = globalClients.find(c => c.id === id);
@@ -2220,7 +2220,7 @@ document.getElementById('rentalForm').addEventListener('submit', async (e) => {
         }
 
         window.exportSystemData = (format) => {
-            if(!currentUserData || currentUserData.role !== 'CEO') return;
+            if(!currentUserData || !window.isAdmin()) return;
 
             showToast('جاري تجهيز البيانات، سيتم التحميل خلال لحظات...', 'info');
 
@@ -3745,7 +3745,7 @@ window.verifyOTP = async () => {
                     if(homePunchOutContainer) homePunchOutContainer.classList.add('hidden');
     
                     // القفل الحديدي: نعتبره غير مسجل دخول لمنعه من التحرك في النظام
-                    if (currentUserData.role !== 'CEO') {
+                    if (!window.isAdmin()) {
                     hasPunchedInToday = false; 
                     lockNavigationIfNeeded();
                   }
@@ -3902,7 +3902,7 @@ function buildAttendanceRow(emp, record, showDate = false) {
         };
 
 window.saveAttendanceSettings = async () => {
-    if(currentUserData.role !== 'CEO') return;
+    if(!window.isAdmin()) return;
     const days = document.getElementById('autoDeleteAttendanceDays').value;
     try {
         await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'attendance'), { autoDeleteDays: days }, { merge: true });
@@ -3911,7 +3911,7 @@ window.saveAttendanceSettings = async () => {
 };
 
 async function autoDeleteOldAttendance() {
-    if(!currentUserData || currentUserData.role !== 'CEO') return;
+    if(!currentUserData || !window.isAdmin()) return;
     try {
         const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'attendance'));
         if(snap.exists()) {
@@ -4057,7 +4057,7 @@ async function autoDeleteOldAttendance() {
             const empId = document.getElementById('balanceEmpSelect').value;
             
             // تأمين إضافي: لا يمكن لـ HR تعديل رصيده الخاص أبداً
-            if (currentUserData.role !== 'CEO' && empId === currentUserData.uid) {
+            if (!window.isAdmin() && empId === currentUserData.uid) {
                 showToast('لا يمكنك تعديل رصيد إجازاتك الخاصة!', 'error');
                 return;
             }
@@ -4136,7 +4136,7 @@ async function autoDeleteOldAttendance() {
         });
 
         window.updateLeaveStatus = async (id, newStatus) => {
-            if(currentUserData.role !== 'CEO' && !(currentUserData.permissions && currentUserData.permissions.canManageLeaves)) return;
+            if(!window.isAdmin() && !(currentUserData.permissions && currentUserData.permissions.canManageLeaves)) return;
             try {
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leaves', id), { status: newStatus });
                 showToast('تم التحديث', 'success');
@@ -4150,7 +4150,7 @@ async function autoDeleteOldAttendance() {
         };
 
         window.deleteLeave = async (id) => {
-            if(currentUserData.role !== 'CEO' && !(currentUserData.permissions && currentUserData.permissions.canManageLeaves)) return;
+            if(!window.isAdmin() && !(currentUserData.permissions && currentUserData.permissions.canManageLeaves)) return;
             if(confirm('هل أنت متأكد من حذف هذا السجل نهائياً؟')) {
                 try {
                     await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leaves', id));
@@ -4399,7 +4399,7 @@ async function autoDeleteOldAttendance() {
 
         document.getElementById('createMeetingForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            if(currentUserData.role !== 'CEO' && !(currentUserData.permissions && currentUserData.permissions.canCreateMeetings)) return;
+            if(!window.isAdmin() && !(currentUserData.permissions && currentUserData.permissions.canCreateMeetings)) return;
             const title = document.getElementById('newMeetingTitle').value;
             const timeVal = document.getElementById('newMeetingTime').value;
             let scheduledTime = null;
@@ -4488,14 +4488,14 @@ async function autoDeleteOldAttendance() {
         };
 
         window.endMeetingForEveryone = async (meetingId) => {
-            if(currentUserData.role !== 'CEO') return;
+            if(!window.isAdmin()) return;
             if(confirm('إنهاء الاجتماع للجميع ونقله للسجل؟')) {
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'meetings', meetingId), { status: 'ended', endedAt: Date.now() });
             }
         };
 
         window.deleteMeeting = async (id) => {
-            if(currentUserData.role !== 'CEO') return;
+            if(!window.isAdmin()) return;
             if(confirm('هل أنت متأكد من حذف هذا الاجتماع من السجل نهائياً؟')) {
                 try {
                     await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'meetings', id));
@@ -4976,7 +4976,7 @@ async function autoDeleteOldAttendance() {
 
         // Check if there is a scheduled move that should be executed now
         function checkScheduledInventoryMove() {
-            if(!currentUserData || currentUserData.role !== 'CEO') return;
+            if(!currentUserData || !window.isAdmin()) return;
             getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'inventory')).then(docSnap => {
                 if(docSnap.exists() && docSnap.data().scheduledMoveDate) {
                     const targetDate = docSnap.data().scheduledMoveDate;
@@ -5003,7 +5003,7 @@ async function autoDeleteOldAttendance() {
         }
 
         window.deleteInventoryItem = async (id) => {
-            if(currentUserData.role !== 'CEO') return;
+            if(!window.isAdmin()) return;
             if(confirm('هل أنت متأكد من الحذف النهائي؟')) {
                 try {
                     await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'inventory', id));
@@ -5118,7 +5118,7 @@ async function autoDeleteOldAttendance() {
 
         // نقل مفرد للجرد
         window.moveToOldInventory = async (id) => {
-            if(currentUserData.role !== 'CEO') return;
+            if(!window.isAdmin()) return;
             if(confirm('هل تريد نقل هذا العنصر إلى الجرد القديم؟')) {
                 try {
                     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'inventory', id), { 
@@ -5425,7 +5425,7 @@ async function autoDeleteOldAttendance() {
         });
 
         window.deleteTrainee = async (id) => {
-            if(currentUserData.role !== 'CEO') return;
+            if(!window.isAdmin()) return;
             if(confirm('هل أنت متأكد من حذف هذا المتدرب من السجل نهائياً؟')) {
                 try {
                     await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'trainees', id));
@@ -5688,7 +5688,7 @@ async function autoDeleteOldAttendance() {
         };
 
         function lockNavigationIfNeeded() {
-            const isManager = currentUserData && (currentUserData.role || '').toUpperCase() === 'CEO';
+            const isManager = currentUserData && window.isAdmin();
             
             // --- حظر الموظف قيد الانتظار بالكامل ---
             if (currentUserData && currentUserData.role === 'pending') {
@@ -5736,7 +5736,7 @@ async function autoDeleteOldAttendance() {
             document.getElementById('attendanceLockBanner').classList.add('hidden');
             
             const homePunchOutContainer = document.getElementById('homePunchOutContainer');
-            if(homePunchOutContainer && currentUserData.role !== 'CEO') homePunchOutContainer.classList.remove('hidden');
+            if(homePunchOutContainer && !window.isAdmin()) homePunchOutContainer.classList.remove('hidden');
         }
 
         window.showSection = (sectionId) => {
@@ -5839,7 +5839,7 @@ async function autoDeleteOldAttendance() {
             }
 
             // القفل الصارم للدوام (يستثني المدير)
-            const isManager = (currentUserData.role || '').toUpperCase() === 'CEO';
+            const isManager = window.isAdmin();
             if (!hasPunchedInToday && !isManager && hash !== 'attendance') {
                 window.location.hash = 'attendance';
                 showToast('عذراً، يجب إثبات حضورك أولاً لفتح باقي أقسام النظام.', 'warning');
@@ -5929,7 +5929,7 @@ async function autoDeleteOldAttendance() {
                     globalUsers.forEach(u => { 
                         if (u.role !== 'CEO' && u.role !== 'مطور' && u.role !== 'Developer') {
                             // إخفاء الموظف عن نفسه في القائمة (ما عدا المدير CEO)
-                            if (currentUserData.role !== 'CEO' && u.uid === currentUserData.uid) return;
+                            if (!window.isAdmin() && u.uid === currentUserData.uid) return;
                             select2.innerHTML += `<option value="${u.uid}">${escapeHTML(u.name)}</option>`; 
                         }
                     });
@@ -5964,7 +5964,7 @@ async function autoDeleteOldAttendance() {
                 window.renderReEntryLogBadge();
                 
                 // --- القفل الحديدي الصارم لمنع تجاوز شاشة الحضور ---
-                const isManager = currentUserData && (currentUserData.role || '').toUpperCase() === 'CEO';
+                const isManager = currentUserData && window.isAdmin();
                 if (currentUserData && !isManager && !hasPunchedInToday) {
                     if (window.location.hash !== '#attendance') {
                         window.location.hash = 'attendance';
@@ -6040,7 +6040,7 @@ async function autoDeleteOldAttendance() {
                     // تحديث أرقام الإشعارات
                     if (window.isAdmin() && data.status === 'signed') {
                         pendingSignatures++; // المدير يرى التوقيعات التي بانتظار موافقته
-                    } else if (currentUserData.role !== 'CEO' && data.uid === currentUserData.uid && data.status === 'pending') {
+                    } else if (!window.isAdmin() && data.uid === currentUserData.uid && data.status === 'pending') {
                         pendingSignatures++; // الموظف يرى العهد التي بانتظار توقيعه
                     }
                 });
@@ -6825,7 +6825,7 @@ window.handleLogin = async (e) => {
         });
 
         function finishLoginSetup() {
-            const isUserCEO = ['CEO', 'مطور', 'DEVELOPER'].includes((currentUserData.role || '').toUpperCase());
+            const isUserCEO = window.isAdmin();
             const isAccountant = ['accountant', 'محاسب', 'مالية', 'finance'].includes((currentUserData.role || '').toLowerCase());
             
             if(currentUserData && isUserCEO) { autoDeleteOldAttendance(); }
@@ -8084,7 +8084,7 @@ window.handleChecklistEnter = (e) => {
         };
 
         window.deleteTask = async (id) => {
-            if(currentUserData.role !== 'CEO' && !globalTasks.find(t => t.id === id && t.createdBy === currentUserData.uid)) return;
+            if(!window.isAdmin() && !globalTasks.find(t => t.id === id && t.createdBy === currentUserData.uid)) return;
             
             document.getElementById('customConfirmMessage').innerText = 'هل أنت متأكد من حذف هذه المهمة نهائياً؟ لا يمكن التراجع عن هذا الإجراء.';
             const modal = document.getElementById('customConfirmModal');
@@ -8275,7 +8275,7 @@ window.handleChecklistEnter = (e) => {
 
         window.saveCustody = async (e) => {
             e.preventDefault();
-            if (currentUserData.role !== 'CEO') return;
+            if (!window.isAdmin()) return;
             
             const select = document.getElementById('newCustodyEmp');
             const empId = select.value;
@@ -8294,7 +8294,7 @@ window.handleChecklistEnter = (e) => {
         };
 
         window.deleteCustody = async (id) => {
-            if (currentUserData.role !== 'CEO') return;
+            if (!window.isAdmin()) return;
             if (confirm('هل أنت متأكد من حذف هذه العهدة؟')) {
                 await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'custody', id));
                 showToast('تم الحذف', 'success');
@@ -8417,7 +8417,7 @@ window.handleChecklistEnter = (e) => {
         };
 
         window.reviewCustodySignature = async (id, decision) => {
-            if(currentUserData.role !== 'CEO') return;
+            if(!window.isAdmin()) return;
             try {
                 let updateData = { status: decision };
                 if (decision === 'rejected') updateData.signature = null; 
@@ -9110,7 +9110,7 @@ window.handleChecklistEnter = (e) => {
             
             const filteredUsers = globalUsers.filter(u => {
                 // إخفاء حساب المدير (CEO) عن أي شخص آخر يملك صلاحية الإدارة
-                if (currentUserData.role !== 'CEO' && u.role === 'CEO') return false;
+                if (!window.isAdmin() && u.role === 'CEO') return false;
                 
                 return (u.name || '').toLowerCase().includes(searchTerm) || (u.role || '').toLowerCase().includes(searchTerm);
             });
@@ -9249,7 +9249,7 @@ window.handleChecklistEnter = (e) => {
 
             const isMe = currentUserData.uid === uid;
             
-            if (isMe && currentUserData.role !== 'CEO') {
+            if (isMe && !window.isAdmin()) {
                 document.getElementById('editEmpRoleContainer').classList.add('hidden');
                 document.getElementById('editEmpPermissionsSection').classList.add('hidden');
             } else {
@@ -9308,7 +9308,7 @@ window.handleChecklistEnter = (e) => {
                 };
 
                 if (role.toUpperCase() === 'CEO') {
-                    if (currentUserData.role !== 'CEO') {
+                    if (!window.isAdmin()) {
                         showToast('غير مصرح لك بتعيين هذا الحساب كمدير (CEO)!', 'error'); return;
                     } else {
                         const confirmTransfer = confirm('تنبيه خطير: هل أنت متأكد من نقل منصب المدير (CEO) لهذا الحساب؟ بمجرد الموافقة سيتم تجريدك من صلاحياتك فوراً ولن تعود مديراً.');
@@ -9893,7 +9893,7 @@ window.confirmReEntry = async () => {
         };
 
 window.renderReEntryLogBadge = () => {
-    if (!currentUserData || currentUserData.role !== 'CEO') return;
+    if (!currentUserData || !window.isAdmin()) return;
     const btn = document.getElementById('ceoReEntryLogBtn');
     const badge = document.getElementById('reEntryBadge');
     if(!btn || !badge) return;
