@@ -5847,7 +5847,7 @@ async function autoDeleteOldAttendance() {
             }
 
             const perms = currentUserData.permissions || {};
-            const isCEO = currentUserData.role === 'CEO';
+            const isCEO = (currentUserData.role === 'CEO' || currentUserData.role === 'مطور' || currentUserData.role === 'Developer');
 
             // حماية الجرد
             if (hash === 'inventory' && !isCEO && !perms.permViewInventory) {
