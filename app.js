@@ -7295,7 +7295,7 @@ window.markNoticeRead = (id) => {
                 // التغيير هنا: عرض الجميع بدلاً من عرض المهام بانتظار الاعتماد فقط
                 select.innerHTML = '<option value="all">-- عرض الجميع --</option>';
                 globalUsers.forEach(u => {
-                    if((u.role !== 'CEO' && u.role !== 'مطور' && u.role !== 'Developer')' && u.status !== 'pending' && u.status !== 'rejected') {
+                    if (u.role !== 'CEO' && u.role !== 'مطور' && u.role !== 'Developer' && u.status !== 'pending' && u.status !== 'rejected') {
                         select.innerHTML += `<option value="${u.uid}">${escapeHTML(u.name)}</option>`;
                     }
                 });
