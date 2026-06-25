@@ -3653,6 +3653,20 @@
             <button onclick="document.getElementById('pwaInstallBanner').classList.remove('translate-y-0')" class="text-gray-300 hover:text-white p-2"><i class="fa-solid fa-xmark text-lg"></i></button>
         </div>
     </div>
+    <div id="customConfirmModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[99999] p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-gray-800 border-t-4 border-red-500 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col text-center p-6 transform scale-95 transition-transform duration-300">
+            <div class="mx-auto w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4">
+                <i class="fa-solid fa-trash-can text-3xl text-red-500"></i>
+            </div>
+            <h3 class="font-bold text-gray-800 dark:text-white text-xl mb-2">تأكيد الحذف</h3>
+            <p id="customConfirmMessage" class="text-sm text-gray-500 dark:text-gray-400 mb-6 leading-relaxed"></p>
+            <div class="flex gap-3">
+                <button onclick="document.getElementById('customConfirmModal').classList.add('hidden'); document.getElementById('customConfirmModal').classList.remove('flex');" class="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-white py-2.5 rounded-xl font-bold transition">إلغاء</button>
+                <button id="customConfirmActionBtn" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl font-bold transition shadow-md">نعم، احذف</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script type="module" src="app.js"></script>
 </body>
