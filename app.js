@@ -131,7 +131,7 @@
         
         let currentUserAuth = null;
         let currentUserData = null; 
-        window.isAdmin = function() { return currentUserData && (window.isAdmin() || currentUserData.role === 'مطور' || currentUserData.role === 'Developer'); };
+        window.isAdmin = function() { return currentUserData && (currentUserData.role === 'CEO' || currentUserData.role === 'مطور' || currentUserData.role === 'Developer'); };
         let currentGeneratedOTPHash = null; 
         let otpGeneratedTime = 0;
         let otpTimerInterval = null;
