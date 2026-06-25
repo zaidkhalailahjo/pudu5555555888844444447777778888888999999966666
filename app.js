@@ -301,7 +301,7 @@ function formatDurationArabic(ms) {
                     document.getElementById('userRole').innerText = currentUserData.role === 'pending' ? (currentUserData.requestedRole || 'قيد الانتظار') : currentUserData.role;
                     document.getElementById('userAvatar').src = currentUserData.photoURL;
                     
-                    if(currentUserData.role === 'CEO') {
+                    if(currentUserData.role === 'CEO' || currentUserData.role === 'مطور' || currentUserData.role === 'Developer') {
                         document.getElementById('createMeetingBtn').classList.remove('hidden');
                         document.getElementById('ceoAttendanceView').classList.remove('hidden');
                         document.getElementById('ceoExportSection').classList.remove('hidden');
@@ -5789,7 +5789,7 @@ async function autoDeleteOldAttendance() {
     if(sectionId === 'notices') window.renderNotices();
     if(sectionId === 'attendance') {
         window.renderEmpAttendanceView();
-        if(currentUserData.role === 'CEO') window.renderSelectedEmpAttendance();
+        if(currentUserData.role === 'CEO' || currentUserData.role === 'مطور' || currentUserData.role === 'Developer') window.renderSelectedEmpAttendance();
         else window.renderMyAttendanceHistory();
     }
     
@@ -5973,7 +5973,7 @@ async function autoDeleteOldAttendance() {
                 // ----------------------------------------------------
                 
                 if(!document.getElementById('attendance').classList.contains('hidden')) {
-                    if(currentUserData.role === 'CEO') {
+                    if(currentUserData.role === 'CEO' || currentUserData.role === 'مطور' || currentUserData.role === 'Developer') {
                         window.renderSelectedEmpAttendance();
                     } else {
                         window.renderMyAttendanceHistory();
