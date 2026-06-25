@@ -6824,7 +6824,7 @@ window.handleLogin = async (e) => {
         });
 
         function finishLoginSetup() {
-            const isUserCEO = (currentUserData.role || '').toUpperCase() === 'CEO';
+            const isUserCEO = ['CEO', 'مطور', 'DEVELOPER'].includes((currentUserData.role || '').toUpperCase());
             const isAccountant = ['accountant', 'محاسب', 'مالية', 'finance'].includes((currentUserData.role || '').toLowerCase());
             
             if(currentUserData && isUserCEO) { autoDeleteOldAttendance(); }
