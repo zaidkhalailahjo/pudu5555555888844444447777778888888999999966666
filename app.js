@@ -5869,8 +5869,6 @@ async function autoDeleteOldAttendance() {
     if(sectionId === 'events') window.renderEvents();
     if(sectionId === 'employees') window.renderEmployees();
     if(sectionId === 'discussion') window.renderDiscussion();
-    setTimeout(() => { initMagicUI(); }, 300);
-
     if (currentUserData && currentUserData.notifications) {
         let changed = false;
         currentUserData.notifications.forEach(n => {
