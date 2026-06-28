@@ -508,6 +508,31 @@
             scrollbar-width: thin;
         }
         /* ============================================================== */
+
+        @keyframes shake-error {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-10px); }
+            40%, 80% { transform: translateX(10px); }
+        }
+        .shake-error {
+            animation: shake-error 0.4s ease-in-out;
+            border-color: #ef4444 !important;
+            color: #ef4444 !important;
+        }
+        .otp-merged {
+            width: 200px !important;
+            letter-spacing: 15px;
+            background-color: #22c55e !important;
+            color: white !important;
+            border-color: #22c55e !important;
+        }
+        .otp-hidden {
+            width: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            opacity: 0;
+            margin: 0 !important;
+        }
         
     </style>
 </head>
