@@ -9347,6 +9347,7 @@ window.handleChecklistEnter = (e) => {
 
             const isMe = currentUserData.uid === uid;
             let role = document.getElementById('editEmpRole').value.trim();
+            if (!role && !isMe) { showToast('يرجى إدخال المسمى الوظيفي', 'warning'); return; }
             let finalPerms = {};
 
             if (isMe) {
