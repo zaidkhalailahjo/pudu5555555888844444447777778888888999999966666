@@ -5891,7 +5891,7 @@ async function autoDeleteOldAttendance() {
         window.addEventListener('hashchange', () => {
             if(!currentUserData) return;
             const hash = window.location.hash.replace('#', '');
-            const validSections = ['home-grid', 'notices', 'tasks', 'attendance', 'leaves', 'drive', 'meetings', 'settings', 'expenses', 'trainees', 'inventory', 'robots', 'rentals', 'clients_mgmt', 'custody', 'events', 'employees', 'discussion', 'surprise'];
+            const validSections = ['home-grid', 'notices', 'tasks', 'attendance', 'leaves', 'drive', 'meetings', 'settings', 'expenses', 'trainees', 'inventory', 'robots', 'rentals', 'clients_mgmt', 'custody', 'events', 'employees', 'discussion'];
             
             // الحظر الشامل لمن هم بانتظار الموافقة
             if (currentUserData.role === 'pending') {
