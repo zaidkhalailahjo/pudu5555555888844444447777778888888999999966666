@@ -6900,6 +6900,16 @@ window.handleLogin = async (e) => {
             if(document.getElementById('settingsName')) document.getElementById('settingsName').value = currentUserData.name;
             if(document.getElementById('settingsRole')) document.getElementById('settingsRole').value = currentUserData.role === 'pending' ? (currentUserData.requestedRole || 'قيد الانتظار') : currentUserData.role;
             if(document.getElementById('settingsPhone')) document.getElementById('settingsPhone').value = currentUserData.phone || '';
+            // التحقق من رقم الهاتف وإظهار النقطة ورابط التفعيل
+            if (currentUserData.phoneVerified) {
+                document.getElementById('phoneVerificationSection').classList.add('hidden');
+                document.getElementById('phoneVerifiedBadge').classList.remove('hidden');
+                document.getElementById('settingsNotifDot').classList.add('hidden');
+            } else {
+                document.getElementById('phoneVerificationSection').classList.remove('hidden');
+                document.getElementById('phoneVerifiedBadge').classList.add('hidden');
+                document.getElementById('settingsNotifDot').classList.remove('hidden');
+            }
             if(document.getElementById('settingsEmail')) document.getElementById('settingsEmail').value = currentUserData.email || currentUserAuth.email || '';
             
             // التحكم بظهور أقسام المدير والموظفين بصلاحيات
