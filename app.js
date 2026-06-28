@@ -10027,49 +10027,48 @@ window.openSpecificReEntryLog = async (recordId, entryIndex) => {
 // ================== نظام الـ OTP التفاعلي داخل الإعدادات ==================
         
         window.startSettingsPhoneVerification = async () => {
-            let phone = document.getElementById('settingsPhone').value.trim();
-            phone = window.formatPhone(phone);
-            if(phone.length < 10) { 
-                showToast('يرجى إدخال رقم هاتف صالح أولاً', 'error'); 
-                return; 
-            }
+    let phone = document.getElementById('settingsPhone').value.trim();
+    phone = window.formatPhone(phone);
+    if(phone.length < 10) { 
+        showToast('يرجى إدخال رقم هاتف صالح أولاً', 'error'); 
+        return; 
+    }
 
-            const otpUI = document.getElementById('settingsOtpUI');
-            otpUI.classList.remove('hidden');
-            
-            // تصفير المربعات
-            const boxes = document.querySelectorAll('.otp-box');
-            boxes.forEach(b => {
-                b.value = '';
-                b.classList.remove('shake-error', 'otp-merged', 'otp-hidden', 'bg-red-100');
-                b.disabled = false;
+    const otpUI = document.getElementById('settingsOtpUI');
+    otpUI.classList.remove('hidden');
+    
+    const boxes = document.querySelectorAll('.otp-box');
+    boxes.forEach(b => {
+        b.value = '';
+        b.classList.remove('shake-error', 'otp-merged', 'otp-hidden', 'bg-red-100');
+        b.disabled = false;
+    });
+    boxes[0].focus();
+
+    try {
+        // إنشاء RecaptchaVerifier إذا لم يكن موجوداً
+        if (!window.settingsRecaptchaVerifier) {
+            window.settingsRecaptchaVerifier = new RecaptchaVerifier(auth, 'settingsOtpUI', {
+                'size': 'invisible'
             });
-            boxes[0].focus();
+        }
 
-            try {
-                // توليد وإرسال الـ OTP 
-                const otp = Math.floor(100000 + Math.random() * 900000).toString();
-                sessionStorage.setItem('quill_otp_code_settings', btoa(otp));
-                
-                const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
-                if (token) {
-                    fetch(GOOGLE_SCRIPT_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                        body: JSON.stringify({
-                            action: 'sendOTP',
-                            phone: phone,
-                            otp: otp,
-                            token: token
-                        })
-                    }).catch(e => console.log('Settings OTP sent', e));
-                }
-                showToast('تم إرسال رمز التحقق (OTP) إلى هاتفك', 'info');
-            } catch (err) {
-                console.error(err);
-                showToast('حدث خطأ في الإرسال', 'error');
-            }
-        };
+        const confirmationResult = await signInWithPhoneNumber(auth, phone, window.settingsRecaptchaVerifier);
+        window.settingsConfirmationResult = confirmationResult;
+        showToast('تم إرسال رمز التحقق (OTP) إلى هاتفك عبر SMS', 'success');
+    } catch (err) {
+        console.error(err);
+        // إعادة تهيئة الـ recaptcha عند الخطأ
+        window.settingsRecaptchaVerifier = null;
+        if (err.code === 'auth/too-many-requests') {
+            showToast('طلبات كثيرة جداً، يرجى الانتظار قبل المحاولة مجدداً', 'error');
+        } else if (err.code === 'auth/invalid-phone-number') {
+            showToast('رقم الهاتف غير صالح، تأكد من الصيغة الصحيحة (+962...)', 'error');
+        } else {
+            showToast('حدث خطأ في الإرسال: ' + err.message, 'error');
+        }
+    }
+};
 
         window.moveOtpFocus = (input, index) => {
             // الانتقال للمربع التالي
