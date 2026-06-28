@@ -6897,9 +6897,10 @@ window.handleLogin = async (e) => {
             document.getElementById('userRole').innerText = currentUserData.role === 'pending' ? (currentUserData.requestedRole || 'قيد الانتظار') : currentUserData.role;
             document.getElementById('userAvatar').src = currentUserData.photoURL;
             document.getElementById('settingsAvatarPreview').src = currentUserData.photoURL;
-            document.getElementById('settingsName').value = currentUserData.name;
-            document.getElementById('settingsRole').value = currentUserData.role === 'pending' ? (currentUserData.requestedRole || 'قيد الانتظار') : currentUserData.role;
-            document.getElementById('settingsPhone').value = currentUserData.phone || '';
+            if(document.getElementById('settingsName')) document.getElementById('settingsName').value = currentUserData.name;
+            if(document.getElementById('settingsRole')) document.getElementById('settingsRole').value = currentUserData.role === 'pending' ? (currentUserData.requestedRole || 'قيد الانتظار') : currentUserData.role;
+            if(document.getElementById('settingsPhone')) document.getElementById('settingsPhone').value = currentUserData.phone || '';
+            if(document.getElementById('settingsEmail')) document.getElementById('settingsEmail').value = currentUserData.email || currentUserAuth.email || '';
             
             // التحكم بظهور أقسام المدير والموظفين بصلاحيات
             const hasEmpPerm = currentUserData.permissions && currentUserData.permissions.canManageEmployees;
