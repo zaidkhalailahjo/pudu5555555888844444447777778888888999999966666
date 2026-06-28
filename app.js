@@ -9353,30 +9353,35 @@ window.handleChecklistEnter = (e) => {
                 role = currentUserData.role; 
                 finalPerms = currentUserData.permissions || {};
             } else {
-                finalPerms = {
-                    canManageClients: document.getElementById('permManageClients').checked,
-                    canViewContracts: document.getElementById('permViewContracts').checked,
-                    canAddContracts: document.getElementById('permAddContracts').checked,
-                    canManageEmployees: document.getElementById('permManageEmployees') ? document.getElementById('permManageEmployees').checked : false,
-                    canManageExpenses: document.getElementById('permManageExpenses') ? document.getElementById('permManageExpenses').checked : false,
-                    canManageLeaves: document.getElementById('permManageLeaves') ? document.getElementById('permManageLeaves').checked : false,
-                    canCreateMeetings: document.getElementById('permCreateMeetings') ? document.getElementById('permCreateMeetings').checked : false,
-                    canAssignTasks: document.getElementById('permAssignTasks') ? document.getElementById('permAssignTasks').checked : false,
-                    canManageEvents: document.getElementById('permManageEvents') ? document.getElementById('permManageEvents').checked : false,
-                    // حفظ الصلاحيات الجديدة
-                    permViewInventory: document.getElementById('permViewInventory') ? document.getElementById('permViewInventory').checked : false,
-                    permManageInventory: document.getElementById('permManageInventory') ? document.getElementById('permManageInventory').checked : false,
-                    permViewRobots: document.getElementById('permViewRobots') ? document.getElementById('permViewRobots').checked : false,
-                    permManageRobots: document.getElementById('permManageRobots') ? document.getElementById('permManageRobots').checked : false
+                // الفحص الآمن للعناصر لمنع توقف الشاشة
+                const getCheckVal = (id) => {
+                    const el = document.getElementById(id);
+                    return el ? el.checked : false;
                 };
 
-                if (role.toUpperCase() === 'CEO') {
+                finalPerms = {
+                    canManageClients: getCheckVal('permManageClients'),
+                    canViewContracts: getCheckVal('permViewContracts'),
+                    canAddContracts: getCheckVal('permAddContracts'),
+                    canManageEmployees: getCheckVal('permManageEmployees'),
+                    canManageExpenses: getCheckVal('permManageExpenses'),
+                    canManageLeaves: getCheckVal('permManageLeaves'),
+                    canCreateMeetings: getCheckVal('permCreateMeetings'),
+                    canAssignTasks: getCheckVal('permAssignTasks'),
+                    canManageEvents: getCheckVal('permManageEvents'),
+                    permViewInventory: getCheckVal('permViewInventory'),
+                    permManageInventory: getCheckVal('permManageInventory'),
+                    permViewRobots: getCheckVal('permViewRobots'),
+                    permManageRobots: getCheckVal('permManageRobots')
+                };
+
+                if (role.toUpperCase() === 'CEO' || role === 'مطور') {
                     if (!window.isAdmin()) {
-                        showToast('غير مصرح لك بتعيين هذا الحساب كمدير (CEO)!', 'error'); return;
+                        showToast('غير مصرح لك بتعيين هذا الحساب كمدير!', 'error'); return;
                     } else {
-                        const confirmTransfer = confirm('تنبيه خطير: هل أنت متأكد من نقل منصب المدير (CEO) لهذا الحساب؟ بمجرد الموافقة سيتم تجريدك من صلاحياتك فوراً ولن تعود مديراً.');
+                        const confirmTransfer = confirm('تنبيه خطير: هل أنت متأكد من نقل منصب الإدارة لهذا الحساب؟ بمجرد الموافقة سيتم تجريدك من صلاحياتك فوراً.');
                         if (!confirmTransfer) return;
-                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), { role: 'Management' });
+                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), { role: 'Employee' });
                     }
                 }
             }
@@ -9390,7 +9395,10 @@ window.handleChecklistEnter = (e) => {
                 showToast('تم تحديث البيانات بنجاح', 'success');
                 window.closeModal('editEmployeeModal');
                 window.renderEmployees(); 
-            } catch(e) { console.error(e); showToast('حدث خطأ أثناء حفظ التعديلات', 'error'); }
+            } catch(e) { 
+                console.error(e); 
+                showToast('حدث خطأ أثناء حفظ التعديلات', 'error'); 
+            }
         };
 
         // معالجة تغيير وتحديث الصورة كـ Base64 لسهولة التخزين السريع
