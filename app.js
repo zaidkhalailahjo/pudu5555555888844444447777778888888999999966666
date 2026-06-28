@@ -4124,7 +4124,7 @@ async function autoDeleteOldAttendance() {
                 });
                 window.closeModal('leaveModal');
                 
-                const ceoUsers = globalUsers.filter(u => u.role === 'CEO');
+                const ceoUsers = globalUsers.filter(u => u.role === 'CEO' || u.role === 'مطور' || (u.role && u.role.toUpperCase() === 'DEVELOPER'));
                 ceoUsers.forEach(ceo => {
                     const msgText = attachmentBase64 ? `طلب إجازة جديد (مرفق) من: ${currentUserData.name}` : `طلب جديد من: ${currentUserData.name}`;
                     window.sendSystemNotification(ceo.uid, 'طلب إجازة جديد', msgText, 'leaves', 'leaves');
@@ -8473,7 +8473,7 @@ window.handleChecklistEnter = (e) => {
                     showToast('تم اعتماد العهدة بنجاح لأن توقيعك معتمد مسبقاً!', 'success');
                 } else {
                     showToast('تم إرسال التوقيع للمدير لاعتماده بنجاح!', 'success');
-                    const ceoUsers = globalUsers.filter(u => u.role === 'CEO');
+                    const ceoUsers = globalUsers.filter(u => u.role === 'CEO' || u.role === 'مطور' || (u.role && u.role.toUpperCase() === 'DEVELOPER'));
                     ceoUsers.forEach(ceo => {
                         window.sendSystemNotification(ceo.uid, 'توقيع عهدة', `قام ${currentUserData.name} برفع توقيعه لاستلام عهدته.`, 'custody', 'custody');
                     });
@@ -9861,7 +9861,7 @@ window.confirmReEntry = async () => {
                     reasonInput.value = '';
                     window.renderEmpAttendanceView();
                     
-                    const ceoUsers = globalUsers.filter(u => u.role === 'CEO');
+                    const ceoUsers = globalUsers.filter(u => u.role === 'CEO' || u.role === 'مطور' || (u.role && u.role.toUpperCase() === 'DEVELOPER'));
                     ceoUsers.forEach(ceo => {
                         window.sendSystemNotification(ceo.uid, 'عودة للعمل بعد الانصراف', `عاد الموظف ${currentUserData.name} للعمل. السبب: ${reason}`, 'attendance', 'attendance');
                     });
