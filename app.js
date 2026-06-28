@@ -4266,7 +4266,7 @@ async function autoDeleteOldAttendance() {
                     chatBox.scrollTop = chatBox.scrollHeight;
                 }, 50);
 
-                const targetUid = (window.isAdmin()) ? leave.uid : globalUsers.find(u => u.role === 'CEO')?.uid;
+                const targetUid = (window.isAdmin()) ? leave.uid : globalUsers.find(u => u.role === 'CEO' || u.role === 'مطور' || (u.role && u.role.toUpperCase() === 'DEVELOPER'))?.uid;
                 if(targetUid) {
                     window.sendSystemNotification(targetUid, 'رسالة جديدة في الطلب', `أرسل ${currentUserData.name} تعليقاً على طلب الإجازة.`, 'leaves', 'leaves');
                 }
