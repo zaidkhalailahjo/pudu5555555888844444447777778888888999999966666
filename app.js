@@ -10091,7 +10091,7 @@ window.openSpecificReEntryLog = async (recordId, entryIndex) => {
     try {
         // إنشاء RecaptchaVerifier إذا لم يكن موجوداً
         if (!window.settingsRecaptchaVerifier) {
-            window.settingsRecaptchaVerifier = new RecaptchaVerifier(auth, 'settingsOtpUI', {
+            window.settingsRecaptchaVerifier = new RecaptchaVerifier(auth, 'settings-recaptcha-container', {
                 'size': 'invisible'
             });
         }
