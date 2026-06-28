@@ -2033,110 +2033,61 @@
             
             <!-- الإعدادات -->
             <section id="settings" class="section-content hidden animate-fade-in p-4 md:p-0">
-                <div class="flex justify-between items-center mb-4 md:mb-6">
-                    <p class="text-sm md:text-base text-gray-600 dark:text-gray-300" data-i18n="إعدادات الحساب">إعدادات الحساب والملف الشخصي</p>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-                        <h3 class="font-bold text-primary dark:text-secondary mb-6 border-b border-gray-100 dark:border-gray-700 pb-3 text-lg"><i class="fa-solid fa-user-gear mx-2"></i><span data-i18n="معلومات الحساب">معلومات الحساب الأساسية</span></h3>
+                <div class="flex justify-center items-center h-full min-h-[80vh]">
+                    <div class="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 w-full max-w-lg">
+                        <h3 class="font-bold text-primary dark:text-secondary mb-6 border-b border-gray-100 dark:border-gray-700 pb-4 text-xl text-center"><i class="fa-solid fa-user-shield mx-2"></i>إعدادات الحساب والأمان</h3>
                         
-                        <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-8 text-center sm:text-right">
+                        <div class="flex flex-col items-center mb-8">
                             <div class="relative group cursor-pointer inline-block" onclick="document.getElementById('settingsAvatarInput').click()">
-                                <img id="settingsAvatarPreview" src="https://ui-avatars.com/api/?name=مستخدم&background=00839b&color=fff" class="w-24 h-24 rounded-full border-4 border-gray-50 dark:border-gray-700 object-cover shadow-md transition duration-300 group-hover:brightness-50">
-                                <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300">
-                                    <i class="fa-solid fa-camera text-white text-2xl"></i>
+                                <img id="settingsAvatarPreview" src="https://ui-avatars.com/api/?name=مستخدم&background=00839b&color=fff" class="w-28 h-28 rounded-full border-4 border-gray-50 dark:border-gray-700 object-cover shadow-md transition duration-300 group-hover:brightness-50">
+                                <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300 rounded-full">
+                                    <i class="fa-solid fa-camera text-white text-3xl"></i>
                                 </div>
                                 <input type="file" id="settingsAvatarInput" accept="image/*" class="hidden" onchange="window.changeProfileAvatar(event)">
                             </div>
-                            <div class="flex-1">
-                                <h4 class="font-bold text-gray-800 dark:text-gray-200 text-base mb-1" data-i18n="تغيير الصورة">الصورة الشخصية</h4>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">يمكنك تغيير صورتك من المنصة الرئيسية.</p>
-                            </div>
+                            <p class="text-xs text-gray-500 mt-3 font-bold">انقر على الصورة لتغييرها</p>
                         </div>
 
-                        <div class="space-y-5">
+                        <div class="space-y-4">
                             <div>
-                                <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1"><span data-i18n="الاسم الكامل">الاسم الكامل</span></label>
+                                <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">الاسم الكامل</label>
                                 <div class="relative">
-                                    <i class="fa-solid fa-user absolute rtl:right-3 ltr:left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                                    <input type="text" id="settingsName" readonly class="w-full border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-lg rtl:pr-10 ltr:pl-10 py-3 text-gray-600 dark:text-gray-300 font-medium cursor-not-allowed outline-none">
+                                    <i class="fa-solid fa-user absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                                    <input type="text" id="settingsName" class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg pr-10 pl-3 py-3 text-gray-800 dark:text-white font-bold outline-none focus:border-secondary shadow-sm">
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1"><span data-i18n="الوظيفة (الدور)">الوظيفة (الدور)</span></label>
+                                <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">الوظيفة (الدور)</label>
                                 <div class="relative">
-                                    <i class="fa-solid fa-briefcase absolute rtl:right-3 ltr:left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                                    <input type="text" id="settingsRole" readonly class="w-full border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-lg rtl:pr-10 ltr:pl-10 py-3 text-gray-600 dark:text-gray-300 font-medium cursor-not-allowed outline-none">
+                                    <i class="fa-solid fa-briefcase absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                                    <input type="text" id="settingsRole" readonly class="w-full border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 rounded-lg pr-10 pl-3 py-3 text-gray-500 dark:text-gray-400 font-medium cursor-not-allowed outline-none shadow-inner">
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">رقم الهاتف (للواتساب والتحقق الأمني)</label>
+                                <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">البريد الإلكتروني (لتسجيل الدخول)</label>
                                 <div class="relative">
-                                    <i class="fa-solid fa-phone absolute rtl:right-3 ltr:left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                                    <input type="tel" id="settingsPhone" dir="ltr" placeholder="مثال: 96279..." class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg rtl:pr-10 ltr:pl-10 py-3 text-gray-800 dark:text-white font-bold outline-none focus:border-secondary shadow-sm text-right">
+                                    <i class="fa-solid fa-envelope absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                                    <input type="email" id="settingsEmail" dir="ltr" class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg pr-10 pl-3 py-3 text-gray-800 dark:text-white font-bold outline-none focus:border-secondary shadow-sm text-right">
                                 </div>
                             </div>
-                            <button onclick="window.saveProfileInfo()" class="w-full bg-secondary hover:bg-primary text-white font-bold py-3 px-4 rounded-lg transition-colors shadow">حفظ بيانات الملف الشخصي</button>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">رقم الهاتف (للحماية والواتساب)</label>
+                                <div class="relative">
+                                    <i class="fa-solid fa-phone absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                                    <input type="tel" id="settingsPhone" dir="ltr" placeholder="مثال: 96279..." class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg pr-10 pl-3 py-3 text-gray-800 dark:text-white font-bold outline-none focus:border-secondary shadow-sm text-right">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">كلمة المرور الجديدة <span class="text-[10px] text-red-500">(اتركها فارغة إذا لم ترد تغييرها)</span></label>
+                                <div class="relative">
+                                    <i class="fa-solid fa-lock absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                                    <input type="password" id="settingsPassword" dir="ltr" placeholder="••••••••" class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg pr-10 pl-3 py-3 text-gray-800 dark:text-white font-bold outline-none focus:border-secondary shadow-sm text-right tracking-widest">
+                                </div>
+                            </div>
+                            <button onclick="window.saveProfileInfo()" id="saveProfileBtn" class="w-full bg-secondary hover:bg-primary text-white font-bold py-3.5 px-4 rounded-xl transition-colors shadow-lg mt-6 flex justify-center items-center gap-2">
+                                <i class="fa-solid fa-shield-check"></i> حفظ البيانات وتأمين الحساب
+                            </button>
                         </div>
-                    </div>
-                    
-                    <!-- ميزة قيد التطوير (أنيميشن) -->
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-orange-200 dark:border-orange-900/50 md:col-span-2 flex flex-col items-center justify-center text-center min-h-[250px]">
-                        <img src="https://cdn.dribbble.com/users/1162077/screenshots/3848914/programmer.gif" alt="المبرمج يعمل" class="h-40 object-contain mb-4 rounded-2xl shadow-inner bg-gray-50 dark:bg-gray-900 p-2">
-                        <h3 class="font-bold text-orange-600 dark:text-orange-400 text-xl mb-2"><i class="fa-solid fa-laptop-code mx-2"></i>المبرمج يعمل عليها... ☕</h3>
-                        <p class="text-sm text-gray-600 dark:text-gray-400 font-bold">ميزة إرسال رسائل الواتساب والـ OTP قيد التطوير والتحسين. سيتم إطلاقها قريباً!</p>
-                    </div>
-
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-                        <div id="ceoTestEmailSection" class="hidden mb-6 bg-blue-50 dark:bg-gray-700 p-4 rounded-xl border border-blue-200 dark:border-gray-600">
-    <h4 class="font-bold text-sm text-blue-800 dark:text-blue-300 mb-2"><i class="fa-solid fa-envelope-circle-check mx-2"></i>اختبار إرسال الإيميلات (خاص بالمدير)</h4>
-    <p class="text-xs text-gray-600 dark:text-gray-400 mb-3">للتحقق من أن النظام قادر على إرسال رموز OTP والتنبيهات بشكل سليم إلى بريدك.</p>
-    <button onclick="window.sendTestEmailConfig()" id="testEmailBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition flex items-center gap-2"><i class="fa-solid fa-paper-plane"></i> إرسال رسالة اختبار لبريدي</button>
-</div>
-                        <h3 class="font-bold text-primary dark:text-secondary mb-6 border-b border-gray-100 dark:border-gray-700 pb-3 text-lg"><i class="fa-solid fa-bell mx-2"></i>إعدادات الإشعارات</h3>
-                        
-                        <form id="notificationSettingsForm" class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">شكل مؤشر الإشعارات</label>
-                                <div class="flex gap-4">
-                                    <label class="flex items-center gap-2 cursor-pointer p-2 border rounded-lg flex-1 hover:bg-gray-50 dark:hover:bg-gray-700 transition dark:border-gray-600">
-                                        <input type="radio" name="notifStyle" value="number" class="text-primary focus:ring-primary h-4 w-4">
-                                        <span class="text-sm font-bold text-gray-700 dark:text-gray-300">رقم (مثال: 3)</span>
-                                    </label>
-                                    <label class="flex items-center gap-2 cursor-pointer p-2 border rounded-lg flex-1 hover:bg-gray-50 dark:hover:bg-gray-700 transition dark:border-gray-600">
-                                        <input type="radio" name="notifStyle" value="dot" class="text-primary focus:ring-primary h-4 w-4">
-                                        <span class="text-sm font-bold text-gray-700 dark:text-gray-300">نقطة وميض ملونة</span>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div class="mt-4">
-                                <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">ألوان الإشعارات حسب الحدث</label>
-                                <div class="space-y-3">
-                                    <div class="flex items-center justify-between border-b dark:border-gray-700 pb-2">
-                                        <span class="text-xs font-bold text-gray-600 dark:text-gray-400">إشعارات المتدربين:</span>
-                                        <select id="colorTrainees" class="text-xs border rounded p-1 dark:bg-gray-700 dark:border-gray-600 dark:text-white font-bold">
-                                            <option value="red" class="text-red-500">أحمر</option><option value="green" class="text-green-500">أخضر</option><option value="blue" class="text-blue-500">أزرق</option><option value="yellow" class="text-yellow-500">أصفر</option>
-                                        </select>
-                                    </div>
-                                    <div class="flex items-center justify-between border-b dark:border-gray-700 pb-2">
-                                        <span class="text-xs font-bold text-gray-600 dark:text-gray-400">طلبات الاستلام:</span>
-                                        <select id="colorHandover" class="text-xs border rounded p-1 dark:bg-gray-700 dark:border-gray-600 dark:text-white font-bold">
-                                            <option value="red" class="text-red-500">أحمر</option><option value="green" class="text-green-500">أخضر</option><option value="blue" class="text-blue-500">أزرق</option><option value="yellow" class="text-yellow-500">أصفر</option>
-                                        </select>
-                                    </div>
-                                    <div class="flex items-center justify-between border-b dark:border-gray-700 pb-2">
-                                        <span class="text-xs font-bold text-gray-600 dark:text-gray-400">الاجتماعات:</span>
-                                        <select id="colorMeetings" class="text-xs border rounded p-1 dark:bg-gray-700 dark:border-gray-600 dark:text-white font-bold">
-                                            <option value="red" class="text-red-500">أحمر</option><option value="green" class="text-green-500">أخضر</option><option value="blue" class="text-blue-500">أزرق</option><option value="yellow" class="text-yellow-500">أصفر</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <button type="button" onclick="window.saveNotificationSettings()" class="w-full bg-secondary hover:bg-primary text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm mt-4 shadow">حفظ التفضيلات</button>
-                        </form>
                     </div>
                 </div>
             </section>
