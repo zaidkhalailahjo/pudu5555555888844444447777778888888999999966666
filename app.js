@@ -10086,88 +10086,74 @@ window.openSpecificReEntryLog = async (recordId, entryIndex) => {
         };
 
         window.verifySettingsOtpCode = async (enteredOtp, boxes) => {
-            const storedOTP = sessionStorage.getItem('quill_otp_code_settings');
-            const actualOTP = storedOTP ? atob(storedOTP) : null;
-            const statusIcon = document.getElementById('otpStatusIcon');
+    if (!window.settingsConfirmationResult) {
+        showToast('يرجى طلب رمز OTP أولاً', 'warning');
+        return;
+    }
 
-            if (enteredOtp === actualOTP) {
-                // -------- نجاح التحقق --------
-                // 1. تجميد المربعات
-                boxes.forEach(b => b.disabled = true);
-                
-                // 2. أنيميشن دمج المربعات
-                boxes[0].value = '✓';
-                boxes[0].classList.add('otp-merged');
-                for (let i = 1; i < 6; i++) {
-                    boxes[i].classList.add('otp-hidden');
-                }
+    try {
+        await window.settingsConfirmationResult.confirm(enteredOtp);
+        
+        // نجاح التحقق
+        boxes.forEach(b => b.disabled = true);
+        boxes[0].value = '✓';
+        boxes[0].classList.add('otp-merged');
+        for (let i = 1; i < 6; i++) {
+            boxes[i].classList.add('otp-hidden');
+        }
 
-                // 3. تشغيل الألعاب النارية والصوت
-                const fw = document.getElementById('fireworksOverlay');
-                const sound = document.getElementById('fireworksSound');
-                if(fw) {
-                    fw.classList.remove('hidden', 'opacity-0');
-                    fw.classList.add('opacity-100');
-                    fw.querySelector('p').innerText = "تم التحقق من رقم الهاتف بنجاح 📱✨";
-                    
-                    if(sound) { 
-                        sound.currentTime = 0; 
-                        sound.play().catch(()=>{});
-                    }
-                    if(window.confetti) {
-                        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ['#22c55e', '#ffffff', '#00839b'] });
-                    }
-                    setTimeout(() => {
-                        fw.classList.replace('opacity-100', 'opacity-0');
-                        setTimeout(() => fw.classList.add('hidden'), 500); 
-                    }, 3000);
-                }
-
-                // 4. حفظ في قاعدة البيانات
-                let phone = document.getElementById('settingsPhone').value.trim();
-                phone = window.formatPhone(phone);
-                try {
-                    const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), {
-                        phoneVerified: true,
-                        phone: phone
-                    });
-                    
-                    currentUserData.phoneVerified = true;
-                    currentUserData.phone = phone;
-                    localStorage.setItem('quill_user_cache_services', JSON.stringify(currentUserData));
-                    
-                    // تغيير الواجهة إلى "تم التحقق"
-                    setTimeout(() => {
-                        document.getElementById('settingsOtpUI').classList.add('hidden');
-                        document.getElementById('phoneVerificationSection').classList.add('hidden');
-                        document.getElementById('phoneVerifiedBadge').classList.remove('hidden');
-                        document.getElementById('settingsNotifDot').classList.add('hidden');
-                    }, 1500);
-
-                } catch(e) {
-                    console.error(e);
-                }
-
-            } else {
-                // -------- فشل التحقق --------
-                // اهتزاز وتلوين أحمر
-                boxes.forEach(b => {
-                    b.classList.add('shake-error', 'bg-red-100');
-                    b.value = ''; // تصفير لتسهيل المحاولة مجدداً
-                });
-                
-                // إظهار حرف X كبير متحرك
-                statusIcon.innerHTML = '<i class="fa-solid fa-xmark text-6xl text-red-500 animate-bounce"></i>';
-                statusIcon.classList.remove('hidden');
-                statusIcon.classList.replace('opacity-0', 'opacity-100');
-
-                // إزالة التأثير بعد ثانية ليتيح المحاولة مرة أخرى
-                setTimeout(() => {
-                    boxes.forEach(b => b.classList.remove('shake-error', 'bg-red-100'));
-                    statusIcon.classList.replace('opacity-100', 'opacity-0');
-                    setTimeout(() => statusIcon.classList.add('hidden'), 300);
-                    boxes[0].focus();
-                }, 1200);
+        const fw = document.getElementById('fireworksOverlay');
+        const sound = document.getElementById('fireworksSound');
+        if(fw) {
+            fw.classList.remove('hidden', 'opacity-0');
+            fw.classList.add('opacity-100');
+            fw.querySelector('p').innerText = "تم التحقق من رقم الهاتف بنجاح 📱✨";
+            if(sound) { sound.currentTime = 0; sound.play().catch(()=>{}); }
+            if(window.confetti) {
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ['#22c55e', '#ffffff', '#00839b'] });
             }
-        };
+            setTimeout(() => {
+                fw.classList.replace('opacity-100', 'opacity-0');
+                setTimeout(() => fw.classList.add('hidden'), 500);
+            }, 3000);
+        }
+
+        let phone = document.getElementById('settingsPhone').value.trim();
+        phone = window.formatPhone(phone);
+        
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), {
+            phoneVerified: true,
+            phone: phone
+        });
+        
+        currentUserData.phoneVerified = true;
+        currentUserData.phone = phone;
+        localStorage.setItem('quill_user_cache_services', JSON.stringify(currentUserData));
+        
+        setTimeout(() => {
+            document.getElementById('settingsOtpUI').classList.add('hidden');
+            document.getElementById('phoneVerificationSection').classList.add('hidden');
+            document.getElementById('phoneVerifiedBadge').classList.remove('hidden');
+            document.getElementById('settingsNotifDot').classList.add('hidden');
+        }, 1500);
+
+        window.settingsConfirmationResult = null;
+
+    } catch (err) {
+        console.error(err);
+        const statusIcon = document.getElementById('otpStatusIcon');
+        boxes.forEach(b => {
+            b.classList.add('shake-error', 'bg-red-100');
+            b.value = '';
+        });
+        statusIcon.innerHTML = '<i class="fa-solid fa-xmark text-6xl text-red-500 animate-bounce"></i>';
+        statusIcon.classList.remove('hidden');
+        statusIcon.classList.replace('opacity-0', 'opacity-100');
+        setTimeout(() => {
+            boxes.forEach(b => b.classList.remove('shake-error', 'bg-red-100'));
+            statusIcon.classList.replace('opacity-100', 'opacity-0');
+            setTimeout(() => statusIcon.classList.add('hidden'), 300);
+            boxes[0].focus();
+        }, 1200);
+    }
+};
