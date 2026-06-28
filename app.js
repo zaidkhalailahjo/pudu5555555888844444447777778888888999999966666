@@ -9110,7 +9110,7 @@ window.handleChecklistEnter = (e) => {
             
             const filteredUsers = globalUsers.filter(u => {
                 // إخفاء حساب المدير (CEO) عن أي شخص آخر يملك صلاحية الإدارة
-                if (!window.isAdmin() && u.role === 'CEO') return false;
+                if (!window.isAdmin() && (u.role === 'CEO' || u.role === 'مطور' || (u.role && u.role.toUpperCase() === 'DEVELOPER'))) return false;
                 
                 return (u.name || '').toLowerCase().includes(searchTerm) || (u.role || '').toLowerCase().includes(searchTerm);
             });
@@ -9121,7 +9121,7 @@ window.handleChecklistEnter = (e) => {
             }
 
             filteredUsers.forEach(u => {
-                const isCEO = u.role === 'CEO';
+                const isCEO = (u.role === 'CEO' || u.role === 'مطور' || (u.role && u.role.toUpperCase() === 'DEVELOPER'));
                 const isMe = currentUserData.uid === u.uid;
                 const amICEO = window.isAdmin();
                 const ceoBadge = isCEO ? '<span class="bg-red-100 text-red-600 px-2 py-0.5 rounded text-[10px] font-bold shadow-sm">مدير النظام</span>' : '';
