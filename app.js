@@ -10140,3 +10140,152 @@ window.openSpecificReEntryLog = async (recordId, entryIndex) => {
         list.innerHTML = '<div class="p-6 text-center text-red-500 font-bold">حدث خطأ أثناء جلب البيانات. يرجى المحاولة لاحقاً.</div>';
     }
 };
+
+// ================== نظام الـ OTP التفاعلي داخل الإعدادات ==================
+        
+        window.startSettingsPhoneVerification = async () => {
+            let phone = document.getElementById('settingsPhone').value.trim();
+            phone = window.formatPhone(phone);
+            if(phone.length < 10) { 
+                showToast('يرجى إدخال رقم هاتف صالح أولاً', 'error'); 
+                return; 
+            }
+
+            const otpUI = document.getElementById('settingsOtpUI');
+            otpUI.classList.remove('hidden');
+            
+            // تصفير المربعات
+            const boxes = document.querySelectorAll('.otp-box');
+            boxes.forEach(b => {
+                b.value = '';
+                b.classList.remove('shake-error', 'otp-merged', 'otp-hidden', 'bg-red-100');
+                b.disabled = false;
+            });
+            boxes[0].focus();
+
+            try {
+                // توليد وإرسال الـ OTP 
+                const otp = Math.floor(100000 + Math.random() * 900000).toString();
+                sessionStorage.setItem('quill_otp_code_settings', btoa(otp));
+                
+                const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+                if (token) {
+                    fetch(GOOGLE_SCRIPT_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({
+                            action: 'sendOTP',
+                            phone: phone,
+                            otp: otp,
+                            token: token
+                        })
+                    }).catch(e => console.log('Settings OTP sent', e));
+                }
+                showToast('تم إرسال رمز التحقق (OTP) إلى هاتفك', 'info');
+            } catch (err) {
+                console.error(err);
+                showToast('حدث خطأ في الإرسال', 'error');
+            }
+        };
+
+        window.moveOtpFocus = (input, index) => {
+            // الانتقال للمربع التالي
+            if (input.value.length === 1 && index < 6) {
+                document.querySelectorAll('.otp-box')[index].focus();
+            }
+            // إذا اكتملت الـ 6 أرقام نقوم بالتحقق فوراً
+            const boxes = document.querySelectorAll('.otp-box');
+            let enteredOtp = '';
+            boxes.forEach(b => enteredOtp += b.value);
+            
+            if (enteredOtp.length === 6) {
+                window.verifySettingsOtpCode(enteredOtp, boxes);
+            }
+        };
+
+        window.verifySettingsOtpCode = async (enteredOtp, boxes) => {
+            const storedOTP = sessionStorage.getItem('quill_otp_code_settings');
+            const actualOTP = storedOTP ? atob(storedOTP) : null;
+            const statusIcon = document.getElementById('otpStatusIcon');
+
+            if (enteredOtp === actualOTP) {
+                // -------- نجاح التحقق --------
+                // 1. تجميد المربعات
+                boxes.forEach(b => b.disabled = true);
+                
+                // 2. أنيميشن دمج المربعات
+                boxes[0].value = '✓';
+                boxes[0].classList.add('otp-merged');
+                for (let i = 1; i < 6; i++) {
+                    boxes[i].classList.add('otp-hidden');
+                }
+
+                // 3. تشغيل الألعاب النارية والصوت
+                const fw = document.getElementById('fireworksOverlay');
+                const sound = document.getElementById('fireworksSound');
+                if(fw) {
+                    fw.classList.remove('hidden', 'opacity-0');
+                    fw.classList.add('opacity-100');
+                    fw.querySelector('p').innerText = "تم التحقق من رقم الهاتف بنجاح 📱✨";
+                    
+                    if(sound) { 
+                        sound.currentTime = 0; 
+                        sound.play().catch(()=>{});
+                    }
+                    if(window.confetti) {
+                        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ['#22c55e', '#ffffff', '#00839b'] });
+                    }
+                    setTimeout(() => {
+                        fw.classList.replace('opacity-100', 'opacity-0');
+                        setTimeout(() => fw.classList.add('hidden'), 500); 
+                    }, 3000);
+                }
+
+                // 4. حفظ في قاعدة البيانات
+                let phone = document.getElementById('settingsPhone').value.trim();
+                phone = window.formatPhone(phone);
+                try {
+                    const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), {
+                        phoneVerified: true,
+                        phone: phone
+                    });
+                    
+                    currentUserData.phoneVerified = true;
+                    currentUserData.phone = phone;
+                    localStorage.setItem('quill_user_cache_services', JSON.stringify(currentUserData));
+                    
+                    // تغيير الواجهة إلى "تم التحقق"
+                    setTimeout(() => {
+                        document.getElementById('settingsOtpUI').classList.add('hidden');
+                        document.getElementById('phoneVerificationSection').classList.add('hidden');
+                        document.getElementById('phoneVerifiedBadge').classList.remove('hidden');
+                        document.getElementById('settingsNotifDot').classList.add('hidden');
+                    }, 1500);
+
+                } catch(e) {
+                    console.error(e);
+                }
+
+            } else {
+                // -------- فشل التحقق --------
+                // اهتزاز وتلوين أحمر
+                boxes.forEach(b => {
+                    b.classList.add('shake-error', 'bg-red-100');
+                    b.value = ''; // تصفير لتسهيل المحاولة مجدداً
+                });
+                
+                // إظهار حرف X كبير متحرك
+                statusIcon.innerHTML = '<i class="fa-solid fa-xmark text-6xl text-red-500 animate-bounce"></i>';
+                statusIcon.classList.remove('hidden');
+                statusIcon.classList.replace('opacity-0', 'opacity-100');
+
+                // إزالة التأثير بعد ثانية ليتيح المحاولة مرة أخرى
+                setTimeout(() => {
+                    boxes.forEach(b => b.classList.remove('shake-error', 'bg-red-100'));
+                    statusIcon.classList.replace('opacity-100', 'opacity-0');
+                    setTimeout(() => statusIcon.classList.add('hidden'), 300);
+                    boxes[0].focus();
+                }, 1200);
+            }
+        };
