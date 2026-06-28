@@ -2436,6 +2436,68 @@ document.getElementById('rentalForm').addEventListener('submit', async (e) => {
             }
         });
 
+        window.saveProfileInfo = async () => {
+    const btn = document.getElementById('saveProfileBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري تأمين وحفظ البيانات...';
+    
+    try {
+        const newName = document.getElementById('settingsName').value.trim();
+        const newPhone = document.getElementById('settingsPhone').value.trim();
+        const newEmail = document.getElementById('settingsEmail').value.trim().toLowerCase();
+        const newPassword = document.getElementById('settingsPassword').value;
+
+        // استدعاء دوال الـ Auth لتحديث البيانات الحساسة
+        const { updateEmail, updatePassword } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+        const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+
+        // 1. تحديث الإيميل إذا تم تغييره
+        if (newEmail && newEmail !== currentUserAuth.email) {
+            await updateEmail(currentUserAuth, newEmail);
+        }
+        
+        // 2. تحديث الباسوورد إذا كتب الموظف باسوورد جديد
+        if (newPassword && newPassword.length >= 6) {
+            await updatePassword(currentUserAuth, newPassword);
+        } else if (newPassword && newPassword.length > 0 && newPassword.length < 6) {
+            showToast('كلمة السر يجب أن تكون 6 أحرف أو أكثر', 'warning');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-shield-check"></i> حفظ البيانات وتأمين الحساب';
+            return;
+        }
+
+        // 3. تحديث البيانات في قاعدة البيانات
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), {
+            name: newName,
+            phone: newPhone,
+            email: newEmail || currentUserAuth.email
+        });
+
+        // تحديث البيانات المحلية لكي لا يضطر لعمل ريفريش
+        currentUserData.name = newName;
+        currentUserData.phone = newPhone;
+        if(newEmail) currentUserData.email = newEmail;
+        
+        document.getElementById('userName').innerText = newName;
+        document.getElementById('settingsPassword').value = ''; // تصفير الباسوورد بعد النجاح
+        
+        showToast('تم تحديث وتأمين بيانات حسابك بنجاح!', 'success');
+        
+    } catch (error) {
+        console.error(error);
+        if (error.code === 'auth/requires-recent-login') {
+            showToast('لأسباب أمنية: لتغيير الإيميل أو الباسوورد، يرجى تسجيل الخروج والدخول من جديد ثم المحاولة.', 'error');
+        } else if (error.code === 'auth/email-already-in-use') {
+            showToast('هذا الإيميل مستخدم لحساب آخر في النظام!', 'error');
+        } else {
+            showToast('حدث خطأ أثناء حفظ البيانات.', 'error');
+        }
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-shield-check"></i> حفظ البيانات وتأمين الحساب';
+    }
+};
+
         window.formatPhone = (phone) => {
     let p = phone.trim();
     // إزالة المسافات والشرطات
