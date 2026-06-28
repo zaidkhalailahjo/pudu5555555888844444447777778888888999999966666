@@ -2052,12 +2052,38 @@
                                 </div>
                               </div>
                             <div>
-                                <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">رقم الهاتف</label>
-                                <div class="relative">
-                                    <i class="fa-solid fa-phone absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                                    <input type="tel" id="settingsPhone" dir="ltr" placeholder="مثال: 96279..." class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg pr-10 pl-3 py-3 text-gray-800 dark:text-white font-bold outline-none focus:border-secondary shadow-sm text-right">
-                                </div>
-                            </div>
+    <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">رقم الهاتف</label>
+    <div class="relative">
+        <i class="fa-solid fa-phone absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+        <input type="tel" id="settingsPhone" dir="ltr" placeholder="مثال: 96279..." class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg pr-10 pl-3 py-3 text-gray-800 dark:text-white font-bold outline-none focus:border-secondary shadow-sm text-right">
+    </div>
+    
+    <div id="phoneVerificationSection" class="mt-2 hidden">
+        <p class="text-xs font-bold text-gray-500 flex items-center gap-1">
+            <i class="fa-solid fa-circle-exclamation text-red-500"></i> هذا الرقم لم يتم التحقق منه 
+            <span onclick="window.startSettingsPhoneVerification()" class="text-blue-600 underline cursor-pointer hover:text-blue-800 transition mr-2">تحقق الآن</span>
+        </p>
+    </div>
+    <div id="phoneVerifiedBadge" class="mt-2 hidden">
+        <p class="text-xs font-bold text-green-600 flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> تم التحقق من رقم الهاتف</p>
+    </div>
+
+    <div id="settingsOtpUI" class="hidden mt-4 bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700 text-center relative overflow-hidden">
+        <p class="text-xs font-bold text-gray-600 dark:text-gray-300 mb-3">تم إرسال رمز OTP إلى هاتفك، أدخله هنا:</p>
+        
+        <div id="otpBoxesContainer" class="flex justify-center gap-2 mb-3" dir="ltr">
+            <input type="text" maxlength="1" class="otp-box w-10 h-12 text-center text-xl font-bold border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-blue-500 outline-none bg-white dark:bg-gray-800 dark:text-white transition-all duration-500" onkeyup="window.moveOtpFocus(this, 1)">
+            <input type="text" maxlength="1" class="otp-box w-10 h-12 text-center text-xl font-bold border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-blue-500 outline-none bg-white dark:bg-gray-800 dark:text-white transition-all duration-500" onkeyup="window.moveOtpFocus(this, 2)">
+            <input type="text" maxlength="1" class="otp-box w-10 h-12 text-center text-xl font-bold border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-blue-500 outline-none bg-white dark:bg-gray-800 dark:text-white transition-all duration-500" onkeyup="window.moveOtpFocus(this, 3)">
+            <input type="text" maxlength="1" class="otp-box w-10 h-12 text-center text-xl font-bold border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-blue-500 outline-none bg-white dark:bg-gray-800 dark:text-white transition-all duration-500" onkeyup="window.moveOtpFocus(this, 4)">
+            <input type="text" maxlength="1" class="otp-box w-10 h-12 text-center text-xl font-bold border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-blue-500 outline-none bg-white dark:bg-gray-800 dark:text-white transition-all duration-500" onkeyup="window.moveOtpFocus(this, 5)">
+            <input type="text" maxlength="1" class="otp-box w-10 h-12 text-center text-xl font-bold border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-blue-500 outline-none bg-white dark:bg-gray-800 dark:text-white transition-all duration-500" onkeyup="window.moveOtpFocus(this, 6)">
+        </div>
+
+        <div id="otpStatusIcon" class="absolute inset-0 flex items-center justify-center bg-white/90 dark:bg-gray-800/90 z-10 hidden opacity-0 transition-opacity duration-300"></div>
+
+    </div>
+</div>
                             <div>
                                 <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">كلمة المرور الجديدة <span class="text-[10px] text-red-500">(اتركها فارغة إذا لم ترد التغيير)</span></label>
                                 <div class="relative">
