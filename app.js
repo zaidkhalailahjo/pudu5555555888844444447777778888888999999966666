@@ -6723,11 +6723,15 @@ window.handleLogin = async (e) => {
                     photoURL: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=00839b&color=fff`
                 };
                 
-                // حفظ المستخدم مباشرة في قاعدة البيانات بدلاً من انتظار OTP
+                // حفظ المستخدم في قاعدة البيانات
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserAuth.uid), pendingUserData);
                 currentUserData = pendingUserData;
                 document.getElementById('loginScreen').classList.add('hidden');
-                finishLoginSetup();
+
+                // تفعيل شاشة الـ OTP فوراً بعد إنشاء الحساب لربط الرقم
+                targetPhoneNumber = phone;
+                document.getElementById('otpMainDesc').innerHTML = `سيتم إرسال رمز التحقق إلى:<br><b dir="ltr" class="text-secondary text-lg mt-2 inline-block">${targetPhoneNumber}</b>`;
+                window.triggerOTPFlow(false);
                 
             } catch (error) {
                 console.error(error);
