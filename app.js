@@ -2549,20 +2549,48 @@ window.triggerOTPFlow = async (isResend = false) => {
 };
 
 window.verifyOTP = async () => {
-    const enteredOTP = document.getElementById('otpInput').value.trim();
-    if (!enteredOTP) return;
+            const enteredOTP = document.getElementById('otpInput').value.trim();
+            if (!enteredOTP) return;
 
-    try {
-        // 3. التحقق من الرمز عبر Firebase
-        const result = await window.confirmationResult.confirm(enteredOTP);
-        const user = result.user;
-        
-        showToast('تم التحقق بنجاح!', 'success');
-        // هنا يمكنك إكمال منطق تحديث قاعدة البيانات كما في كودك الأصلي
-    } catch (error) {
-        showToast('رمز التحقق غير صحيح', 'error');
-    }
-};
+            const btn = document.getElementById('verifyOtpBtn');
+            const oldBtnText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التحقق...';
+
+            try {
+                // التحقق من الرمز عبر Firebase
+                const result = await window.confirmationResult.confirm(enteredOTP);
+                
+                showToast('تم التحقق بنجاح!', 'success');
+                
+                // 1. تسجيل أن هذا المتصفح/الجهاز أصبح موثوقاً للمستخدم الحالي
+                localStorage.setItem('device_verified_' + currentUserData.uid, 'true');
+
+                // 2. تحديث حالة الهاتف في قاعدة البيانات (في حال كانت أول مرة)
+                if (!currentUserData.phoneVerified) {
+                    currentUserData.phoneVerified = true;
+                    const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), { 
+                        phoneVerified: true 
+                    });
+                }
+
+                // 3. إخفاء شاشة الـ OTP وإكمال الدخول
+                document.getElementById('otpScreen').classList.add('hidden');
+                finishLoginSetup(); 
+                document.getElementById('loadingScreen').classList.add('hidden');
+
+            } catch (error) {
+                console.error(error);
+                showToast('رمز التحقق غير صحيح أو منتهي الصلاحية', 'error');
+                const otpInputEl = document.getElementById('otpInput');
+                otpInputEl.classList.add('shake-error', 'bg-red-100');
+                setTimeout(() => otpInputEl.classList.remove('shake-error', 'bg-red-100'), 1000);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = oldBtnText;
+            }
+        };
 
         // دالة مساعدة لإخفاء عناصر واجهة الـ OTP عند الحظر
         function hideOtpControls(errorElement) {
