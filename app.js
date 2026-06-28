@@ -6232,6 +6232,17 @@ if (t.createdBy !== t.assigneeId) {
                 const now = Date.now();
                 // === نهاية شروط الـ OTP ===
 
+                    // --- التحقق من الدخول من جهاز جديد (New Device Check) ---
+                const isDeviceVerified = localStorage.getItem('device_verified_' + user.uid);
+                if (!isDeviceVerified && currentUserData.phoneVerified) {
+                    targetPhoneNumber = currentUserData.phone;
+                    document.getElementById('loginScreen').classList.add('hidden');
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    document.getElementById('otpMainDesc').innerHTML = `لأسباب أمنية، يبدو أنك تدخل من جهاز جديد. سيتم إرسال رمز التحقق إلى:<br><b dir="ltr" class="text-secondary text-lg mt-2 inline-block">${targetPhoneNumber}</b>`;
+                    window.triggerOTPFlow(false);
+                    return; // إيقاف إكمال الدخول حتى يتم التحقق من الهاتف
+                }
+
                 // --- استكمال منطقك الأصلي ---
                 groupReadTimestamps = currentUserData.readReceipts || {};
                 if(!currentUserData.notificationPreferences) currentUserData.notificationPreferences = defaultNotifPreferences;
