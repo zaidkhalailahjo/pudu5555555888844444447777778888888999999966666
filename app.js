@@ -8295,12 +8295,17 @@ window.handleChecklistEnter = (e) => {
                     approvalHtml = `<div class="mt-4 border-t dark:border-gray-600 pt-3 text-center"><span class="text-xs font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full"><i class="fa-solid fa-check-double mx-1"></i> معتمدة ومكتملة</span></div>`;
                 }
 
-                const assigneeNameHtml = empId === 'all' ? `<span class="text-[10px] bg-[#00839b]/10 text-[#00839b] px-2 py-0.5 rounded-full mr-2 shadow-sm font-bold">بواسطة: ${escapeHTML(t.assigneeName)}</span>` : '';
+                const assigneeNameHtml = empId === 'all' ? `<span class="text-[10px] bg-[#00839b]/10 text-[#00839b] px-2 py-0.5 rounded-full mr-2 shadow-sm font-bold">بواسطة: ${escapeHTML(t.completedByName || t.assigneeName)}</span>` : '';
                 html += `
                     <div class="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm relative">
                         ${t.status === 'pending_approval' ? '<span class="absolute -top-3 -right-2 bg-red-500 text-white text-[10px] px-2 py-1 rounded-lg font-bold animate-pulse z-[60] shadow-md border border-white dark:border-gray-800">جديد</span>' : ''}
                         <h5 class="font-bold text-gray-800 dark:text-gray-100 mb-2 flex items-center">${escapeHTML(t.title)} ${assigneeNameHtml}</h5>
                         <p class="text-xs text-gray-600 dark:text-gray-400 mb-3 whitespace-pre-wrap">${escapeHTML(t.desc)}</p>
+                        <div class="grid grid-cols-3 gap-2 text-[10px] font-bold bg-blue-50 dark:bg-gray-900/40 p-2 rounded-lg mb-3 border border-blue-100 dark:border-gray-700">
+                            <div class="text-center"><span class="block text-gray-400">بدأ في</span><span class="text-gray-700 dark:text-gray-200">${startedStr}</span></div>
+                            <div class="text-center border-x border-blue-100 dark:border-gray-700"><span class="block text-gray-400">انتهى في</span><span class="text-gray-700 dark:text-gray-200">${dateStr}</span></div>
+                            <div class="text-center"><span class="block text-gray-400">المدة الكلية</span><span class="text-[#00839b]">${totalDurationStr}</span></div>
+                        </div>
                         <div class="border-t border-gray-200 dark:border-gray-600 pt-3 bg-white dark:bg-gray-800 p-3 rounded-lg mt-2">
                             <h6 class="text-xs font-bold text-green-600 dark:text-green-400 mb-2"><i class="fa-solid fa-clipboard-check mx-1"></i>تقرير الموظف:</h6>
                             <p class="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-line leading-relaxed">${escapeHTML(t.reportText)}</p>
