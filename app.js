@@ -7409,7 +7409,7 @@ window.markNoticeRead = (id) => {
                         hasPendingChecklist = task.checklists.some(c => !c.isCompleted);
                         checklistsHtml = task.checklists.map((cl, idx) => `
                             <div class="flex items-center gap-2 mb-1">
-                                <input type="checkbox" class="w-3.5 h-3.5 text-[#00839b]" ${cl.isCompleted ? 'checked' : ''} disabled>
+                                <input type="checkbox" class="w-3.5 h-3.5 text-[#00839b] cursor-pointer" ${cl.isCompleted ? 'checked' : ''} onchange="window.toggleTaskChecklistItem('${task.id}', ${idx}, this.checked)">
                                 <span class="${cl.isCompleted ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-300'}">${escapeHTML(cl.text)}</span>
                             </div>
                         `).join('');
