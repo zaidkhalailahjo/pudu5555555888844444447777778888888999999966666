@@ -8272,6 +8272,13 @@ window.handleChecklistEnter = (e) => {
     let html = `<h4 class="font-bold text-[#002d74] dark:text-[#00b0f0] mb-4 border-b dark:border-gray-700 pb-2">تقارير المهام لـ: ${escapeHTML(empName)}</h4><div class="space-y-4 pb-10">`;
     empTasks.forEach(t => {
                 const dateStr = t.completedAt ? new Date(t.completedAt).toLocaleString('ar-EG') : 'غير محدد';
+                window.linkifyText = function(text) {
+    if(!text) return '';
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    return text.replace(urlRegex, function(url) {
+        return `<a href="${url}" target="_blank" class="text-blue-500 hover:text-blue-700 underline font-bold" onclick="event.stopPropagation()">${url}</a>`;
+    });
+};
                 const startedStr = t.startedAt ? new Date(t.startedAt).toLocaleString('ar-EG') : 'غير محدد';
                 const totalDurationStr = (t.startedAt && t.completedAt) ? formatDurationArabic(t.completedAt - t.startedAt) : 'غير محدد';
                 let fileHtml = '';
