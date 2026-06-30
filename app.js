@@ -8145,7 +8145,9 @@ window.handleChecklistEnter = (e) => {
                     completedByName: currentUserData.name,
                     reportText: text,
                     reportFileData: fileUrl,
-                    reportFileType: fileType
+                    reportFileType: fileType,
+                    isRejected: false,
+                    rejectReason: null
                 });
 
                 if (!isSelfAssigned) {
