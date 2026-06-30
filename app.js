@@ -7470,9 +7470,9 @@ if (task.isRejected && task.status !== 'completed' && task.status !== 'pending_a
                                 ${deleteBtnHtml}
                             </td>
                         </tr>
-                        <tr id="checklist-row-${task.id}" class="hidden bg-gray-50/80 dark:bg-gray-900/50 shadow-inner">
+                        <tr id="checklist-row-${task.id}" class="${rowHiddenClass} bg-gray-50/80 dark:bg-gray-900/50 shadow-inner">
                             <td colspan="7" class="p-0">
-                                <div id="checklist-content-${task.id}" class="max-h-0 overflow-hidden transition-all duration-300 ease-out px-4">
+                                <div id="checklist-content-${task.id}" class="overflow-hidden transition-all duration-300 ease-out px-4" style="${contentStyle}">
                                     <div class="border-r-4 border-[#00839b] pr-4 my-2">
                                         ${hasDescription ? `<div class="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed bg-white dark:bg-gray-800 p-3 rounded-lg border dark:border-gray-700 shadow-sm">${escapeHTML(task.desc)}</div>` : ''}
                                         
