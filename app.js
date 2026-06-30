@@ -7843,42 +7843,6 @@ window.handleChecklistEnter = (e) => {
             container.innerHTML = html;
         };
 
-        window.approveTask = async (taskId) => {
-            const modal = document.getElementById('customConfirmModal');
-            document.getElementById('customConfirmMessage').innerText = 'هل أنت متأكد من الموافقة على هذا التقرير واعتماده؟';
-            const actionBtn = document.getElementById('customConfirmActionBtn');
-            
-            actionBtn.innerText = 'موافقة واعتماد';
-            actionBtn.className = 'flex-1 bg-green-500 hover:bg-green-600 text-white py-2.5 rounded-xl font-bold transition shadow-md';
-            document.querySelector('#customConfirmModal h3').innerText = 'اعتماد التقرير';
-            document.querySelector('#customConfirmModal i').className = 'fa-solid fa-circle-check text-3xl text-green-500';
-            
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-            
-            actionBtn.onclick = async () => {
-                modal.classList.add('hidden');
-                modal.classList.remove('flex');
-                
-                // إعادة الزر لشكله الأصلي لعمليات الحذف المستقبلية
-                actionBtn.innerText = 'نعم، احذف';
-                actionBtn.className = 'flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl font-bold transition shadow-md';
-                document.querySelector('#customConfirmModal h3').innerText = 'تأكيد الحذف';
-                document.querySelector('#customConfirmModal i').className = 'fa-solid fa-trash-can text-3xl text-red-500';
-                
-                try {
-                    const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { status: 'completed' });
-                    showToast('تم الموافقة بنجاح', 'success');
-                    
-                    const task = globalTasks.find(t => t.id === taskId);
-                    if(task && task.assigneeId !== currentUserData.uid) {
-                        window.sendSystemNotification(task.assigneeId, 'تم اعتماد تقريرك', `أحسنت! تمت الموافقة على المهمة (${task.title}) واعتمادها بنجاح.`, 'tasks', 'tasks');
-                    }
-                } catch(e) { console.error(e); }
-            };
-        };
-
         document.addEventListener('click', () => {
             const drop = document.getElementById('taskAssigneeDropdown');
             if(drop && drop.classList.contains('open')) drop.classList.remove('open');
@@ -8278,7 +8242,32 @@ window.handleChecklistEnter = (e) => {
         };
 
         window.approveTask = async (taskId) => {
-            if(confirm('هل أنت متأكد من الموافقة على هذا التقرير واعتماده؟')) {
+            const modal = document.getElementById('customConfirmModal');
+            document.getElementById('customConfirmMessage').innerText = 'هل أنت متأكد من الموافقة على هذا التقرير واعتماده؟';
+            const actionBtn = document.getElementById('customConfirmActionBtn');
+            const cancelBtn = modal.querySelector('.bg-gray-100');
+            
+            actionBtn.innerText = 'موافقة واعتماد';
+            actionBtn.className = 'flex-1 bg-green-500 hover:bg-green-600 text-white py-2.5 rounded-xl font-bold transition shadow-md';
+            document.querySelector('#customConfirmModal h3').innerText = 'اعتماد التقرير';
+            document.querySelector('#customConfirmModal i').className = 'fa-solid fa-circle-check text-3xl text-green-500';
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            // حركة لتكبير المودال بنعومة
+            setTimeout(() => modal.querySelector('div').classList.replace('scale-95', 'scale-100'), 10);
+            
+            actionBtn.onclick = async () => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                modal.querySelector('div').classList.replace('scale-100', 'scale-95');
+                
+                // إعادة الزر لشكله الأصلي لعمليات الحذف
+                actionBtn.innerText = 'نعم، احذف';
+                actionBtn.className = 'flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl font-bold transition shadow-md';
+                document.querySelector('#customConfirmModal h3').innerText = 'تأكيد الحذف';
+                document.querySelector('#customConfirmModal i').className = 'fa-solid fa-trash-can text-3xl text-red-500';
+                
                 try {
                     const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
                     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { status: 'completed' });
@@ -8289,6 +8278,19 @@ window.handleChecklistEnter = (e) => {
                         window.sendSystemNotification(task.assigneeId, 'تم اعتماد المهمة', `أحسنت! تمت الموافقة على مهمتك (${task.title}) واعتمادها بنجاح.`, 'tasks', 'tasks');
                     }
                 } catch(e) { console.error(e); }
+            };
+            
+            // في حالة الإلغاء، نعيد الزر لحالته الأصلية أيضاً لتجنب المشاكل
+            if(cancelBtn) {
+                cancelBtn.onclick = () => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    modal.querySelector('div').classList.replace('scale-100', 'scale-95');
+                    actionBtn.innerText = 'نعم، احذف';
+                    actionBtn.className = 'flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl font-bold transition shadow-md';
+                    document.querySelector('#customConfirmModal h3').innerText = 'تأكيد الحذف';
+                    document.querySelector('#customConfirmModal i').className = 'fa-solid fa-trash-can text-3xl text-red-500';
+                };
             }
         };
 
