@@ -8262,7 +8262,11 @@ window.handleChecklistEnter = (e) => {
         });
     }
     
-    empTasks.sort((a,b) => (b.completedAt || 0) - (a.completedAt || 0));
+    empTasks.sort((a,b) => {
+    if (a.isHighPriority && !b.isHighPriority) return -1;
+    if (!a.isHighPriority && b.isHighPriority) return 1;
+    return (b.completedAt || 0) - (a.completedAt || 0);
+});
     
     if(empTasks.length === 0) {
         container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-gray-400 mt-10"><i class="fa-solid fa-folder-open text-5xl mb-4 text-[#00839b]/50"></i><p class="font-bold text-lg text-[#002d74] dark:text-gray-300">لا توجد مهام منجزة لهذا الموظف</p></div>`;
