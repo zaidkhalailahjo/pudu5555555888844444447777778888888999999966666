@@ -1350,34 +1350,62 @@
                     <!-- 3. طريقة العرض كمخطط (Planner) -->
                     <div id="tasks-planner-view" class="hidden flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar bg-gray-50 dark:bg-gray-900/30 p-4">
                         <div class="flex gap-4 h-full min-w-max items-start">
+                            <!-- العمود الأول -->
                             <div class="w-[300px] flex flex-col h-full bg-[#00b0f0]/10 rounded-xl border border-[#00b0f0]/30">
-                                <div class="p-3 bg-[#00b0f0] text-white font-bold rounded-t-xl text-sm flex justify-between items-center shadow-sm">
+                                <div class="p-3 bg-[#00b0f0] text-white font-bold rounded-t-xl text-sm flex justify-between items-center shadow-sm relative group">
                                     <span>Not planned (قيد الانتظار)</span>
-                                    <span id="count-pl-pending" class="bg-white/20 px-2 py-0.5 rounded text-xs">0</span>
+                                    <div class="flex items-center gap-2">
+                                        <span id="count-pl-pending" class="bg-white/20 px-2 py-0.5 rounded text-xs">0</span>
+                                        <button onclick="window.toggleQuickAdd('pending')" class="text-white hover:text-gray-200 opacity-0 group-hover:opacity-100 transition focus:opacity-100"><i class="fa-solid fa-plus"></i></button>
+                                    </div>
+                                </div>
+                                <div id="quick-add-pending" class="hidden mx-2 mt-2 bg-white dark:bg-gray-800 border border-[#00b0f0] rounded-lg p-1.5 shadow-inner">
+                                    <input type="text" id="quick-input-pending" placeholder="اكتب اسم المهمة + Enter" class="w-full text-xs outline-none bg-transparent dark:text-white font-bold" onkeydown="window.handleQuickAddEnter(event)">
                                 </div>
                                 <div id="col-pl-pending" class="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar min-h-[150px]" data-status="pending"></div>
                             </div>
 
+                            <!-- العمود الثاني -->
                             <div class="w-[300px] flex flex-col h-full bg-lime-50 dark:bg-lime-900/10 rounded-xl border border-lime-200 dark:border-lime-900/30">
-                                <div class="p-3 bg-lime-500 text-white font-bold rounded-t-xl text-sm flex justify-between items-center shadow-sm">
+                                <div class="p-3 bg-lime-500 text-white font-bold rounded-t-xl text-sm flex justify-between items-center shadow-sm relative group">
                                     <span>In progress (قيد التنفيذ)</span>
-                                    <span id="count-pl-progress" class="bg-white/20 px-2 py-0.5 rounded text-xs">0</span>
+                                    <div class="flex items-center gap-2">
+                                        <span id="count-pl-progress" class="bg-white/20 px-2 py-0.5 rounded text-xs">0</span>
+                                        <button onclick="window.toggleQuickAdd('progress')" class="text-white hover:text-gray-200 opacity-0 group-hover:opacity-100 transition focus:opacity-100"><i class="fa-solid fa-plus"></i></button>
+                                    </div>
+                                </div>
+                                <div id="quick-add-progress" class="hidden mx-2 mt-2 bg-white dark:bg-gray-800 border border-lime-500 rounded-lg p-1.5 shadow-inner">
+                                    <input type="text" id="quick-input-progress" placeholder="اكتب اسم المهمة + Enter" class="w-full text-xs outline-none bg-transparent dark:text-white font-bold" onkeydown="window.handleQuickAddEnter(event)">
                                 </div>
                                 <div id="col-pl-progress" class="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar min-h-[150px]" data-status="in-progress"></div>
                             </div>
 
+                            <!-- العمود الثالث -->
                             <div class="w-[300px] flex flex-col h-full bg-orange-50 dark:bg-orange-900/10 rounded-xl border border-orange-200 dark:border-orange-900/30">
-                                <div class="p-3 bg-orange-500 text-white font-bold rounded-t-xl text-sm flex justify-between items-center shadow-sm">
+                                <div class="p-3 bg-orange-500 text-white font-bold rounded-t-xl text-sm flex justify-between items-center shadow-sm relative group">
                                     <span>Review (بانتظار الموافقة)</span>
-                                    <span id="count-pl-review" class="bg-white/20 px-2 py-0.5 rounded text-xs">0</span>
+                                    <div class="flex items-center gap-2">
+                                        <span id="count-pl-review" class="bg-white/20 px-2 py-0.5 rounded text-xs">0</span>
+                                        <button onclick="window.toggleQuickAdd('review')" class="text-white hover:text-gray-200 opacity-0 group-hover:opacity-100 transition focus:opacity-100"><i class="fa-solid fa-plus"></i></button>
+                                    </div>
+                                </div>
+                                <div id="quick-add-review" class="hidden mx-2 mt-2 bg-white dark:bg-gray-800 border border-orange-500 rounded-lg p-1.5 shadow-inner">
+                                    <input type="text" id="quick-input-review" placeholder="اكتب اسم المهمة + Enter" class="w-full text-xs outline-none bg-transparent dark:text-white font-bold" onkeydown="window.handleQuickAddEnter(event)">
                                 </div>
                                 <div id="col-pl-review" class="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar min-h-[150px]" data-status="pending_approval"></div>
                             </div>
                             
+                            <!-- العمود الرابع -->
                             <div class="w-[300px] flex flex-col h-full bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-                                <div class="p-3 bg-gray-500 text-white font-bold rounded-t-xl text-sm flex justify-between items-center shadow-sm">
+                                <div class="p-3 bg-gray-500 text-white font-bold rounded-t-xl text-sm flex justify-between items-center shadow-sm relative group">
                                     <span>Completed (مكتملة)</span>
-                                    <span id="count-pl-completed" class="bg-white/20 px-2 py-0.5 rounded text-xs">0</span>
+                                    <div class="flex items-center gap-2">
+                                        <span id="count-pl-completed" class="bg-white/20 px-2 py-0.5 rounded text-xs">0</span>
+                                        <button onclick="window.toggleQuickAdd('completed')" class="text-white hover:text-gray-200 opacity-0 group-hover:opacity-100 transition focus:opacity-100"><i class="fa-solid fa-plus"></i></button>
+                                    </div>
+                                </div>
+                                <div id="quick-add-completed" class="hidden mx-2 mt-2 bg-white dark:bg-gray-800 border border-gray-500 rounded-lg p-1.5 shadow-inner">
+                                    <input type="text" id="quick-input-completed" placeholder="اكتب اسم المهمة + Enter" class="w-full text-xs outline-none bg-transparent dark:text-white font-bold" onkeydown="window.handleQuickAddEnter(event)">
                                 </div>
                                 <div id="col-pl-completed" class="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar min-h-[150px]" data-status="completed"></div>
                             </div>
