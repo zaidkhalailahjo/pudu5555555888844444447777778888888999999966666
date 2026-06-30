@@ -7828,7 +7828,7 @@ window.handleChecklistEnter = (e) => {
             const canChange = isCEO || canAssign;
             
             if(window.selectedTaskAssignees.length === 0) {
-                container.innerHTML = `<span class="text-sm font-bold text-gray-700 dark:text-gray-200">-- اختر موظف --</span>`;
+                container.innerHTML = ``;
                 return;
             }
             let html = '';
@@ -7843,9 +7843,25 @@ window.handleChecklistEnter = (e) => {
             container.innerHTML = html;
         };
 
+        window.toggleAssigneeDropdown = () => {
+            const drop = document.getElementById('taskAssigneeDropdown');
+            if(drop) {
+                drop.classList.toggle('scale-y-0');
+                drop.classList.toggle('opacity-0');
+                drop.classList.toggle('pointer-events-none');
+                
+                drop.classList.toggle('scale-y-100');
+                drop.classList.toggle('opacity-100');
+                drop.classList.toggle('pointer-events-auto');
+            }
+        };
+
         document.addEventListener('click', () => {
             const drop = document.getElementById('taskAssigneeDropdown');
-            if(drop && drop.classList.contains('open')) drop.classList.remove('open');
+            if(drop && drop.classList.contains('scale-y-100')) {
+                drop.classList.add('scale-y-0', 'opacity-0', 'pointer-events-none');
+                drop.classList.remove('scale-y-100', 'opacity-100', 'pointer-events-auto');
+            }
         });
 
         window.openTaskModal = () => {
@@ -8007,7 +8023,6 @@ window.handleChecklistEnter = (e) => {
                         fileName = currentTaskFile.name;
                     }
 
-                    // مهمة واحدة مشتركة لكل المختارين، أول من ينجزها تختفي عند الباقي تلقائياً
                     const newTaskData = {
                         title: title,
                         desc: desc,
@@ -8277,6 +8292,14 @@ window.handleChecklistEnter = (e) => {
                     if(task && task.assigneeId !== currentUserData.uid) {
                         window.sendSystemNotification(task.assigneeId, 'تم اعتماد المهمة', `أحسنت! تمت الموافقة على مهمتك (${task.title}) واعتمادها بنجاح.`, 'tasks', 'tasks');
                     }
+                    
+                    // إخفاء الكرت فوراً من الواجهة بحركة ناعمة
+                    const reportCard = document.getElementById(`task-report-card-${taskId}`);
+                    if (reportCard) {
+                        reportCard.style.opacity = '0';
+                        reportCard.style.transform = 'scale(0.9)';
+                        setTimeout(() => reportCard.remove(), 300);
+                    }
                 } catch(e) { console.error(e); }
             };
             
@@ -8377,19 +8400,25 @@ window.handleChecklistEnter = (e) => {
                 }
                 let approvalHtml = '';
                 if(t.status === 'pending_approval') {
-                    approvalHtml = `
-                        <div class="mt-4 flex gap-2 border-t border-gray-200 dark:border-gray-600 pt-3">
-                            <button onclick="window.approveTask('${t.id}')" class="flex-1 bg-green-500 hover:bg-green-600 transition text-white px-4 py-2 rounded-lg font-bold shadow text-sm"><i class="fa-solid fa-check mx-1"></i> اعتماد وموافقة</button>
-                            <button onclick="window.openRejectTaskModal('${t.id}')" class="flex-1 bg-red-500 hover:bg-red-600 transition text-white px-4 py-2 rounded-lg font-bold shadow text-sm"><i class="fa-solid fa-xmark mx-1"></i> رفض ومطالبة بالتعديل</button>
-                        </div>
-                    `;
+                    // التحقق من الصلاحية: هل يحق للمستخدم الموافقة؟
+                    let canApprove = window.isAdmin() || (t.createdBy === currentUserData.uid && t.assigneeId !== currentUserData.uid);
+                    if(canApprove) {
+                        approvalHtml = `
+                            <div class="mt-4 flex gap-2 border-t border-gray-200 dark:border-gray-600 pt-3">
+                                <button onclick="window.approveTask('${t.id}')" class="flex-1 bg-green-500 hover:bg-green-600 transition text-white px-4 py-2 rounded-lg font-bold shadow text-sm"><i class="fa-solid fa-check mx-1"></i> اعتماد وموافقة</button>
+                                <button onclick="window.openRejectTaskModal('${t.id}')" class="flex-1 bg-red-500 hover:bg-red-600 transition text-white px-4 py-2 rounded-lg font-bold shadow text-sm"><i class="fa-solid fa-xmark mx-1"></i> رفض ومطالبة بالتعديل</button>
+                            </div>
+                        `;
+                    } else {
+                        approvalHtml = `<div class="mt-4 border-t dark:border-gray-600 pt-3 text-center"><span class="text-xs font-bold text-orange-500 bg-orange-50 px-3 py-1 rounded-full"><i class="fa-solid fa-clock mx-1"></i> بانتظار الاعتماد من الإدارة</span></div>`;
+                    }
                 } else {
                     approvalHtml = `<div class="mt-4 border-t dark:border-gray-600 pt-3 text-center"><span class="text-xs font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full"><i class="fa-solid fa-check-double mx-1"></i> معتمدة ومكتملة</span></div>`;
                 }
 
                 const assigneeNameHtml = empId === 'all' ? `<span class="text-[10px] bg-[#00839b]/10 text-[#00839b] px-2 py-0.5 rounded-full mr-2 shadow-sm font-bold">بواسطة: ${escapeHTML(t.completedByName || t.assigneeName)}</span>` : '';
                 html += `
-                    <div class="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm relative">
+                    <div id="task-report-card-${t.id}" class="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm relative transition-all duration-300">
                         ${t.status === 'pending_approval' ? '<span class="absolute -top-3 -right-2 bg-red-500 text-white text-[10px] px-2 py-1 rounded-lg font-bold animate-pulse z-[60] shadow-md border border-white dark:border-gray-800">جديد</span>' : ''}
                         <h5 class="font-bold text-gray-800 dark:text-gray-100 mb-2 flex items-center">${escapeHTML(t.title)} ${assigneeNameHtml}</h5>
                         <p class="text-xs text-gray-600 dark:text-gray-400 mb-3 whitespace-pre-wrap">${escapeHTML(t.desc)}</p>
