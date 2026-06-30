@@ -8273,6 +8273,8 @@ window.handleChecklistEnter = (e) => {
     let html = `<h4 class="font-bold text-[#002d74] dark:text-[#00b0f0] mb-4 border-b dark:border-gray-700 pb-2">تقارير المهام لـ: ${escapeHTML(empName)}</h4><div class="space-y-4 pb-10">`;
     empTasks.forEach(t => {
                 const dateStr = t.completedAt ? new Date(t.completedAt).toLocaleString('ar-EG') : 'غير محدد';
+                const startedStr = t.startedAt ? new Date(t.startedAt).toLocaleString('ar-EG') : 'غير محدد';
+                const totalDurationStr = (t.startedAt && t.completedAt) ? formatDurationArabic(t.completedAt - t.startedAt) : 'غير محدد';
                 let fileHtml = '';
                 if(t.reportFileData) {
                     if(t.reportFileType && t.reportFileType.startsWith('image/')) {
