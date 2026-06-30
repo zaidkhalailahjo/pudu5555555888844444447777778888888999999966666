@@ -541,6 +541,8 @@ function formatDurationArabic(ms) {
             document.getElementById('addClientBtn').classList.toggle('hidden', tabName !== 'clients' || !canManage);
             document.getElementById('addSignedClientBtn').classList.toggle('hidden', tabName !== 'signed' || !canAddCon);
             
+            if (tabName === 'signed') window.hideNewBadge('signedClientBadge');
+            
             const addVisitBtn = document.getElementById('addVisitBtn');
             // زر إضافة زيارة يظهر فقط للمدير أو لمن يملك صلاحية إدارة العملاء
             if(addVisitBtn) addVisitBtn.classList.toggle('hidden', tabName !== 'upcoming' || !canManage);
@@ -7311,10 +7313,11 @@ window.markNoticeRead = (id) => {
 
         window.openChecklists = window.openChecklists || new Set();
 
-        window.toggleInlineChecklist = (taskId) => {
-            const row = document.getElementById(`checklist-row-${taskId}`);
-            const content = document.getElementById(`checklist-content-${taskId}`);
-            const icon = document.getElementById(`icon-chk-${taskId}`);
+        window.toggleInlineChecklist = (taskId, isCard = false) => {
+            const prefix = isCard ? 'card-' : '';
+            const row = document.getElementById(`${prefix}checklist-row-${taskId}`);
+            const content = document.getElementById(`${prefix}checklist-content-${taskId}`);
+            const icon = document.getElementById(`icon-${prefix}chk-${taskId}`);
             
             if(row && content) {
                 if(row.classList.contains('hidden')) {
@@ -7620,8 +7623,8 @@ if (task.isRejected && task.status !== 'completed' && task.status !== 'pending_a
                             </div>
                             
                             <!-- قسم التفاصيل المخفي -->
-                            <div id="checklist-row-${task.id}" class="${rowHiddenClass} mt-2 pt-2 border-t border-gray-100 dark:border-gray-600">
-                                <div id="checklist-content-${task.id}" class="overflow-hidden transition-all duration-300 ease-out text-right" style="${contentStyle}">
+                            <div id="card-checklist-row-${task.id}" class="${rowHiddenClass} mt-2 pt-2 border-t border-gray-100 dark:border-gray-600">
+                                <div id="card-checklist-content-${task.id}" class="overflow-hidden transition-all duration-300 ease-out text-right" style="${contentStyle}">
                                     ${hasDescription ? `<div class="text-[10px] text-gray-600 dark:text-gray-300 mb-2 bg-gray-50 dark:bg-gray-900 p-2 rounded whitespace-pre-wrap">${escapeHTML(task.desc)}</div>` : ''}
                                     <div class="space-y-1">
                                         ${checklistsHtml}
@@ -7820,6 +7823,10 @@ window.handleChecklistEnter = (e) => {
 
         window.renderSelectedAssigneesUI = () => {
             const container = document.getElementById('taskAssigneeSelected');
+            const isCEO = window.isAdmin();
+            const canAssign = currentUserData.permissions && currentUserData.permissions.canAssignTasks;
+            const canChange = isCEO || canAssign;
+            
             if(window.selectedTaskAssignees.length === 0) {
                 container.innerHTML = `<span class="text-sm font-bold text-gray-700 dark:text-gray-200">-- اختر موظف --</span>`;
                 return;
@@ -7830,7 +7837,7 @@ window.handleChecklistEnter = (e) => {
                 <div class="flex items-center gap-1 bg-blue-50 border border-blue-200 text-blue-700 px-2 py-1 rounded-full shadow-sm" onclick="event.stopPropagation()">
                     <img src="${emp.photo}" class="w-5 h-5 rounded-full object-cover shadow-sm">
                     <span class="text-xs font-bold">${escapeHTML(emp.name)}</span>
-                    <i class="fa-solid fa-xmark text-red-500 ml-1 cursor-pointer hover:text-red-700 transition" onclick="window.removeTaskAssigneeUI('${emp.uid}', event)"></i>
+                    ${canChange ? `<i class="fa-solid fa-xmark text-red-500 ml-1 cursor-pointer hover:text-red-700 transition" onclick="window.removeTaskAssigneeUI('${emp.uid}', event)"></i>` : ''}
                 </div>`;
             });
             container.innerHTML = html;
@@ -7859,6 +7866,11 @@ window.handleChecklistEnter = (e) => {
 
             window.selectedTaskAssignees = [];
             window.renderSelectedAssigneesUI();
+            
+            const selectorHeader = document.getElementById('taskAssigneeSelectorHeader');
+            if(selectorHeader) selectorHeader.style.display = (isCEO || canAssign) ? 'flex' : 'none';
+            const taskDeadline = document.getElementById('taskDeadline');
+            if(taskDeadline) taskDeadline.required = (isCEO || canAssign);
 
             if (isCEO || canAssign) {
                 globalUsers.forEach(emp => {
@@ -10475,9 +10487,13 @@ window.showRejectReason = (reason) => {
             actionBtn.classList.replace('bg-red-500', 'bg-orange-500');
             actionBtn.classList.replace('hover:bg-red-600', 'hover:bg-orange-600');
             
+            const cancelBtn = modal.querySelector('.bg-gray-100');
+            if(cancelBtn) cancelBtn.classList.add('hidden');
+            
             actionBtn.onclick = () => {
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
+                if(cancelBtn) cancelBtn.classList.remove('hidden');
                 // إعادة الزر لشكله الأصلي لعمليات الحذف المستقبلية
                 actionBtn.innerText = 'نعم، احذف';
                 actionBtn.classList.replace('bg-orange-500', 'bg-red-500');
