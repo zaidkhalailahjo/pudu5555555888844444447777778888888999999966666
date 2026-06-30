@@ -7341,12 +7341,14 @@ window.markNoticeRead = (id) => {
         window.renderTasks = function() {
             const isCEO = window.isAdmin();
             let tasksToRender = globalTasks.filter(t => {
-                const isSelfAssigned = t.assigneeId === t.createdBy;
-                if (isSelfAssigned) return t.assigneeId === currentUserData.uid; 
+                const myUid = currentUserData.uid;
+                const isAssignedToMe = (t.assigneeIds && t.assigneeIds.includes(myUid)) || t.assigneeId === myUid;
+                const isSelfAssigned = t.assigneeId === t.createdBy && (!t.assigneeIds || t.assigneeIds.length <= 1);
+                if (isSelfAssigned) return t.assigneeId === myUid; 
                 if (isCEO) return true;
                 const hasAssignPerm = currentUserData.permissions && currentUserData.permissions.canAssignTasks;
                 if (hasAssignPerm && (t.status === 'completed' || t.status === 'pending_approval')) return true; 
-                return t.assigneeId === currentUserData.uid || t.createdBy === currentUserData.uid;
+                return isAssignedToMe || t.createdBy === myUid;
             });
 
             // ترتيب المهام بناءً على الـ orderIndex لتثبيت السحب والإفلات، ثم التاريخ
