@@ -7620,8 +7620,8 @@ if (task.isRejected && task.status !== 'completed' && task.status !== 'pending_a
                             </div>
                             
                             <!-- قسم التفاصيل المخفي -->
-                            <div id="checklist-row-${task.id}" class="hidden mt-2 pt-2 border-t border-gray-100 dark:border-gray-600">
-                                <div id="checklist-content-${task.id}" class="overflow-hidden transition-all duration-300 ease-out max-h-0 text-right">
+                            <div id="checklist-row-${task.id}" class="${rowHiddenClass} mt-2 pt-2 border-t border-gray-100 dark:border-gray-600">
+                                <div id="checklist-content-${task.id}" class="overflow-hidden transition-all duration-300 ease-out text-right" style="${contentStyle}">
                                     ${hasDescription ? `<div class="text-[10px] text-gray-600 dark:text-gray-300 mb-2 bg-gray-50 dark:bg-gray-900 p-2 rounded whitespace-pre-wrap">${escapeHTML(task.desc)}</div>` : ''}
                                     <div class="space-y-1">
                                         ${checklistsHtml}
