@@ -10322,3 +10322,32 @@ window.openSpecificReEntryLog = async (recordId, entryIndex) => {
         }, 1200);
     }
 };
+
+window.showRejectReason = (reason) => {
+            // نستخدم نافذة التنبيهات المخصصة أو alert بسيط (المخصص أفضل)
+            document.getElementById('customConfirmMessage').innerText = reason;
+            document.getElementById('customConfirmMessage').classList.add('whitespace-pre-wrap', 'text-right', 'font-bold', 'text-red-600');
+            document.querySelector('#customConfirmModal h3').innerText = 'سبب الرفض والتعديل المطلوب';
+            document.querySelector('#customConfirmModal i').className = 'fa-solid fa-clipboard-list text-3xl text-orange-500';
+            
+            const modal = document.getElementById('customConfirmModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            const actionBtn = document.getElementById('customConfirmActionBtn');
+            actionBtn.innerText = 'حسناً';
+            actionBtn.classList.replace('bg-red-500', 'bg-orange-500');
+            actionBtn.classList.replace('hover:bg-red-600', 'hover:bg-orange-600');
+            
+            actionBtn.onclick = () => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                // إعادة الزر لشكله الأصلي لعمليات الحذف المستقبلية
+                actionBtn.innerText = 'نعم، احذف';
+                actionBtn.classList.replace('bg-orange-500', 'bg-red-500');
+                actionBtn.classList.replace('hover:bg-orange-600', 'hover:bg-red-600');
+                document.querySelector('#customConfirmModal h3').innerText = 'تأكيد الحذف';
+                document.querySelector('#customConfirmModal i').className = 'fa-solid fa-trash-can text-3xl text-red-500';
+                document.getElementById('customConfirmMessage').classList.remove('whitespace-pre-wrap', 'text-right', 'font-bold', 'text-red-600');
+            };
+        };
