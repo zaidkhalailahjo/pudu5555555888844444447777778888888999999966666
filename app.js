@@ -7939,7 +7939,6 @@ window.handleChecklistEnter = (e) => {
 
                 const title = document.getElementById('taskTitle').value.trim();
                 const desc = document.getElementById('taskDesc').value.trim();
-                const assigneeId = document.getElementById('taskAssignee').value;
                 const assigneeNameEl = document.querySelector('#taskAssigneeSelected span');
                 const assigneeName = assigneeNameEl ? assigneeNameEl.innerText : 'غير محدد';
                 const deadlineVal = document.getElementById('taskDeadline').value;
