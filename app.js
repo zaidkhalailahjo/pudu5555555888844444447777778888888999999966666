@@ -7309,6 +7309,8 @@ window.markNoticeRead = (id) => {
     window.renderTasks();
 };
 
+        window.openChecklists = window.openChecklists || new Set();
+
         window.toggleInlineChecklist = (taskId) => {
             const row = document.getElementById(`checklist-row-${taskId}`);
             const content = document.getElementById(`checklist-content-${taskId}`);
@@ -7317,23 +7319,26 @@ window.markNoticeRead = (id) => {
             if(row && content) {
                 if(row.classList.contains('hidden')) {
                     row.classList.remove('hidden');
-                    // نعطي مهلة خفيفة ليطبق المتصفح الـ display block ثم ننفذ الأنيميشن
+                    window.openChecklists.add(taskId); // حفظ المهمة كـ مفتوحة
                     setTimeout(() => {
-                        content.style.maxHeight = content.scrollHeight + 'px';
+                        content.style.maxHeight = '2000px';
                         content.style.paddingTop = '1rem';
                         content.style.paddingBottom = '1rem';
                     }, 10);
+                    if(icon) {
+                        icon.classList.remove('fa-chevron-left');
+                        icon.classList.add('fa-chevron-down');
+                    }
                 } else {
+                    window.openChecklists.delete(taskId); // إزالتها من المفتوح
                     content.style.maxHeight = '0px';
                     content.style.paddingTop = '0px';
                     content.style.paddingBottom = '0px';
-                    // انتظار انتهاء الأنيميشن قبل إخفاء العنصر بالكامل
                     setTimeout(() => row.classList.add('hidden'), 300);
-                }
-                
-                if(icon) {
-                    icon.classList.toggle('fa-chevron-left');
-                    icon.classList.toggle('fa-chevron-down');
+                    if(icon) {
+                        icon.classList.remove('fa-chevron-down');
+                        icon.classList.add('fa-chevron-left');
+                    }
                 }
             }
         };
