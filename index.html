@@ -1273,9 +1273,23 @@
                             </button>
                         </div>
 
-                        <div class="search-wrapper flex-1 min-w-[200px]">
-                            <i class="fa-solid fa-search search-icon"></i>
-                            <input type="text" id="taskSearchInput" onkeyup="window.filterTasksList()" placeholder="بحث في المهام..." class="search-input w-full bg-gray-50 dark:bg-gray-900 text-xs py-2">
+                        <div class="flex-1 min-w-[200px] flex items-center relative gap-1">
+                            <div class="search-wrapper flex-1">
+                                <i class="fa-solid fa-search search-icon"></i>
+                                <input type="text" id="taskSearchInput" onkeyup="window.filterTasksList()" placeholder="بحث في المهام..." class="search-input w-full bg-gray-50 dark:bg-gray-900 text-xs py-2">
+                            </div>
+                            
+                            <!-- Filter Button -->
+                            <button id="taskEmployeeFilterBtn" onclick="window.toggleTaskEmployeeFilter(event)" class="bg-gray-50 hover:bg-gray-100 dark:bg-gray-900 dark:hover:bg-gray-800 text-gray-500 hover:text-[#00839b] w-10 h-10 rounded-lg flex items-center justify-center transition shadow-sm border border-gray-200 dark:border-gray-700 shrink-0 outline-none">
+                                <i id="taskEmployeeFilterIcon" class="fa-solid fa-chevron-down transition-transform"></i>
+                            </button>
+
+                            <!-- Dropdown List -->
+                            <div id="taskEmployeeFilterDropdown" class="absolute top-full mt-2 left-0 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl z-[60] overflow-y-auto custom-scrollbar max-h-48 transition-all duration-300 transform origin-top scale-y-0 opacity-0 pointer-events-none">
+                                <div id="taskEmployeeFilterList" class="p-1">
+                                    <!-- Populated dynamically via JS -->
+                                </div>
+                            </div>
                         </div>
                         <button id="addTaskBtn" onclick="window.openTaskModal()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 shadow-md w-full md:w-auto">
                            <i class="fa-solid fa-plus"></i> إسناد مهمة
