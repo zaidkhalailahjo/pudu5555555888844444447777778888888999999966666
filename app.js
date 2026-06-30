@@ -7592,9 +7592,14 @@ if (task.isRejected && task.status !== 'completed' && task.status !== 'pending_a
                         checklistsHtml = '<span class="text-[10px] text-gray-400">لا توجد قوائم تحقق.</span>';
                     }
 
+                    const isOpen = window.openChecklists && window.openChecklists.has(task.id);
+                    const rowHiddenClass = isOpen ? '' : 'hidden';
+                    const contentStyle = isOpen ? 'max-height: 2000px; padding-top: 1rem; padding-bottom: 1rem;' : 'max-height: 0px; padding-top: 0px; padding-bottom: 0px;';
+                    const iconState = isOpen ? 'fa-chevron-down' : 'fa-chevron-left';
+
                     const showExpandBtn = hasChecklist || hasDescription;
                     const showRedDot = hasPendingChecklist;
-                    const expandBtn = showExpandBtn ? `<button onclick="event.stopPropagation(); window.toggleInlineChecklist('${task.id}')" class="absolute top-2 left-2 w-5 h-5 flex items-center justify-center bg-gray-50 hover:bg-gray-200 dark:bg-gray-700 rounded transition">${showRedDot ? `<span class="absolute -top-1 -right-1 flex h-2 w-2 z-10"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-red-500 z-10"></span></span>` : ''}<i id="icon-chk-${task.id}" class="fa-solid fa-chevron-left text-[10px] text-gray-500 transition-transform duration-300"></i></button>` : '';
+                    const expandBtn = showExpandBtn ? `<button onclick="event.stopPropagation(); window.toggleInlineChecklist('${task.id}')" class="absolute top-2 left-2 w-5 h-5 flex items-center justify-center bg-gray-50 hover:bg-gray-200 dark:bg-gray-700 rounded transition">${showRedDot ? `<span class="absolute -top-1 -right-1 flex h-2 w-2 z-10"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-red-500 z-10"></span></span>` : ''}<i id="icon-chk-${task.id}" class="fa-solid ${iconState} text-[10px] text-gray-500 transition-transform duration-300"></i></button>` : '';
 
                         let rejectedBadgeHtml = '';
                     if (task.isRejected && task.status !== 'completed' && task.status !== 'pending_approval') {
