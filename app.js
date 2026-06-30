@@ -7426,13 +7426,15 @@ if (task.isRejected && task.status !== 'completed' && task.status !== 'pending_a
                         checklistsHtml = '<span class="text-gray-400 text-xs">لا توجد قوائم تحقق مرتبطة.</span>';
                     }
 
-                    // التعديل هنا: النقطة الحمراء تظهر إذا كان هناك وصف أو قائمة تحقق غير مكتملة
-                    const hasDescription = task.desc && task.desc.trim() !== '';
+                   const hasDescription = task.desc && task.desc.trim() !== '';
                     const showRedDot = hasPendingChecklist || hasDescription;
-
-                    // التعديل هنا: منع الموظف العادي من الحذف تماماً
                     const canDelete = isCEO || (currentUserData.permissions && currentUserData.permissions.canAssignTasks && task.createdBy === currentUserData.uid);
                     const deleteBtnHtml = canDelete ? `<button onclick="window.deleteTask('${task.id}')" class="text-red-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/30 transition-all opacity-0 group-hover:opacity-100" title="حذف المهمة"><i class="fa-solid fa-trash"></i></button>` : '';
+                    
+                    const isOpen = window.openChecklists && window.openChecklists.has(task.id);
+                    const rowHiddenClass = isOpen ? '' : 'hidden';
+                    const contentStyle = isOpen ? 'max-height: 2000px; padding-top: 1rem; padding-bottom: 1rem;' : 'max-height: 0px; padding-top: 0px; padding-bottom: 0px;';
+                    const iconState = isOpen ? 'fa-chevron-down' : 'fa-chevron-left';
 
                     listTbody.innerHTML += `
                         <tr class="task-list-row group bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 transition border-b border-gray-100 dark:border-gray-700" data-id="${task.id}">
