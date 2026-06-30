@@ -7563,14 +7563,16 @@ window.markNoticeRead = (id) => {
                 if(plColumns[targetCol]) {
                     // معالجة قوائم التحقق والنقطة الحمراء للبلانر
                     const hasDescription = task.desc && task.desc.trim() !== '';
+                    let hasChecklist = false;
                     let hasPendingChecklist = false;
                     let checklistsHtml = '';
                     
                     if(task.checklists && task.checklists.length > 0) {
+                        hasChecklist = true;
                         hasPendingChecklist = task.checklists.some(c => !c.isCompleted);
-                        checklistsHtml = task.checklists.map((cl) => `
-                            <div class="flex items-center gap-2 mb-1">
-                                <input type="checkbox" class="w-3 h-3 text-[#00839b]" ${cl.isCompleted ? 'checked' : ''} disabled>
+                        checklistsHtml = task.checklists.map((cl, clIdx) => `
+                            <div class="flex items-center gap-2 mb-1" onclick="event.stopPropagation()">
+                                <input type="checkbox" class="w-3 h-3 text-[#00839b] cursor-pointer" ${cl.isCompleted ? 'checked' : ''} onchange="event.stopPropagation(); window.toggleTaskChecklistItem('${task.id}', ${clIdx}, this.checked)">
                                 <span class="text-[10px] ${cl.isCompleted ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-300'}">${escapeHTML(cl.text)}</span>
                             </div>
                         `).join('');
@@ -7578,8 +7580,9 @@ window.markNoticeRead = (id) => {
                         checklistsHtml = '<span class="text-[10px] text-gray-400">لا توجد قوائم تحقق.</span>';
                     }
 
-                    const showRedDot = hasPendingChecklist || hasDescription;
-                    const expandBtn = showRedDot ? `<button onclick="window.toggleInlineChecklist('${task.id}')" class="absolute top-2 left-2 w-5 h-5 flex items-center justify-center bg-gray-50 hover:bg-gray-200 dark:bg-gray-700 rounded transition"><i id="icon-chk-${task.id}" class="fa-solid fa-chevron-left text-[10px] text-gray-500 transition-transform duration-300"></i><span class="absolute -top-1 -right-1 flex h-2 w-2 z-10"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-red-500 z-10"></span></span></button>` : '';
+                    const showExpandBtn = hasChecklist || hasDescription;
+                    const showRedDot = hasPendingChecklist;
+                    const expandBtn = showExpandBtn ? `<button onclick="event.stopPropagation(); window.toggleInlineChecklist('${task.id}')" class="absolute top-2 left-2 w-5 h-5 flex items-center justify-center bg-gray-50 hover:bg-gray-200 dark:bg-gray-700 rounded transition">${showRedDot ? `<span class="absolute -top-1 -right-1 flex h-2 w-2 z-10"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-red-500 z-10"></span></span>` : ''}<i id="icon-chk-${task.id}" class="fa-solid fa-chevron-left text-[10px] text-gray-500 transition-transform duration-300"></i></button>` : '';
 
                         let rejectedBadgeHtml = '';
                     if (task.isRejected && task.status !== 'completed' && task.status !== 'pending_approval') {
