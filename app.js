@@ -7595,7 +7595,7 @@ window.markNoticeRead = (id) => {
                     plColumns[targetCol].innerHTML += `
                         <div class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 cursor-grab task-card relative" data-id="${task.id}">
                             ${expandBtn}
-                            <h4 class="text-sm font-bold text-gray-800 dark:text-white mb-2 ${showRedDot ? 'pl-6' : ''}">${escapeHTML(task.title)}</h4>
+                            <h4 class="text-sm font-bold text-gray-800 dark:text-white mb-2 ${showExpandBtn ? 'pl-6' : ''}">${escapeHTML(task.title)}</h4>
                             <div class="flex justify-between items-center">
                                 <span class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded text-[10px] font-bold">${task.deadline ? new Date(task.deadline).toLocaleString('ar-EG', {month:'short', day:'numeric'}) : 'بدون موعد'}</span>
                                 <img src="${aPhoto}" class="w-5 h-5 rounded-full border border-gray-200 object-cover">
