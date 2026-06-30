@@ -7441,6 +7441,7 @@ if (task.isRejected && task.status !== 'completed' && task.status !== 'pending_a
                                        ${showRedDot ? '<span class="absolute -top-1 -right-1 flex h-2.5 w-2.5 z-10"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 z-10"></span></span>' : ''}
                                     </button>
                                     <span class="font-bold text-gray-800 dark:text-white">${escapeHTML(task.title)}</span>
+                                    ${rejectedBadgeList}
                                     ${task.isHighPriority ? '<i class="fa-solid fa-fire text-orange-500 text-xs ml-1" title="أولوية قصوى"></i>' : ''}
                                 </div>
                             </td>
