@@ -7397,6 +7397,10 @@ window.markNoticeRead = (id) => {
                     // استخدام نظام 12 ساعة
                     const deadlineStr = task.deadline ? new Date(task.deadline).toLocaleString('ar-EG', {month: 'short', day: 'numeric', hour:'2-digit', minute:'2-digit', hour12: true}) : 'بدون موعد';
                     const isLate = task.deadline && new Date(task.deadline).getTime() < Date.now() && task.status !== 'completed';
+                        let rejectedBadgeList = '';
+if (task.isRejected && task.status !== 'completed' && task.status !== 'pending_approval') {
+    rejectedBadgeList = `<button onclick="event.stopPropagation(); window.showRejectReason('${escapeHTML(task.rejectReason || 'لا يوجد سبب')}')" class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-bold border border-red-200 ml-2 animate-pulse" title="اضغط لمعرفة السبب"><i class="fa-solid fa-circle-xmark mx-1"></i>مرفوضة</button>`;
+}
                     const deadlineBadge = isLate ? `<span class="bg-red-100 text-red-600 px-2 py-1 rounded-full border border-red-200">${deadlineStr}</span>` : `<span class="bg-blue-50 text-blue-600 px-2 py-1 rounded-full border border-blue-100">${deadlineStr}</span>`;
 
                     let statusText = 'قيد الانتظار';
