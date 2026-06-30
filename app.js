@@ -8132,6 +8132,8 @@ window.handleChecklistEnter = (e) => {
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { 
                     status: newStatus, 
                     completedAt: Date.now(),
+                    completedBy: currentUserData.uid,
+                    completedByName: currentUserData.name,
                     reportText: text,
                     reportFileData: fileUrl,
                     reportFileType: fileType
