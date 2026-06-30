@@ -8246,16 +8246,15 @@ window.handleChecklistEnter = (e) => {
     
     let empTasks = [];
     if (empId === 'all') {
-        // عرض جميع المهام المنجزة للموظفين (مع استثناء المهام الذاتية للآخرين)
         empTasks = globalTasks.filter(t => {
-            if (t.assigneeId === t.createdBy && t.assigneeId !== currentUserData.uid) return false;
+            if (t.assigneeId === t.createdBy && (!t.assigneeIds || t.assigneeIds.length <= 1) && t.assigneeId !== currentUserData.uid) return false;
             return (t.status === 'completed' || t.status === 'pending_approval');
         });
     } else {
-        // عرض مهام موظف محدد (يجب أن يكون قد أسندها له المدير، أو أنك أنت المدير المطلق CEO)
         empTasks = globalTasks.filter(t => {
-            if (t.assigneeId === t.createdBy && t.assigneeId !== currentUserData.uid) return false;
-            return t.assigneeId === empId && 
+            if (t.assigneeId === t.createdBy && (!t.assigneeIds || t.assigneeIds.length <= 1) && t.assigneeId !== currentUserData.uid) return false;
+            const belongsToEmp = t.completedBy ? t.completedBy === empId : ((t.assigneeIds && t.assigneeIds.includes(empId)) || t.assigneeId === empId);
+            return belongsToEmp && 
                    (t.status === 'completed' || t.status === 'pending_approval') &&
                    (window.isAdmin() || t.createdBy === currentUserData.uid);
         });
