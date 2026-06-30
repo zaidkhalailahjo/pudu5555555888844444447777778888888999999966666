@@ -8156,20 +8156,26 @@ window.handleChecklistEnter = (e) => {
                 const isSelfAssigned = task.createdBy === currentUserData.uid;
                 const newStatus = isSelfAssigned ? 'completed' : 'pending_approval';
 
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { 
+                // الحل لمشكلة الصلاحيات: تمرير نص فارغ للـ rejectReason 
+                // وتمرير المرفق فقط إن وجد لعدم كسر قواعد الفايربيس (Rules)
+                let updateData = { 
                     status: newStatus, 
                     completedAt: Date.now(),
                     completedBy: currentUserData.uid,
                     completedByName: currentUserData.name,
                     reportText: text,
-                    reportFileData: fileUrl,
-                    reportFileType: fileType,
                     isRejected: false,
-                    rejectReason: null
-                });
+                    rejectReason: ""
+                };
+
+                if (fileUrl) {
+                    updateData.reportFileData = fileUrl;
+                    updateData.reportFileType = fileType;
+                }
+
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), updateData);
 
                 if (!isSelfAssigned) {
-                    // تبليغ المدير / منشئ المهمة
                     window.sendSystemNotification(task.createdBy, 'مهمة بانتظار الاعتماد', `أنهى الموظف ${currentUserData.name} مهمة (${task.title}) وبانتظار اعتمادك.`, 'tasks', 'tasks');
                 }
 
