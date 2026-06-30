@@ -7559,12 +7559,43 @@ window.markNoticeRead = (id) => {
                 const aPhoto = assignee ? assignee.photoURL : '';
                 
                 if(plColumns[targetCol]) {
+                    // معالجة قوائم التحقق والنقطة الحمراء للبلانر
+                    const hasDescription = task.desc && task.desc.trim() !== '';
+                    let hasPendingChecklist = false;
+                    let checklistsHtml = '';
+                    
+                    if(task.checklists && task.checklists.length > 0) {
+                        hasPendingChecklist = task.checklists.some(c => !c.isCompleted);
+                        checklistsHtml = task.checklists.map((cl) => `
+                            <div class="flex items-center gap-2 mb-1">
+                                <input type="checkbox" class="w-3 h-3 text-[#00839b]" ${cl.isCompleted ? 'checked' : ''} disabled>
+                                <span class="text-[10px] ${cl.isCompleted ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-300'}">${escapeHTML(cl.text)}</span>
+                            </div>
+                        `).join('');
+                    } else {
+                        checklistsHtml = '<span class="text-[10px] text-gray-400">لا توجد قوائم تحقق.</span>';
+                    }
+
+                    const showRedDot = hasPendingChecklist || hasDescription;
+                    const expandBtn = showRedDot ? `<button onclick="window.toggleInlineChecklist('${task.id}')" class="absolute top-2 left-2 w-5 h-5 flex items-center justify-center bg-gray-50 hover:bg-gray-200 dark:bg-gray-700 rounded transition"><i id="icon-chk-${task.id}" class="fa-solid fa-chevron-left text-[10px] text-gray-500 transition-transform duration-300"></i><span class="absolute -top-1 -right-1 flex h-2 w-2 z-10"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-red-500 z-10"></span></span></button>` : '';
+
                     plColumns[targetCol].innerHTML += `
-                        <div class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 cursor-grab task-card" data-id="${task.id}">
-                            <h4 class="text-sm font-bold text-gray-800 dark:text-white mb-2">${escapeHTML(task.title)}</h4>
+                        <div class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 cursor-grab task-card relative" data-id="${task.id}">
+                            ${expandBtn}
+                            <h4 class="text-sm font-bold text-gray-800 dark:text-white mb-2 ${showRedDot ? 'pl-6' : ''}">${escapeHTML(task.title)}</h4>
                             <div class="flex justify-between items-center">
-                                <span class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded text-[10px] font-bold">${task.deadline ? new Date(task.deadline).toLocaleString('en-US', {month:'short', day:'numeric'}) : 'No deadline'}</span>
-                                <img src="${aPhoto}" class="w-5 h-5 rounded-full border border-gray-200">
+                                <span class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded text-[10px] font-bold">${task.deadline ? new Date(task.deadline).toLocaleString('ar-EG', {month:'short', day:'numeric'}) : 'بدون موعد'}</span>
+                                <img src="${aPhoto}" class="w-5 h-5 rounded-full border border-gray-200 object-cover">
+                            </div>
+                            
+                            <!-- قسم التفاصيل المخفي -->
+                            <div id="checklist-row-${task.id}" class="hidden mt-2 pt-2 border-t border-gray-100 dark:border-gray-600">
+                                <div id="checklist-content-${task.id}" class="overflow-hidden transition-all duration-300 ease-out max-h-0 text-right">
+                                    ${hasDescription ? `<div class="text-[10px] text-gray-600 dark:text-gray-300 mb-2 bg-gray-50 dark:bg-gray-900 p-2 rounded whitespace-pre-wrap">${escapeHTML(task.desc)}</div>` : ''}
+                                    <div class="space-y-1">
+                                        ${checklistsHtml}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     `;
