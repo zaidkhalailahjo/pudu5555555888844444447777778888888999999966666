@@ -9761,26 +9761,72 @@ window.sendVoiceMessage = async (audioBlob) => {
             const input = document.getElementById(`quick-input-${status}`);
             if (container.classList.contains('hidden')) {
                 container.classList.remove('hidden');
+                window.populateQuickAddAssignee(status);
                 input.focus();
             } else {
                 container.classList.add('hidden');
             }
         };
 
-        window.handleQuickAddEnter = (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const title = e.target.value.trim();
-                if (title) {
-                    window.openTaskModal();
-                    // نضع العنوان بعد فتح النافذة حتى لا يتم تصفيره
-                    setTimeout(() => {
-                        document.getElementById('taskTitle').value = title;
-                    }, 50);
-                    
-                    e.target.value = ''; // تفريغ الحقل
-                    e.target.parentElement.classList.add('hidden'); // إخفاء المربع
+        window.populateQuickAddAssignee = (status) => {
+            const select = document.getElementById(`quick-assignee-${status}`);
+            if (!select) return;
+            select.innerHTML = '';
+            const isCEO = window.isAdmin();
+            const canAssign = currentUserData.permissions && currentUserData.permissions.canAssignTasks;
+            if (isCEO || canAssign) {
+                globalUsers.forEach(emp => {
+                    if (emp.status !== 'pending' && emp.status !== 'rejected') {
+                        select.innerHTML += `<option value="${emp.uid}" data-name="${escapeHTML(emp.name)}">${escapeHTML(emp.name)}</option>`;
+                    }
+                });
+            } else {
+                select.innerHTML = `<option value="${currentUserData.uid}" data-name="${escapeHTML(currentUserData.name)}">${escapeHTML(currentUserData.name)} (أنت)</option>`;
+            }
+        };
+
+        window.submitQuickAdd = async (statusKey) => {
+            const titleInput = document.getElementById(`quick-input-${statusKey}`);
+            const assigneeSelect = document.getElementById(`quick-assignee-${statusKey}`);
+            const deadlineInput = document.getElementById(`quick-deadline-${statusKey}`);
+            const title = titleInput.value.trim();
+            if (!title) { showToast('يرجى كتابة اسم المهمة', 'warning'); return; }
+            if (!assigneeSelect.value) { showToast('يرجى اختيار الموظف', 'warning'); return; }
+
+            const statusMap = { pending: 'pending', progress: 'in-progress', review: 'pending_approval', completed: 'completed' };
+            const realStatus = statusMap[statusKey] || 'pending';
+            const assigneeName = assigneeSelect.options[assigneeSelect.selectedIndex].getAttribute('data-name');
+            const deadlineTimestamp = deadlineInput.value ? new Date(deadlineInput.value).getTime() : null;
+
+            try {
+                const taskData = {
+                    title: title,
+                    desc: '',
+                    assigneeId: assigneeSelect.value,
+                    assigneeName: assigneeName,
+                    assigneeIds: [assigneeSelect.value],
+                    createdBy: currentUserData.uid,
+                    creatorName: currentUserData.name,
+                    deadline: deadlineTimestamp,
+                    isHighPriority: false,
+                    checklists: [],
+                    status: realStatus,
+                    timestamp: Date.now(),
+                    orderIndex: globalTasks.length,
+                    startedAt: (realStatus !== 'pending') ? Date.now() : null,
+                    completedAt: (realStatus === 'pending_approval' || realStatus === 'completed') ? Date.now() : null
+                };
+                await addDoc(getColRef('tasks'), taskData);
+                if (assigneeSelect.value !== currentUserData.uid) {
+                    window.sendSystemNotification(assigneeSelect.value, 'مهمة جديدة', `تم إسناد مهمة جديدة لك: ${title}`, 'tasks', 'tasks');
                 }
+                titleInput.value = '';
+                deadlineInput.value = '';
+                document.getElementById(`quick-add-${statusKey}`).classList.add('hidden');
+                showToast('تمت إضافة المهمة بنجاح', 'success');
+            } catch (e) {
+                console.error(e);
+                showToast('حدث خطأ أثناء الإضافة', 'error');
             }
         };
 
