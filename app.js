@@ -8156,16 +8156,13 @@ window.handleChecklistEnter = (e) => {
                 const isSelfAssigned = task.createdBy === currentUserData.uid;
                 const newStatus = isSelfAssigned ? 'completed' : 'pending_approval';
 
-                // الحل لمشكلة الصلاحيات: تمرير نص فارغ للـ rejectReason 
-                // وتمرير المرفق فقط إن وجد لعدم كسر قواعد الفايربيس (Rules)
+                // الحل لمشكلة الصلاحيات: تمرير المرفق فقط إن وجد لعدم كسر قواعد الفايربيس (Rules)
                 let updateData = { 
                     status: newStatus, 
                     completedAt: Date.now(),
                     completedBy: currentUserData.uid,
                     completedByName: currentUserData.name,
-                    reportText: text,
-                    isRejected: false,
-                    rejectReason: ""
+                    reportText: text
                 };
 
                 if (fileUrl) {
