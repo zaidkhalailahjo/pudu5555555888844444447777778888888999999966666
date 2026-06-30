@@ -9612,6 +9612,34 @@ window.sendVoiceMessage = async (audioBlob) => {
     } catch(e) { console.error(e); showToast('فشل إرسال الصوت', 'error'); }
 };
 
+       window.toggleQuickAdd = (status) => {
+            const container = document.getElementById(`quick-add-${status}`);
+            const input = document.getElementById(`quick-input-${status}`);
+            if (container.classList.contains('hidden')) {
+                container.classList.remove('hidden');
+                input.focus();
+            } else {
+                container.classList.add('hidden');
+            }
+        };
+
+        window.handleQuickAddEnter = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const title = e.target.value.trim();
+                if (title) {
+                    window.openTaskModal();
+                    // نضع العنوان بعد فتح النافذة حتى لا يتم تصفيره
+                    setTimeout(() => {
+                        document.getElementById('taskTitle').value = title;
+                    }, 50);
+                    
+                    e.target.value = ''; // تفريغ الحقل
+                    e.target.parentElement.classList.add('hidden'); // إخفاء المربع
+                }
+            }
+        };
+
 // ================= تفعيل زر المرفقات في المناقشة 100% =================
         document.addEventListener("DOMContentLoaded", () => {
             const chatAttachmentInput = document.getElementById('chatAttachmentInput');
