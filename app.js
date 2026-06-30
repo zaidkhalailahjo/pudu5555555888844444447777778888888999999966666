@@ -7905,7 +7905,7 @@ window.handleChecklistEnter = (e) => {
                     }
 
                     // إنشاء مهمة منفصلة لكل موظف تم تحديده
-                    await Promise.all(window.selectedTaskAssignees.map(async (assignee) => {
+                    for (const assignee of window.selectedTaskAssignees) {
                         const newTaskData = {
                             title: title,
                             desc: desc,
@@ -7931,7 +7931,7 @@ window.handleChecklistEnter = (e) => {
                             const notifBody = isHighPriority ? `عاجل جداً: تم إسناد مهمة جديدة بأولوية قصوى لك: ${title}` : `تم إسناد مهمة جديدة لك: ${title}`;
                             window.sendSystemNotification(assignee.uid, notifTitle, notifBody, 'tasks', 'tasks');
                         }
-                    }));
+                    }
 
                     showToast('تم إسناد المهمة وحفظ المرفقات بنجاح', 'success');
                     window.closeModal('taskModal');
