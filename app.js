@@ -8314,7 +8314,7 @@ window.handleChecklistEnter = (e) => {
                         </div>
                         <div class="border-t border-gray-200 dark:border-gray-600 pt-3 bg-white dark:bg-gray-800 p-3 rounded-lg mt-2">
                             <h6 class="text-xs font-bold text-green-600 dark:text-green-400 mb-2"><i class="fa-solid fa-clipboard-check mx-1"></i>تقرير الموظف:</h6>
-                            <p class="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-line leading-relaxed">${escapeHTML(t.reportText)}</p>
+                            <p class="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-line leading-relaxed" dir="auto">${window.linkifyText(escapeHTML(t.reportText))}</p>
                             ${fileHtml}
                         </div>
                         ${approvalHtml}
