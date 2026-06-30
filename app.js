@@ -7959,7 +7959,6 @@ window.handleChecklistEnter = (e) => {
                     let fileType = null;
                     let fileName = null;
 
-                    // الرفع الحقيقي للـ Storage
                     if (currentTaskFile) {
                         showToast('جاري رفع المرفق لخوادم النظام...', 'info');
                         fileUrl = await window.uploadToFirebase(currentTaskFile, 'tasks_attachments');
@@ -7967,34 +7966,35 @@ window.handleChecklistEnter = (e) => {
                         fileName = currentTaskFile.name;
                     }
 
-                    // إنشاء مهمة منفصلة لكل موظف تم تحديده
-                    for (const assignee of window.selectedTaskAssignees) {
-                        const newTaskData = {
-                            title: title,
-                            desc: desc,
-                            assigneeId: assignee.uid,
-                            assigneeName: assignee.name,
-                            createdBy: currentUserData.uid,
-                            creatorName: currentUserData.name,
-                            deadline: deadlineTimestamp,
-                            isHighPriority: isHighPriority,
-                            checklists: creationChecklists || [],
-                            status: 'pending',
-                            timestamp: Date.now(),
-                            orderIndex: globalTasks.length,
-                            attachmentUrl: fileUrl,
-                            attachmentType: fileType,
-                            attachmentName: fileName
-                        };
+                    // مهمة واحدة مشتركة لكل المختارين، أول من ينجزها تختفي عند الباقي تلقائياً
+                    const newTaskData = {
+                        title: title,
+                        desc: desc,
+                        assigneeId: window.selectedTaskAssignees[0].uid,
+                        assigneeName: window.selectedTaskAssignees.map(a => a.name).join('، '),
+                        assigneeIds: window.selectedTaskAssignees.map(a => a.uid),
+                        createdBy: currentUserData.uid,
+                        creatorName: currentUserData.name,
+                        deadline: deadlineTimestamp,
+                        isHighPriority: isHighPriority,
+                        checklists: creationChecklists || [],
+                        status: 'pending',
+                        timestamp: Date.now(),
+                        orderIndex: globalTasks.length,
+                        attachmentUrl: fileUrl,
+                        attachmentType: fileType,
+                        attachmentName: fileName
+                    };
 
-                        await addDoc(getColRef('tasks'), newTaskData);
+                    await addDoc(getColRef('tasks'), newTaskData);
 
+                    window.selectedTaskAssignees.forEach(assignee => {
                         if (assignee.uid !== currentUserData.uid) {
                             const notifTitle = isHighPriority ? '🔥 مهمة أولوية قصوى!' : 'مهمة جديدة';
                             const notifBody = isHighPriority ? `عاجل جداً: تم إسناد مهمة جديدة بأولوية قصوى لك: ${title}` : `تم إسناد مهمة جديدة لك: ${title}`;
                             window.sendSystemNotification(assignee.uid, notifTitle, notifBody, 'tasks', 'tasks');
                         }
-                    }
+                    });
 
                     showToast('تم إسناد المهمة وحفظ المرفقات بنجاح', 'success');
                     window.closeModal('taskModal');
