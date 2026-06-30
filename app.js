@@ -7951,6 +7951,13 @@ window.handleChecklistEnter = (e) => {
                     deadlineTimestamp = new Date(deadlineVal).getTime();
                 }
 
+                    if (!deadlineTimestamp) {
+    showToast('يرجى تحديد الموعد النهائي للمهمة (التاريخ والوقت)!', 'error');
+    btn.disabled = false;
+    btn.innerHTML = 'إنشاء';
+    return;
+               }
+
                 if (window.selectedTaskAssignees.length === 0) {
                     showToast('يرجى اختيار موظف واحد على الأقل من القائمة', 'warning');
                     btn.disabled = false;
