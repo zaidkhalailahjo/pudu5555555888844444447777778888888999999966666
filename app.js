@@ -7843,6 +7843,42 @@ window.handleChecklistEnter = (e) => {
             container.innerHTML = html;
         };
 
+        window.approveTask = async (taskId) => {
+            const modal = document.getElementById('customConfirmModal');
+            document.getElementById('customConfirmMessage').innerText = 'هل أنت متأكد من الموافقة على هذا التقرير واعتماده؟';
+            const actionBtn = document.getElementById('customConfirmActionBtn');
+            
+            actionBtn.innerText = 'موافقة واعتماد';
+            actionBtn.className = 'flex-1 bg-green-500 hover:bg-green-600 text-white py-2.5 rounded-xl font-bold transition shadow-md';
+            document.querySelector('#customConfirmModal h3').innerText = 'اعتماد التقرير';
+            document.querySelector('#customConfirmModal i').className = 'fa-solid fa-circle-check text-3xl text-green-500';
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            actionBtn.onclick = async () => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                
+                // إعادة الزر لشكله الأصلي لعمليات الحذف المستقبلية
+                actionBtn.innerText = 'نعم، احذف';
+                actionBtn.className = 'flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl font-bold transition shadow-md';
+                document.querySelector('#customConfirmModal h3').innerText = 'تأكيد الحذف';
+                document.querySelector('#customConfirmModal i').className = 'fa-solid fa-trash-can text-3xl text-red-500';
+                
+                try {
+                    const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { status: 'completed' });
+                    showToast('تم الموافقة بنجاح', 'success');
+                    
+                    const task = globalTasks.find(t => t.id === taskId);
+                    if(task && task.assigneeId !== currentUserData.uid) {
+                        window.sendSystemNotification(task.assigneeId, 'تم اعتماد تقريرك', `أحسنت! تمت الموافقة على المهمة (${task.title}) واعتمادها بنجاح.`, 'tasks', 'tasks');
+                    }
+                } catch(e) { console.error(e); }
+            };
+        };
+
         document.addEventListener('click', () => {
             const drop = document.getElementById('taskAssigneeDropdown');
             if(drop && drop.classList.contains('open')) drop.classList.remove('open');
@@ -8305,6 +8341,8 @@ window.handleChecklistEnter = (e) => {
     }
     
     empTasks.sort((a,b) => {
+    if (a.status === 'pending_approval' && b.status !== 'pending_approval') return -1;
+    if (a.status !== 'pending_approval' && b.status === 'pending_approval') return 1;
     if (a.isHighPriority && !b.isHighPriority) return -1;
     if (!a.isHighPriority && b.isHighPriority) return 1;
     return (b.completedAt || 0) - (a.completedAt || 0);
