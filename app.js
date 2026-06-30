@@ -7440,7 +7440,7 @@ if (task.isRejected && task.status !== 'completed' && task.status !== 'pending_a
                     const iconState = isOpen ? 'fa-chevron-down' : 'fa-chevron-left';
 
                     listTbody.innerHTML += `
-                        <tr class="task-list-row group bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 transition border-b border-gray-100 dark:border-gray-700" data-id="${task.id}">
+                        <tr class="task-list-row group bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 transition border-b border-gray-100 dark:border-gray-700" data-id="${task.id}" data-assignee="${task.assigneeId || ''}">
                             <td class="p-3 text-center align-middle">
                                 <i class="fa-solid fa-bars text-gray-300 cursor-grab hover:text-gray-500 drag-handle text-lg"></i>
                             </td>
@@ -7540,7 +7540,7 @@ if (task.isRejected && task.status !== 'completed' && task.status !== 'pending_a
                 dlCounts[targetCol]++;
                 if(dlColumns[targetCol]) {
                     dlColumns[targetCol].innerHTML += `
-                        <div class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 cursor-grab task-card" data-id="${task.id}">
+                        <div class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 cursor-grab task-card" data-id="${task.id}" data-assignee="${task.assigneeId || ''}">
                             <h4 class="text-sm font-bold text-gray-800 dark:text-white mb-2">${escapeHTML(task.title)}</h4>
                             <div class="flex justify-between items-center">
                                 <span class="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold">${task.deadline ? new Date(task.deadline).toLocaleString('en-US', {month:'short', day:'numeric'}) : 'No date'}</span>
@@ -7613,7 +7613,7 @@ if (task.isRejected && task.status !== 'completed' && task.status !== 'pending_a
                     } 
                         
                     plColumns[targetCol].innerHTML += `
-                        <div class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 cursor-grab task-card relative" data-id="${task.id}">
+                        <div class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 cursor-grab task-card relative" data-id="${task.id}" data-assignee="${task.assigneeId || ''}">
                             ${expandBtn}
                             <h4 class="text-sm font-bold text-gray-800 dark:text-white mb-2 ${showExpandBtn ? 'pl-6' : ''}">${escapeHTML(task.title)}</h4>
                             ${rejectedBadgeHtml}
@@ -7677,7 +7677,6 @@ if (task.isRejected && task.status !== 'completed' && task.status !== 'pending_a
                     forceFallback: true,
                     fallbackOnBody: true,
                     ghostClass: 'opacity-40',
-                    onEnd: async function (evt) {
                         const itemEl = evt.item;
                         const toColumn = evt.to;
                         const fromColumn = evt.from;
@@ -7690,16 +7689,18 @@ if (task.isRejected && task.status !== 'completed' && task.status !== 'pending_a
                         const task = globalTasks.find(t => t.id === taskId);
                         if (!task) return;
 
-                        // تحديث ترتيب البطاقات في العمود الهدف (بغض النظر عن الحالة)
+                        // تحديث ترتيب البطاقات في العمود الهدف (فقط للمدير لتجنب أخطاء الصلاحيات للموظفين)
                         const rows = Array.from(toColumn.querySelectorAll('.task-card'));
-                        rows.forEach((row, index) => {
-                            const id = row.getAttribute('data-id');
-                            if (id !== taskId) {
-                                import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(({ doc, updateDoc }) => {
-                                    updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', id), { orderIndex: index }).catch(()=>{});
-                                });
-                            }
-                        });
+                        if (window.isAdmin()) {
+                            rows.forEach((row, index) => {
+                                const id = row.getAttribute('data-id');
+                                if (id !== taskId) {
+                                    import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(({ doc, updateDoc }) => {
+                                        updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', id), { orderIndex: index }).catch(()=>{});
+                                    });
+                                }
+                            });
+                        }
 
                         // 1. الانتقال إلى عمود "مكتملة" أو "بانتظار الموافقة"
                         if (newStatus === 'completed' || newStatus === 'pending_approval') {
@@ -7733,25 +7734,29 @@ if (task.isRejected && task.status !== 'completed' && task.status !== 'pending_a
                         // 2. التراجع من "بانتظار الموافقة" (pending_approval) إلى "قيد التنفيذ" (in-progress)
                         if (oldStatus === 'pending_approval' && (newStatus === 'in-progress' || newStatus === 'pending')) {
                              import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(({ doc, updateDoc }) => {
-                                updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { 
-                                    status: newStatus, 
-                                    completedAt: null,
-                                    orderIndex: rows.findIndex(r => r.getAttribute('data-id') === taskId)
-                                }).catch(()=>{});
+                                let updateData = { status: newStatus, completedAt: null };
+                                if (window.isAdmin()) {
+                                    updateData.orderIndex = rows.findIndex(r => r.getAttribute('data-id') === taskId);
+                                }
+                                updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), updateData).catch(()=>{
+                                    fromColumn.appendChild(itemEl);
+                                });
                             });
                             return;
                         }
 
                         // التحديثات العادية بين pending و in-progress
                         import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(({ doc, updateDoc }) => {
-                            let updateData = { 
-                                status: newStatus,
-                                orderIndex: rows.findIndex(r => r.getAttribute('data-id') === taskId)
-                            };
-                            if(newStatus === 'in-progress' && !task.startedAt) updateData.startedAt = Date.now();
+                            let updateData = { status: newStatus };
+                            if (window.isAdmin()) {
+                                updateData.orderIndex = rows.findIndex(r => r.getAttribute('data-id') === taskId);
+                                if(newStatus === 'in-progress' && !task.startedAt) updateData.startedAt = Date.now();
+                            }
                             if(newStatus === 'pending') updateData.completedAt = null;
                             
-                            updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), updateData).catch(()=>{});
+                            updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), updateData).catch(()=>{
+                                fromColumn.appendChild(itemEl);
+                            });
                         });
                     }
                 });
@@ -8067,12 +8072,67 @@ window.handleChecklistEnter = (e) => {
             });
         } 
 
+        window.selectedTaskFilterEmployeeUid = null;
+
+        window.toggleTaskEmployeeFilter = (evt) => {
+            if(evt) evt.stopPropagation();
+            const drop = document.getElementById('taskEmployeeFilterDropdown');
+            const isHidden = drop.classList.contains('scale-y-0');
+            if(isHidden) {
+                const list = document.getElementById('taskEmployeeFilterList');
+                list.innerHTML = `<div onclick="window.setTaskEmployeeFilter(null)" class="p-2 text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer border-b dark:border-gray-600 transition flex items-center gap-2"><i class="fa-solid fa-users text-gray-400"></i> الجميع</div>`;
+                globalUsers.forEach(emp => {
+                    if (emp.status !== 'pending' && emp.status !== 'rejected') {
+                        list.innerHTML += `
+                            <div onclick="window.setTaskEmployeeFilter('${emp.uid}')" class="p-2 flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition">
+                                <img src="${emp.photoURL}" class="w-6 h-6 rounded-full object-cover">
+                                <span class="text-xs font-bold text-gray-700 dark:text-gray-200">${escapeHTML(emp.name)}</span>
+                            </div>
+                        `;
+                    }
+                });
+                drop.classList.remove('scale-y-0', 'opacity-0', 'pointer-events-none');
+                drop.classList.add('scale-y-100', 'opacity-100', 'pointer-events-auto');
+            } else {
+                drop.classList.add('scale-y-0', 'opacity-0', 'pointer-events-none');
+                drop.classList.remove('scale-y-100', 'opacity-100', 'pointer-events-auto');
+            }
+        };
+
+        document.addEventListener('click', () => {
+            const drop2 = document.getElementById('taskEmployeeFilterDropdown');
+            if(drop2 && drop2.classList.contains('scale-y-100')) {
+                drop2.classList.add('scale-y-0', 'opacity-0', 'pointer-events-none');
+                drop2.classList.remove('scale-y-100', 'opacity-100', 'pointer-events-auto');
+            }
+        });
+
+        window.setTaskEmployeeFilter = (uid) => {
+            window.selectedTaskFilterEmployeeUid = uid;
+            const icon = document.getElementById('taskEmployeeFilterIcon');
+            const btn = document.getElementById('taskEmployeeFilterBtn');
+            if(uid) {
+                icon.className = 'fa-solid fa-house text-[#00839b]';
+                btn.classList.add('bg-teal-50', 'border-teal-200');
+            } else {
+                icon.className = 'fa-solid fa-chevron-down text-gray-500';
+                btn.classList.remove('bg-teal-50', 'border-teal-200');
+            }
+            window.filterTasksList();
+        };
+
         window.filterTasksList = () => {
             const query = document.getElementById('taskSearchInput').value.toLowerCase();
+            const filterUid = window.selectedTaskFilterEmployeeUid;
+            
             // تصفية في الـ List
             document.querySelectorAll('.task-list-row').forEach(el => {
                 const text = el.innerText.toLowerCase();
-                if(text.includes(query)) {
+                const assignee = el.getAttribute('data-assignee');
+                const matchText = text.includes(query);
+                const matchFilter = !filterUid || assignee === filterUid;
+                
+                if(matchText && matchFilter) {
                     el.style.display = 'table-row';
                 } else {
                     el.style.display = 'none';
@@ -8083,7 +8143,10 @@ window.handleChecklistEnter = (e) => {
             // تصفية في الـ Planner & Deadline
             document.querySelectorAll('.task-card').forEach(el => {
                 const text = el.innerText.toLowerCase();
-                el.style.display = text.includes(query) ? 'block' : 'none';
+                const assignee = el.getAttribute('data-assignee');
+                const matchText = text.includes(query);
+                const matchFilter = !filterUid || assignee === filterUid;
+                el.style.display = (matchText && matchFilter) ? 'block' : 'none';
             });
         };
 
