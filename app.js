@@ -8066,6 +8066,43 @@ window.handleChecklistEnter = (e) => {
             }
         };
 
+        document.getElementById('rejectTaskForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mx-1"></i> جاري الإرسال...';
+
+    const taskId = document.getElementById('rejectModalTaskId').value;
+    const reason = document.getElementById('rejectReasonInput').value.trim();
+
+    try {
+        const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { 
+            status: 'in-progress', 
+            isRejected: true,      
+            rejectReason: reason,  
+            completedAt: null 
+        });
+
+        showToast('تم رفض المهمة وإعادتها للموظف', 'success');
+
+        const task = globalTasks.find(t => t.id === taskId);
+        if(task && task.assigneeId) {
+            window.sendSystemNotification(task.assigneeId, 'مهمة مرفوضة!', `تم رفض مهمتك (${task.title}). السبب: ${reason}`, 'tasks', 'tasks');
+        }
+
+        window.closeModal('rejectTaskModal');
+        document.getElementById('rejectTaskForm').reset();
+    } catch(e) {
+        console.error(e);
+        showToast('حدث خطأ أثناء الرفض', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+});
+
         document.getElementById('taskReportForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('submitReportBtn');
