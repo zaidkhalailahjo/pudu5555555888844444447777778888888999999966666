@@ -7444,7 +7444,7 @@ if (task.isRejected && task.status !== 'completed' && task.status !== 'pending_a
                             <td class="p-3">
                                 <div class="flex items-center gap-2">
                                     <button onclick="window.toggleInlineChecklist('${task.id}')" class="relative text-gray-400 hover:text-[#00839b] bg-gray-50 dark:bg-gray-700 w-6 h-6 rounded flex items-center justify-center transition focus:outline-none">
-                                       <i id="icon-chk-${task.id}" class="fa-solid fa-chevron-left text-xs transition-transform duration-300"></i>
+                                       <i id="icon-chk-${task.id}" class="fa-solid ${iconState} text-xs transition-transform duration-300"></i>
                                        ${showRedDot ? '<span class="absolute -top-1 -right-1 flex h-2.5 w-2.5 z-10"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 z-10"></span></span>' : ''}
                                     </button>
                                     <span class="font-bold text-gray-800 dark:text-white">${escapeHTML(task.title)}</span>
