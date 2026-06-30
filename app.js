@@ -7579,6 +7579,14 @@ window.markNoticeRead = (id) => {
                     const showRedDot = hasPendingChecklist || hasDescription;
                     const expandBtn = showRedDot ? `<button onclick="window.toggleInlineChecklist('${task.id}')" class="absolute top-2 left-2 w-5 h-5 flex items-center justify-center bg-gray-50 hover:bg-gray-200 dark:bg-gray-700 rounded transition"><i id="icon-chk-${task.id}" class="fa-solid fa-chevron-left text-[10px] text-gray-500 transition-transform duration-300"></i><span class="absolute -top-1 -right-1 flex h-2 w-2 z-10"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-red-500 z-10"></span></span></button>` : '';
 
+                        let rejectedBadgeHtml = '';
+                    if (task.isRejected && task.status !== 'completed' && task.status !== 'pending_approval') {
+                         rejectedBadgeHtml = `
+                            <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-[10px] font-bold cursor-pointer" onclick="window.showRejectReason('${escapeHTML(task.rejectReason || 'لا يوجد سبب')}')">
+                                <i class="fa-solid fa-circle-xmark mx-1"></i> مرفوضة (اضغط لمعرفة السبب)
+                            </div>`;
+                    } 
+                        
                     plColumns[targetCol].innerHTML += `
                         <div class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 cursor-grab task-card relative" data-id="${task.id}">
                             ${expandBtn}
