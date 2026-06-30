@@ -7634,40 +7634,95 @@ window.markNoticeRead = (id) => {
     }
 
     const plannerCols = ['col-pl-pending', 'col-pl-progress', 'col-pl-review', 'col-pl-completed'];
-    plannerCols.forEach(colId => {
-        const el = document.getElementById(colId);
-        if(el && !el.sortableInstance) {
-            el.sortableInstance = new Sortable(el, {
-                group: 'planner-tasks',
-                animation: 200,
-                forceFallback: true, // يمنع التعليق
-                fallbackOnBody: true,
-                ghostClass: 'opacity-40',
-                onEnd: async function (evt) {
-                    const itemEl = evt.item;
-                    const toColumn = evt.to;
-                    const taskId = itemEl.getAttribute('data-id');
-                    const newStatus = toColumn.getAttribute('data-status');
-                    if(taskId && newStatus) {
+        plannerCols.forEach(colId => {
+            const el = document.getElementById(colId);
+            if(el && !el.sortableInstance) {
+                el.sortableInstance = new Sortable(el, {
+                    group: 'planner-tasks',
+                    animation: 200,
+                    forceFallback: true,
+                    fallbackOnBody: true,
+                    ghostClass: 'opacity-40',
+                    onEnd: async function (evt) {
+                        const itemEl = evt.item;
+                        const toColumn = evt.to;
+                        const fromColumn = evt.from;
+                        const taskId = itemEl.getAttribute('data-id');
+                        const newStatus = toColumn.getAttribute('data-status');
+                        const oldStatus = fromColumn.getAttribute('data-status');
+                        
+                        if (!taskId || !newStatus) return;
+
+                        const task = globalTasks.find(t => t.id === taskId);
+                        if (!task) return;
+
+                        // تحديث ترتيب البطاقات في العمود الهدف (بغض النظر عن الحالة)
                         const rows = Array.from(toColumn.querySelectorAll('.task-card'));
                         rows.forEach((row, index) => {
                             const id = row.getAttribute('data-id');
-                            import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(({ doc, updateDoc }) => {
-                                let updateData = { orderIndex: index };
-                                if (id === taskId) {
-                                    updateData.status = newStatus;
-                                    if(newStatus === 'in-progress') updateData.startedAt = Date.now();
-                                    if(newStatus === 'completed' || newStatus === 'pending_approval') updateData.completedAt = Date.now();
-                                    if(newStatus === 'pending') updateData.completedAt = null;
+                            if (id !== taskId) {
+                                import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(({ doc, updateDoc }) => {
+                                    updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', id), { orderIndex: index }).catch(()=>{});
+                                });
+                            }
+                        });
+
+                        // 1. الانتقال إلى عمود "مكتملة" أو "بانتظار الموافقة"
+                        if (newStatus === 'completed' || newStatus === 'pending_approval') {
+                            // التحقق من إكمال قوائم التحقق
+                            if(task.checklists && task.checklists.length > 0) {
+                                const uncompletedItems = task.checklists.filter(c => !c.isCompleted).length;
+                                if(uncompletedItems > 0) {
+                                    showToast('يجب وضع علامة "صح" على جميع عناصر قائمة التحقق أولاً', 'warning');
+                                    // إرجاع البطاقة للعمود السابق بسلاسة
+                                    fromColumn.appendChild(itemEl); 
+                                    return;
                                 }
-                                updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', id), updateData).catch(()=>{});
+                            }
+
+                            const isSelfAssigned = task.createdBy === currentUserData.uid;
+                            
+                            // إعداد نافذة التقرير
+                            document.getElementById('reportTaskId').value = taskId;
+                            document.getElementById('reportTaskTitle').value = task.title;
+                            document.getElementById('reportTextLabel').innerText = isSelfAssigned ? "تفاصيل التقرير (اختياري)" : "تفاصيل التقرير (إلزامي)";
+                            document.getElementById('reportText').required = !isSelfAssigned;
+                            document.getElementById('reportText').value = '';
+                            document.getElementById('reportFileInput').value = '';
+                            
+                            // إرجاع البطاقة شكلياً للعمود السابق حتى يكتمل التقرير بنجاح
+                            fromColumn.appendChild(itemEl); 
+                            window.openModal('taskReportModal');
+                            return; 
+                        }
+
+                        // 2. التراجع من "بانتظار الموافقة" (pending_approval) إلى "قيد التنفيذ" (in-progress)
+                        if (oldStatus === 'pending_approval' && (newStatus === 'in-progress' || newStatus === 'pending')) {
+                             import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(({ doc, updateDoc }) => {
+                                updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { 
+                                    status: newStatus, 
+                                    completedAt: null,
+                                    orderIndex: rows.findIndex(r => r.getAttribute('data-id') === taskId)
+                                }).catch(()=>{});
                             });
+                            return;
+                        }
+
+                        // التحديثات العادية بين pending و in-progress
+                        import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(({ doc, updateDoc }) => {
+                            let updateData = { 
+                                status: newStatus,
+                                orderIndex: rows.findIndex(r => r.getAttribute('data-id') === taskId)
+                            };
+                            if(newStatus === 'in-progress' && !task.startedAt) updateData.startedAt = Date.now();
+                            if(newStatus === 'pending') updateData.completedAt = null;
+                            
+                            updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), updateData).catch(()=>{});
                         });
                     }
-                }
-            });
-        }
-    });
+                });
+            }
+        });
 };
 
        // دوال إدارة قوائم التحقق داخل المهام
