@@ -234,7 +234,7 @@ function formatDurationArabic(ms) {
             applyLanguageToDOM();
             
             if (typeof flatpickr !== 'undefined') {
-                flatpickr("#taskDeadline", {
+                flatpickr("#taskDeadline, [id^='quick-deadline-']", {
                     enableTime: true,
                     dateFormat: "Y-m-dTH:i", 
                     altInput: true,
