@@ -7756,7 +7756,7 @@ if (task.isRejected && task.status !== 'completed' && task.status !== 'pending_a
                     } 
                         
                     plColumns[targetCol].innerHTML += `
-                        <div class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 cursor-grab task-card relative" data-id="${task.id}" data-assignee="${task.assigneeId || ''}">
+                        <div class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 cursor-grab task-card relative" data-id="${task.id}" data-assignee="${task.assigneeId || ''}" ${task.status === 'completed' ? `oncontextmenu="window.showCompletedTaskContextMenu(event, '${task.id}', '${escapeHTML(task.title).replace(/'/g, "\\'")}')"` : ''}>
                             ${expandBtn}
                             <h4 class="text-sm font-bold text-gray-800 dark:text-white mb-2 ${showExpandBtn ? 'pl-6' : ''}">${escapeHTML(task.title)}</h4>
                             ${rejectedBadgeHtml}
@@ -8554,6 +8554,92 @@ window.handleChecklistEnter = (e) => {
             // دالة قديمة لم تعد مستخدمة في التصميم الجديد للتبويبات
         };
 
+        window.showCompletedTaskContextMenu = (e, taskId, taskTitle) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            let ctxMenu = document.getElementById('taskContextMenu');
+            if (!ctxMenu) {
+                ctxMenu = document.createElement('div');
+                ctxMenu.id = 'taskContextMenu';
+                ctxMenu.className = 'fixed bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 z-[9999] min-w-[150px] hidden transform transition-all origin-top-left';
+                document.body.appendChild(ctxMenu);
+
+                document.addEventListener('click', (ev) => {
+                    if (ctxMenu && !ctxMenu.contains(ev.target)) {
+                        ctxMenu.classList.add('hidden');
+                    }
+                });
+            }
+
+            // التأكد من الصلاحية: هل يحق للمستخدم حذف المهمة؟
+            // (المدير، أو من لديه صلاحية الإسناد وهو من أنشأها)
+            const canDelete = window.isAdmin() || (currentUserData.permissions && currentUserData.permissions.canAssignTasks);
+            
+            if (!canDelete) {
+                return; // لا يملك صلاحية، لا تظهر القائمة
+            }
+
+            ctxMenu.innerHTML = `
+                <button onclick="window.confirmDeleteTaskCtx('${taskId}', '${taskTitle}')" class="w-full text-right px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 font-bold transition flex items-center gap-2">
+                    <i class="fa-solid fa-trash"></i> حذف المهمة
+                </button>
+            `;
+            
+            ctxMenu.style.left = e.pageX + 'px';
+            ctxMenu.style.top = e.pageY + 'px';
+            ctxMenu.classList.remove('hidden');
+        };
+
+        window.confirmDeleteTaskCtx = (taskId, taskTitle) => {
+            document.getElementById('taskContextMenu').classList.add('hidden');
+            
+            let confirmModal = document.getElementById('elegantTaskDeleteModal');
+            if(!confirmModal) {
+                confirmModal = document.createElement('div');
+                confirmModal.id = 'elegantTaskDeleteModal';
+                confirmModal.className = 'fixed inset-0 bg-black/60 z-[9999] hidden items-center justify-center p-4 backdrop-blur-sm transition-all';
+                confirmModal.innerHTML = `
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm shadow-2xl transform scale-95 transition-all p-6 text-center">
+                        <div class="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fa-solid fa-trash-can text-2xl"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-2">تأكيد الحذف</h3>
+                        <p id="elegantTaskDeleteMsg" class="text-sm text-gray-600 dark:text-gray-300 mb-6"></p>
+                        <div class="flex gap-3">
+                            <button id="elegantTaskDeleteBtn" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl font-bold transition shadow-sm">نعم، احذفها</button>
+                            <button onclick="document.getElementById('elegantTaskDeleteModal').classList.add('hidden'); document.getElementById('elegantTaskDeleteModal').classList.remove('flex');" class="flex-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 py-2.5 rounded-xl font-bold transition">إلغاء</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(confirmModal);
+            }
+            
+            document.getElementById('elegantTaskDeleteMsg').innerHTML = `هل تريد بالتأكيد حذف المهمة:<br><strong class="text-[#002d74] dark:text-blue-400 mt-2 block">"${taskTitle}"</strong>؟`;
+            
+            const btn = document.getElementById('elegantTaskDeleteBtn');
+            btn.onclick = async () => {
+                const origHtml = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                btn.disabled = true;
+                try {
+                    const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId));
+                    showToast('تم حذف المهمة بنجاح', 'success');
+                    confirmModal.classList.add('hidden');
+                    confirmModal.classList.remove('flex');
+                } catch(err) {
+                    showToast('حدث خطأ أثناء الحذف', 'error');
+                } finally {
+                    btn.innerHTML = origHtml;
+                    btn.disabled = false;
+                }
+            };
+            
+            confirmModal.classList.remove('hidden');
+            confirmModal.classList.add('flex');
+        };
+
         window.renderCeoEmployeeTasks = (empId, empName) => {
     const container = document.getElementById('ceoReportTasksDetails');
     
@@ -8626,7 +8712,7 @@ window.handleChecklistEnter = (e) => {
 
                 const assigneeNameHtml = empId === 'all' ? `<span class="text-[10px] bg-[#00839b]/10 text-[#00839b] px-2 py-0.5 rounded-full mr-2 shadow-sm font-bold">بواسطة: ${escapeHTML(t.completedByName || t.assigneeName)}</span>` : '';
                 html += `
-                    <div id="task-report-card-${t.id}" class="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm relative transition-all duration-300">
+                    <div id="task-report-card-${t.id}" ${t.status === 'completed' ? `oncontextmenu="window.showCompletedTaskContextMenu(event, '${t.id}', '${escapeHTML(t.title).replace(/'/g, "\\'")}')"` : ''} class="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm relative transition-all duration-300">
                         ${t.status === 'pending_approval' ? '<span class="absolute -top-3 -right-2 bg-red-500 text-white text-[10px] px-2 py-1 rounded-lg font-bold animate-pulse z-[60] shadow-md border border-white dark:border-gray-800">جديد</span>' : ''}
                         <h5 class="font-bold text-gray-800 dark:text-gray-100 mb-2 flex items-center">${escapeHTML(t.title)} ${assigneeNameHtml}</h5>
                         <p class="text-xs text-gray-600 dark:text-gray-400 mb-3 whitespace-pre-wrap">${escapeHTML(t.desc)}</p>
