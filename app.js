@@ -7677,6 +7677,7 @@ if (task.isRejected && task.status !== 'completed' && task.status !== 'pending_a
                     forceFallback: true,
                     fallbackOnBody: true,
                     ghostClass: 'opacity-40',
+                    onEnd: async function (evt) {
                         const itemEl = evt.item;
                         const toColumn = evt.to;
                         const fromColumn = evt.from;
