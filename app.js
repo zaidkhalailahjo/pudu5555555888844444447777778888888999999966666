@@ -5,7 +5,7 @@
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
         import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
         
-         const firebaseConfig = {
+      const firebaseConfig = {
             apiKey: "AIzaSyCfoP0rgX8WZthQVP_AeZcxDHHCllgu3TM",
             authDomain: "quill-world.firebaseapp.com",
             projectId: "quill-world",
