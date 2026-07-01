@@ -7270,6 +7270,16 @@ window.markNoticeRead = (id) => {
     viewDeadline.classList.toggle('hidden', viewName !== 'deadline');
     viewPlanner.classList.toggle('hidden', viewName !== 'planner');
     
+    const filterBtn = document.getElementById('taskEmployeeFilterBtn');
+    if (filterBtn) {
+        if (viewName === 'list' || viewName === 'planner') {
+            const hasTaskAssignPerm = currentUserData.permissions && currentUserData.permissions.canAssignTasks;
+            filterBtn.style.display = (!window.isAdmin() && !hasTaskAssignPerm) ? 'none' : 'flex';
+        } else {
+            filterBtn.style.display = 'none';
+        }
+    }
+
     window.renderTasks();
 };
 
@@ -7314,6 +7324,9 @@ window.markNoticeRead = (id) => {
             if (selectContainer) selectContainer.classList.add('hidden');
             window.renderCeoEmployeeTasks(currentUserData.uid, currentUserData.name);
         }
+
+        const filterBtn = document.getElementById('taskEmployeeFilterBtn');
+        if (filterBtn) filterBtn.style.display = 'none';
     }
     window.renderTasks();
 };
@@ -8158,8 +8171,16 @@ window.handleChecklistEnter = (e) => {
 
         window.updateTaskStatusFromCheckbox = async (id, title, isCompleted) => {
             // نفس الدالة السابقة دون تغيير
+            const task = globalTasks.find(t => t.id === id);
+            
+            if (task && (task.status === 'pending_approval' || task.status === 'completed')) {
+                showToast(task.status === 'completed' ? 'لا يمكن تعديل المهام المكتملة' : 'طلبك قيد المراجعة', 'warning');
+                const cb = document.querySelector(`.task-list-row[data-id="${id}"] .custom-checkbox`);
+                if(cb) cb.checked = true;
+                return;
+            }
+
             if(isCompleted) {
-                const task = globalTasks.find(t => t.id === id);
                 if(task && task.checklists && task.checklists.length > 0) {
                     const uncompletedItems = task.checklists.filter(c => !c.isCompleted).length;
                     if(uncompletedItems > 0) {
