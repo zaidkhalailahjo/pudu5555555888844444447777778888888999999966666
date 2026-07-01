@@ -7190,6 +7190,13 @@ window.markNoticeRead = (id) => {
             if (!isUserCEO && !isAccountant && !hasExpPerm) document.getElementById('grid-expenses').style.display = 'none';
             else document.getElementById('grid-expenses').style.display = 'flex';
 
+            const filterBtn = document.getElementById('taskEmployeeFilterBtn');
+            if (filterBtn) {
+                const hasTaskAssignPerm = currentUserData.permissions && currentUserData.permissions.canAssignTasks;
+                if (!isUserCEO && !hasTaskAssignPerm) filterBtn.style.display = 'none';
+                else filterBtn.style.display = 'flex';
+            }
+
             window.logAction('تسجيل دخول', `سجل ${currentUserData.name} الدخول لخدمات النظام`);
             
             // إجبار الموظف على التوجه لصفحة الحضور والانصراف إذا لم يقم بتسجيل الدخول بعد
@@ -7732,17 +7739,10 @@ if (task.isRejected && task.status !== 'completed' && task.status !== 'pending_a
                             return; 
                         }
 
-                        // 2. التراجع من "بانتظار الموافقة" (pending_approval) إلى "قيد التنفيذ" (in-progress)
-                        if (oldStatus === 'pending_approval' && (newStatus === 'in-progress' || newStatus === 'pending')) {
-                             import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(({ doc, updateDoc }) => {
-                                let updateData = { status: newStatus, completedAt: null };
-                                if (window.isAdmin()) {
-                                    updateData.orderIndex = rows.findIndex(r => r.getAttribute('data-id') === taskId);
-                                }
-                                updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), updateData).catch(()=>{
-                                    fromColumn.appendChild(itemEl);
-                                });
-                            });
+                        // 2. منع التحريك إذا كانت المهمة مكتملة أو بانتظار الموافقة
+                        if (oldStatus === 'completed' || oldStatus === 'pending_approval') {
+                            showToast(oldStatus === 'completed' ? 'لا يمكن تحريك المهام المكتملة والمعتمدة' : 'لا يمكن تحريك المهمة لأنها بانتظار الاعتماد', 'warning');
+                            fromColumn.appendChild(itemEl);
                             return;
                         }
 
