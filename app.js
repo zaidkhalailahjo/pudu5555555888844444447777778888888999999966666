@@ -7366,6 +7366,69 @@ window.markNoticeRead = (id) => {
             }
         };
 
+        window.openEditDeadlineModal = (taskId, currentDeadline) => {
+            let modal = document.getElementById('editDeadlineModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'editDeadlineModal';
+                modal.className = 'fixed inset-0 bg-black/60 z-[9999] hidden items-center justify-center p-4 backdrop-blur-sm';
+                modal.innerHTML = `
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm shadow-2xl transform scale-95 transition-all">
+                        <div class="p-6">
+                            <h3 class="text-lg font-bold text-[#002d74] dark:text-white mb-4">تعديل موعد التسليم</h3>
+                            <form id="editDeadlineForm">
+                                <input type="hidden" id="editDeadlineTaskId">
+                                <div class="mb-4">
+                                    <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">موعد التسليم الجديد</label>
+                                    <input type="datetime-local" id="editDeadlineInput" required class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-xl focus:ring-[#00839b] focus:border-[#00839b] px-4 py-2 text-sm text-gray-900 dark:text-white">
+                                </div>
+                                <div class="flex gap-3 mt-6">
+                                    <button type="submit" class="flex-1 bg-[#00839b] hover:bg-[#007186] text-white py-2 rounded-xl font-bold transition shadow-sm">حفظ التعديل</button>
+                                    <button type="button" onclick="window.closeModal('editDeadlineModal')" class="flex-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 py-2 rounded-xl font-bold transition">إلغاء</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                
+                document.getElementById('editDeadlineForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const btn = e.target.querySelector('button[type="submit"]');
+                    const origHtml = btn.innerHTML;
+                    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                    btn.disabled = true;
+                    try {
+                        const id = document.getElementById('editDeadlineTaskId').value;
+                        const newDeadline = document.getElementById('editDeadlineInput').value;
+                        const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', id), { deadline: newDeadline });
+                        showToast('تم تعديل موعد التسليم بنجاح', 'success');
+                        window.closeModal('editDeadlineModal');
+                    } catch(err) {
+                        console.error(err);
+                        showToast('حدث خطأ أثناء تعديل الموعد', 'error');
+                    } finally {
+                        btn.innerHTML = origHtml;
+                        btn.disabled = false;
+                    }
+                });
+            }
+            
+            document.getElementById('editDeadlineTaskId').value = taskId;
+            if (currentDeadline) {
+                document.getElementById('editDeadlineInput').value = currentDeadline;
+            } else {
+                document.getElementById('editDeadlineInput').value = '';
+            }
+            
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            document.getElementById('editDeadlineInput').min = now.toISOString().slice(0, 16);
+        
+            window.openModal('editDeadlineModal');
+        };
+
         window.renderTasks = function() {
             const isCEO = window.isAdmin();
             let tasksToRender = globalTasks.filter(t => {
@@ -7429,7 +7492,10 @@ window.markNoticeRead = (id) => {
 if (task.isRejected && task.status !== 'completed' && task.status !== 'pending_approval') {
     rejectedBadgeList = `<button onclick="event.stopPropagation(); window.showRejectReason('${escapeHTML(task.rejectReason || 'لا يوجد سبب')}')" class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-bold border border-red-200 ml-2 animate-pulse" title="اضغط لمعرفة السبب"><i class="fa-solid fa-circle-xmark mx-1"></i>مرفوضة</button>`;
 }
-                    const deadlineBadge = isLate ? `<span class="bg-red-100 text-red-600 px-2 py-1 rounded-full border border-red-200">${deadlineStr}</span>` : `<span class="bg-blue-50 text-blue-600 px-2 py-1 rounded-full border border-blue-100">${deadlineStr}</span>`;
+                    const canEditDeadline = window.isAdmin() || (currentUserData.permissions && currentUserData.permissions.canAssignTasks);
+                    const deadlineBadge = canEditDeadline 
+                        ? `<span onclick="event.stopPropagation(); window.openEditDeadlineModal('${task.id}', '${task.deadline || ''}')" class="cursor-pointer hover:shadow-md transition ${isLate ? 'bg-red-100 text-red-600 border border-red-200' : 'bg-blue-50 text-blue-600 border border-blue-100'} px-2 py-1 rounded-full whitespace-nowrap text-center">${deadlineStr} <i class="fa-solid fa-pen text-[10px] ml-1"></i></span>`
+                        : `<span class="${isLate ? 'bg-red-100 text-red-600 border border-red-200' : 'bg-blue-50 text-blue-600 border border-blue-100'} px-2 py-1 rounded-full whitespace-nowrap text-center">${deadlineStr}</span>`;
 
                     let statusText = 'قيد الانتظار';
                     let statusClass = 'bg-gray-100 text-gray-600';
@@ -7723,7 +7789,14 @@ if (task.isRejected && task.status !== 'completed' && task.status !== 'pending_a
                             });
                         }
 
-                        // 1. الانتقال إلى عمود "مكتملة" أو "بانتظار الموافقة"
+                        // 1. منع التحريك إذا كانت المهمة مكتملة أو بانتظار الموافقة
+                        if (oldStatus === 'completed' || oldStatus === 'pending_approval') {
+                            showToast(oldStatus === 'completed' ? 'لا يمكن تحريك المهام المكتملة والمعتمدة' : 'لا يمكن تحريك المهمة لأنها بانتظار الاعتماد', 'warning');
+                            fromColumn.appendChild(itemEl);
+                            return;
+                        }
+
+                        // 2. الانتقال إلى عمود "مكتملة" أو "بانتظار الموافقة"
                         if (newStatus === 'completed' || newStatus === 'pending_approval') {
                             // التحقق من إكمال قوائم التحقق
                             if(task.checklists && task.checklists.length > 0) {
@@ -7750,13 +7823,6 @@ if (task.isRejected && task.status !== 'completed' && task.status !== 'pending_a
                             fromColumn.appendChild(itemEl); 
                             window.openModal('taskReportModal');
                             return; 
-                        }
-
-                        // 2. منع التحريك إذا كانت المهمة مكتملة أو بانتظار الموافقة
-                        if (oldStatus === 'completed' || oldStatus === 'pending_approval') {
-                            showToast(oldStatus === 'completed' ? 'لا يمكن تحريك المهام المكتملة والمعتمدة' : 'لا يمكن تحريك المهمة لأنها بانتظار الاعتماد', 'warning');
-                            fromColumn.appendChild(itemEl);
-                            return;
                         }
 
                         // التحديثات العادية بين pending و in-progress
