@@ -5,7 +5,7 @@
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
         import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
         
-      const firebaseConfig = {
+         const firebaseConfig = {
             apiKey: "AIzaSyCfoP0rgX8WZthQVP_AeZcxDHHCllgu3TM",
             authDomain: "quill-world.firebaseapp.com",
             projectId: "quill-world",
@@ -7376,11 +7376,17 @@ window.markNoticeRead = (id) => {
                     <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm shadow-2xl transform scale-95 transition-all">
                         <div class="p-6">
                             <h3 class="text-lg font-bold text-[#002d74] dark:text-white mb-4">تعديل موعد التسليم</h3>
+                            
+                            <div id="prevDeadlineBox" class="mb-4 bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border border-gray-100 dark:border-gray-600">
+                                <span class="text-xs text-gray-500 dark:text-gray-400 block mb-1">الموعد السابق:</span>
+                                <span id="prevDeadlineText" class="font-bold text-gray-800 dark:text-gray-200 text-sm"></span>
+                            </div>
+
                             <form id="editDeadlineForm">
                                 <input type="hidden" id="editDeadlineTaskId">
                                 <div class="mb-4">
                                     <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">موعد التسليم الجديد</label>
-                                    <input type="datetime-local" id="editDeadlineInput" required class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-xl focus:ring-[#00839b] focus:border-[#00839b] px-4 py-2 text-sm text-gray-900 dark:text-white">
+                                    <input type="text" id="editDeadlineInput" required class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-xl focus:ring-[#00839b] focus:border-[#00839b] px-4 py-2 text-sm text-gray-900 dark:text-white" placeholder="اختر التاريخ والوقت...">
                                 </div>
                                 <div class="flex gap-3 mt-6">
                                     <button type="submit" class="flex-1 bg-[#00839b] hover:bg-[#007186] text-white py-2 rounded-xl font-bold transition shadow-sm">حفظ التعديل</button>
@@ -7400,9 +7406,24 @@ window.markNoticeRead = (id) => {
                     btn.disabled = true;
                     try {
                         const id = document.getElementById('editDeadlineTaskId').value;
-                        const newDeadline = document.getElementById('editDeadlineInput').value;
+                        const inputEl = document.getElementById('editDeadlineInput');
+                        
+                        let newDeadlineTimestamp = null;
+                        if (inputEl._flatpickr && inputEl._flatpickr.selectedDates[0]) {
+                            newDeadlineTimestamp = inputEl._flatpickr.selectedDates[0].getTime();
+                        } else if (inputEl.value) {
+                            newDeadlineTimestamp = new Date(inputEl.value).getTime();
+                        }
+
+                        if (!newDeadlineTimestamp) {
+                            showToast('الرجاء اختيار الموعد', 'error');
+                            btn.innerHTML = origHtml;
+                            btn.disabled = false;
+                            return;
+                        }
+
                         const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', id), { deadline: newDeadline });
+                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', id), { deadline: newDeadlineTimestamp });
                         showToast('تم تعديل موعد التسليم بنجاح', 'success');
                         window.closeModal('editDeadlineModal');
                     } catch(err) {
@@ -7416,15 +7437,51 @@ window.markNoticeRead = (id) => {
             }
             
             document.getElementById('editDeadlineTaskId').value = taskId;
-            if (currentDeadline) {
-                document.getElementById('editDeadlineInput').value = currentDeadline;
-            } else {
-                document.getElementById('editDeadlineInput').value = '';
-            }
             
-            const now = new Date();
-            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-            document.getElementById('editDeadlineInput').min = now.toISOString().slice(0, 16);
+            const prevTextEl = document.getElementById('prevDeadlineText');
+            if (currentDeadline && currentDeadline !== 'undefined' && currentDeadline !== 'null') {
+                const d = new Date(Number(currentDeadline) || currentDeadline);
+                if (!isNaN(d)) {
+                    prevTextEl.innerText = d.toLocaleString('ar-EG', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', hour12:true });
+                } else {
+                    prevTextEl.innerText = 'غير متوفر';
+                }
+            } else {
+                prevTextEl.innerText = 'لا يوجد موعد سابق';
+            }
+
+            const inputEl = document.getElementById('editDeadlineInput');
+            if (typeof flatpickr !== 'undefined') {
+                if (!inputEl._flatpickr) {
+                    flatpickr(inputEl, {
+                        enableTime: true,
+                        dateFormat: "Y-m-dTH:i", 
+                        altInput: true,
+                        altFormat: "Y-m-d h:i K",
+                        time_24hr: false,
+                        minDate: "today"
+                    });
+                }
+                if (currentDeadline && currentDeadline !== 'undefined' && currentDeadline !== 'null') {
+                    const d = new Date(Number(currentDeadline) || currentDeadline);
+                    inputEl._flatpickr.setDate(d);
+                } else {
+                    inputEl._flatpickr.clear();
+                }
+            } else {
+                inputEl.type = 'datetime-local';
+                const now = new Date();
+                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                inputEl.min = now.toISOString().slice(0, 16);
+                
+                if (currentDeadline && currentDeadline !== 'undefined' && currentDeadline !== 'null') {
+                    const d = new Date(Number(currentDeadline) || currentDeadline);
+                    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+                    inputEl.value = d.toISOString().slice(0, 16);
+                } else {
+                    inputEl.value = '';
+                }
+            }
         
             window.openModal('editDeadlineModal');
         };
@@ -7494,7 +7551,7 @@ if (task.isRejected && task.status !== 'completed' && task.status !== 'pending_a
 }
                     const canEditDeadline = window.isAdmin() || (currentUserData.permissions && currentUserData.permissions.canAssignTasks);
                     const deadlineBadge = canEditDeadline 
-                        ? `<span onclick="event.stopPropagation(); window.openEditDeadlineModal('${task.id}', '${task.deadline || ''}')" class="cursor-pointer hover:shadow-md transition ${isLate ? 'bg-red-100 text-red-600 border border-red-200' : 'bg-blue-50 text-blue-600 border border-blue-100'} px-2 py-1 rounded-full whitespace-nowrap text-center">${deadlineStr} <i class="fa-solid fa-pen text-[10px] ml-1"></i></span>`
+                        ? `<span onclick="event.stopPropagation(); window.openEditDeadlineModal('${task.id}', '${task.deadline || ''}')" class="cursor-pointer hover:shadow-md transition ${isLate ? 'bg-red-100 text-red-600 border border-red-200' : 'bg-blue-50 text-blue-600 border border-blue-100'} px-2 py-1 rounded-full whitespace-nowrap text-center">${deadlineStr}</span>`
                         : `<span class="${isLate ? 'bg-red-100 text-red-600 border border-red-200' : 'bg-blue-50 text-blue-600 border border-blue-100'} px-2 py-1 rounded-full whitespace-nowrap text-center">${deadlineStr}</span>`;
 
                     let statusText = 'قيد الانتظار';
