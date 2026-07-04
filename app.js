@@ -1,0 +1,10868 @@
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, RecaptchaVerifier, signInWithPhoneNumber, linkWithPhoneNumber } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, getDoc, setDoc, arrayUnion, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL, uploadString } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+        import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
+        import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
+        
+         const firebaseConfig = {
+            apiKey: "AIzaSyCfoP0rgX8WZthQVP_AeZcxDHHCllgu3TM",
+            authDomain: "quill-world.firebaseapp.com",
+            projectId: "quill-world",
+            storageBucket: "quill-world.firebasestorage.app",
+            messagingSenderId: "339188796023",
+            appId: "1:339188796023:web:e0a1ba750b49909220d472",
+            measurementId: "G-BMEZ49L6CN"
+        };
+        
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                .then(reg => {
+                    console.log('Service Worker registered successfully!', reg.scope);
+                }).catch(err => {
+                    console.log('Service Worker registration failed: ', err);
+                });
+            });
+        }
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        auth.languageCode = 'ar';
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+        const appId = 'quill-world-system';
+        const cloudFunctions = getFunctions(app);
+        const appCheck = initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider('6LdlXi0tAAAAAMKyF4LbNTqwGPE85gXhl6BLWVSS'),
+    isTokenAutoRefreshEnabled: true
+   });
+
+        const i18nDict = {
+            "الخدمات والمستندات": "Services & Documents",
+            "اختر التطبيق الذي تود العمل عليه": "Choose an application to work on",
+            "المستندات": "Documents",
+            "الاجتماعات": "Meetings",
+            "الرئيسية": "Home",
+            "جاري التحميل...": "Loading...",
+            "مرحباً بك": "Welcome",
+            "يجب تسجيل الدخول": "Please login to access the system",
+            "تسجيل الدخول باستخدام Google": "Login with Google",
+            "إكمال بيانات الملف الشخصي": "Complete Profile Setup",
+            "الاسم الكامل": "Full Name",
+            "الوظيفة (الدور)": "Role",
+            "الدخول للنظام": "Enter System",
+            "المساحة المستخدمة": "Used Storage",
+            "مشاركة الملفات": "Share Important Files (Max 200MB)",
+            "رفع ملف جديد": "Upload New File",
+            "الملفات المثبتة": "Pinned Files",
+            "كل الملفات": "All Files",
+            "إدارة الاجتماعات": "Manage Video Calls",
+            "بدء / جدولة اجتماع": "Start/Schedule Meeting",
+            "الاجتماعات الحالية": "Active & Scheduled Meetings",
+            "سجل الاجتماعات": "Past Meetings Log",
+            "إعدادات الحساب": "Account Settings",
+            "معلومات الحساب": "Basic Info",
+            "تغيير الصورة": "Change Avatar",
+            "اختر صورة تعبر عنك": "Choose an image (Max 500KB)",
+            "اختيار صورة": "Choose Image",
+            "تطبيقات خارجية": "Other Apps",
+            "الحضور والانصراف": "Attendance",
+            "الإجازات": "Leaves",
+            "المهام": "Tasks",
+            "المناقشة": "Chat",
+            "العملاء": "CRM",
+            "التعميمات": "Notices"
+        };
+
+        window.currentLang = localStorage.getItem('appLang') || 'ar';
+        window.t = function(arString) { return (window.currentLang === 'en' && i18nDict[arString]) ? i18nDict[arString] : arString; };
+
+        function escapeHTML(str) {
+            if (!str) return '';
+            return str.replace(/[&<>'"]/g, 
+                tag => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    "'": '&#39;',
+                    '"': '&quot;'
+                }[tag])
+            );
+        }
+
+        function applyLanguageToDOM() {
+            document.documentElement.lang = window.currentLang;
+            document.documentElement.dir = window.currentLang === 'ar' ? 'rtl' : 'ltr';
+            document.getElementById('langIconTxt').innerText = window.currentLang === 'ar' ? 'EN' : 'AR';
+            if (window.currentLang === 'en') {
+                document.querySelectorAll('[data-i18n]').forEach(el => {
+                    const key = el.getAttribute('data-i18n');
+                    if (i18nDict[key]) {
+                        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = i18nDict[key];
+                        else {
+                            const icon = el.querySelector('i');
+                            el.innerHTML = (icon ? icon.outerHTML + ' ' : '') + i18nDict[key];
+                        }
+                    }
+                });
+            }
+        }
+
+        window.toggleLanguage = () => {
+            window.currentLang = window.currentLang === 'ar' ? 'en' : 'ar';
+            localStorage.setItem('appLang', window.currentLang);
+            window.location.reload();
+        };
+
+        window.toggleTheme = () => {
+            document.documentElement.classList.toggle('dark');
+            const isDark = document.documentElement.classList.contains('dark');
+            localStorage.setItem('appTheme', isDark ? 'dark' : 'light');
+            document.getElementById('themeToggleIcon').className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+        };
+
+        if (localStorage.getItem('appTheme') === 'dark') {
+            document.documentElement.classList.add('dark');
+            document.addEventListener("DOMContentLoaded", () => {
+                const icon = document.getElementById('themeToggleIcon');
+                if (icon) icon.className = 'fa-solid fa-sun';
+            });
+        }
+        
+        let currentUserAuth = null;
+        let currentUserData = null; 
+        window.isAdmin = function() { if(!currentUserData) return false; const r = (currentUserData.role || "").toUpperCase(); return r === "CEO" || r === "مطور" || r === "DEVELOPER"; };
+        let currentGeneratedOTPHash = null; 
+        let otpGeneratedTime = 0;
+        let otpTimerInterval = null;
+        let resendTimerInterval = null;
+        let confirmationResult = null; 
+        let otpAttempts = parseInt(localStorage.getItem('quill_otp_attempts') || '0'); 
+        let isFirstTimeOTP = false; 
+        let targetPhoneNumber = '';
+        let pendingUserData = null; 
+        let globalAllowedEmails = []; 
+        let globalUsers = []; 
+        let globalNotices = [];
+        let globalTasks = [];
+        let knownTaskIds = new Set();
+        window.currentTaskTab = 'active';
+        let creationChecklists = [];
+        let globalFiles = []; 
+        let globalFolders = [];
+        let currentFolderId = null;
+        let folderHistory = [{id: null, name: 'الرئيسية'}];
+        let globalMeetings = [];
+        let globalAttendance = [];
+        let globalLeaves = [];
+        let globalGroups = []; 
+        let globalExpenses = []; 
+        let globalTrainees = []; 
+        let globalInventory = []; 
+        let globalClients = [];  
+        let globalRentals = [];  
+        let globalRobots = [];
+        let globalEvents = [];
+        let globalDiscussions = [];
+        let globalVisits = [];
+        let groupReadTimestamps = {};
+        let globalCustody = [];
+        let isDrawing = false;
+        let ctx = null;
+        let hasPunchedInToday = false;
+        let seenBackgroundNotifIds = new Set();
+        let currentRobotsTab = 'rentedNow'; 
+        let activeUploads = [];
+        let inventoryConfig = {}; // لإعدادات النقل المجدول
+
+        // دالة مساعدة لرفع الملفات إلى Firebase Storage
+        window.uploadToFirebase = async (file, folderPath) => {
+            const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
+            const storageRef = ref(storage, `${folderPath}/${fileName}`);
+            await uploadBytes(storageRef, file);
+            return await getDownloadURL(storageRef);
+        };
+        const MAX_FILE_SIZE = 100 * 1024 * 1024; 
+        const MAX_GLOBAL_STORAGE = 5 * 1024 * 1024 * 1024 * 1024; 
+
+        const defaultNotifPreferences = {
+            style: 'number',
+            colors: { trainees: 'green', handover: 'yellow', meetings: 'blue' }
+        };
+
+        function formatDateTimeStr(dtStr) {
+    if(!dtStr) return '---';
+    try {
+        const d = new Date(dtStr);
+        if(isNaN(d.getTime())) return dtStr;
+        return d.toLocaleString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch(e) { return dtStr; }
+}
+
+function formatDurationArabic(ms) {
+    if (!ms || ms <= 0) return 'غير محدد';
+    let mins = Math.floor(ms / 60000);
+    if (mins === 0) return 'أقل من دقيقة';
+    
+    let days = Math.floor(mins / (24 * 60));
+    mins = mins % (24 * 60);
+    let hours = Math.floor(mins / 60);
+    mins = mins % 60;
+
+    let res = [];
+    if (days > 0) res.push(days + ' يوم');
+    if (hours > 0) res.push(hours + ' ساعة');
+    if (mins > 0) res.push(mins + ' دقيقة');
+    
+    return res.join(' و ');
+}
+
+        
+        function updateSearchBadge(badgeId, count, searchTerm) {
+            const badge = document.getElementById(badgeId);
+            if(badge) {
+                if(searchTerm.trim() !== '') {
+                    badge.innerText = `النتائج: ${count}`;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            applyLanguageToDOM();
+            
+            if (typeof flatpickr !== 'undefined') {
+                flatpickr("#taskDeadline, [id^='quick-deadline-']", {
+                    enableTime: true,
+                    dateFormat: "Y-m-dTH:i", 
+                    altInput: true,
+                    altFormat: "Y-m-d h:i K",
+                    time_24hr: false,
+                    locale: "ar",
+                    minDate: "today",
+                    disableMobile: "true",
+                    onChange: function(selectedDates, dateStr, instance) {
+                        if(selectedDates[0]) {
+                            if(selectedDates[0].getTime() < Date.now()) {
+                                showToast('لا يمكنك إسناد مهمة في وقت ماضي! تم تصفير التاريخ.', 'error');
+                                instance.clear();
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // حل مشكلة الدخول من الرابط مباشرة إلى صفحة تسجيل الدخول
+            if (window.location.pathname.includes('/login') || window.location.hash === '#login' || window.location.href.includes('login')) {
+                setTimeout(() => {
+                    window.toggleAuthTab('login');
+                }, 500);
+            }
+            
+            const leaveChatInput = document.getElementById('leaveChatInput');
+            if(leaveChatInput) {
+                leaveChatInput.addEventListener('keypress', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        window.sendLeaveComment();
+                    }
+                });
+            }
+    
+            // إخفاء علامة NEW إذا تم الضغط عليها مسبقاً
+            window.hideNewBadge = (badgeId) => {
+                const badge = document.getElementById(badgeId);
+                if(badge) {
+                    badge.classList.add('hidden');
+                    localStorage.setItem(`hidden_badge_${badgeId}`, 'true');
+                }
+            };
+            if(localStorage.getItem('hidden_badge_signedClientBadge') === 'true') {
+                const badge = document.getElementById('signedClientBadge');
+                if(badge) badge.classList.add('hidden');
+            } 
+            
+            const cachedUser = localStorage.getItem('quill_user_cache_services');
+            if (cachedUser) {
+                try {
+                    currentUserData = JSON.parse(cachedUser);
+                    groupReadTimestamps = currentUserData.readReceipts || {};
+                    
+                    if(!currentUserData.notificationPreferences) {
+                        currentUserData.notificationPreferences = defaultNotifPreferences;
+                    }
+                    
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    document.getElementById('systemPasswordScreen').classList.add('hidden');
+                    document.getElementById('loginScreen').classList.add('hidden');
+                    
+                    document.getElementById('userName').innerText = currentUserData.name;
+                    document.getElementById('userRole').innerText = currentUserData.role === 'pending' ? (currentUserData.requestedRole || 'قيد الانتظار') : currentUserData.role;
+                    document.getElementById('userAvatar').src = currentUserData.photoURL;
+                    
+                    if(window.isAdmin()) {
+                        document.getElementById('createMeetingBtn').classList.remove('hidden');
+                        document.getElementById('ceoAttendanceView').classList.remove('hidden');
+                        document.getElementById('ceoExportSection').classList.remove('hidden');
+                        document.getElementById('ceoLeaveBalancesSection').classList.remove('hidden');
+                        document.getElementById('ceoCustodyView').classList.remove('hidden');
+                        document.getElementById('ceoAllowedEmailsSection').classList.remove('hidden');
+                        document.getElementById('nav-employees-btn').classList.remove('hidden');
+                        document.getElementById('nav-employees-btn').style.display = 'flex';
+                        document.getElementById('grid-employees').classList.remove('hidden');
+                        const ceoReport = document.getElementById('ceoReportSection');
+                        if(ceoReport) ceoReport.classList.remove('hidden');
+                        document.getElementById('reqLeaveBtn').classList.add('hidden');
+                    } else {
+                        document.getElementById('reqLeaveBtn').classList.remove('hidden');
+                        document.getElementById('nav-employees-btn').classList.add('hidden');
+                        document.getElementById('nav-employees-btn').style.display = 'none';
+                        document.getElementById('grid-employees').classList.add('hidden');
+                        document.getElementById('ceoAllowedEmailsSection').classList.add('hidden');
+                        const ceoReport = document.getElementById('ceoReportSection');
+                        if(ceoReport) ceoReport.classList.add('hidden');
+                    }
+                    
+                    // إظهار المصاريف للجميع
+                    document.getElementById('nav-expenses-btn').classList.remove('hidden');
+                    document.getElementById('nav-expenses-btn').style.display = 'flex';
+                    document.getElementById('grid-expenses').classList.remove('hidden');
+                    
+                    loadNotificationSettingsToUI();
+
+                    if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+                        Notification.requestPermission();
+                    }
+
+                } catch(e) { console.error("Cache parsing error", e); }
+            }
+        });
+
+        // ------------------ Context Menu (Right-Click) ------------------
+        let ctxMenuTarget = null;
+        
+        document.addEventListener('click', (e) => {
+            const ctxMenu = document.getElementById('driveContextMenu');
+            if(ctxMenu && !ctxMenu.contains(e.target)) {
+                ctxMenu.classList.add('hidden');
+            }
+        });
+
+        window.showDriveContextMenu = (e, id, isFolder, nameEncoded) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            ctxMenuTarget = { id, isFolder, name: decodeURIComponent(nameEncoded) };
+            
+            const ctxMenu = document.getElementById('driveContextMenu');
+            ctxMenu.style.left = e.pageX + 'px';
+            ctxMenu.style.top = e.pageY + 'px';
+            ctxMenu.classList.remove('hidden');
+        };
+
+        document.getElementById('ctxSelect').addEventListener('click', () => {
+            document.getElementById('driveContextMenu').classList.add('hidden');
+            if (!isSelectMode) {
+                window.toggleSelectMode();
+            }
+            window.toggleCheckbox(ctxMenuTarget.id);
+        });
+
+        document.getElementById('ctxShare').addEventListener('click', () => {
+            document.getElementById('driveContextMenu').classList.add('hidden');
+            if (ctxMenuTarget.isFolder) {
+                showToast('المجلدات لا تدعم المشاركة حالياً', 'warning');
+                return;
+            }
+            const file = globalFiles.find(f => f.id === ctxMenuTarget.id);
+            if(file && file.data && file.data !== '#') {
+                const shareText = `مرحباً، إليك الملف التالي من نظام Quill:\n\n${file.name}: \n${file.data}`;
+                document.getElementById('shareTextContent').value = shareText;
+                window.openModal('shareModalFallback');
+            } else {
+                 showToast('هذا الملف لا يحتوي على رابط صالح للمشاركة', 'warning');
+            }
+        });
+
+        document.getElementById('ctxDelete').addEventListener('click', () => {
+            document.getElementById('driveContextMenu').classList.add('hidden');
+            window.deleteDriveItem(ctxMenuTarget.id, ctxMenuTarget.isFolder, encodeURIComponent(ctxMenuTarget.name));
+        });
+
+        // ------------------ Viewer Swipe & Keyboard Navigation ------------------
+        let viewerFilesList = [];
+        let currentViewerIndex = -1;
+        let touchstartX = 0;
+        let touchendX = 0;
+
+        document.getElementById('imageViewerModal').addEventListener('touchstart', e => {
+            touchstartX = e.changedTouches[0].screenX;
+        }, {passive: true});
+
+        document.getElementById('imageViewerModal').addEventListener('touchend', e => {
+            touchendX = e.changedTouches[0].screenX;
+            handleSwipe();
+        }, {passive: true});
+
+        function handleSwipe() {
+            if (touchendX < touchstartX - 50) window.navigateViewer(1); 
+            if (touchendX > touchstartX + 50) window.navigateViewer(-1); 
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (!document.getElementById('imageViewerModal').classList.contains('hidden')) {
+                if (e.key === 'ArrowRight' || e.key === 'ArrowUp') window.navigateViewer(-1); 
+                if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') window.navigateViewer(1); 
+                if (e.key === 'Escape') window.closeImageViewer();
+            }
+        });
+
+        function updateViewerUI() {
+            if (currentViewerIndex < 0 || currentViewerIndex >= viewerFilesList.length) return;
+            const file = viewerFilesList[currentViewerIndex];
+            
+            document.getElementById('imageViewerTitle').innerText = file.name;
+            document.getElementById('imageViewerDownloadBtn').href = file.data;
+            document.getElementById('imageViewerDownloadBtn').download = file.name;
+
+            const imgEl = document.getElementById('imageViewerImg');
+            const vidEl = document.getElementById('imageViewerVideo');
+
+            let displayUrl = file.data;
+            let isDriveFile = false;
+
+            if (displayUrl.includes('drive.google.com')) {
+                const match = displayUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                if (match && match[1]) {
+                    // نجبر درايف على عرض الملف في عارض داخلي لحل مشكلة الصورة المكسورة
+                    displayUrl = `https://drive.google.com/file/d/${match[1]}/preview`;
+                    isDriveFile = true;
+                }
+            }
+
+            // إذا كان الملف من درايف أو كان فيديو، نعرضه في iframe
+            if (isDriveFile || file.type.startsWith('video/')) {
+                imgEl.classList.add('hidden');
+                imgEl.src = '';
+                vidEl.classList.remove('hidden');
+                vidEl.src = displayUrl;
+            } else {
+                // للصور المرفوعة محلياً (Base64)
+                vidEl.classList.add('hidden');
+                vidEl.src = '';
+                imgEl.classList.remove('hidden');
+                imgEl.src = displayUrl;
+            }
+            
+            document.getElementById('viewerLeftBtn').style.visibility = currentViewerIndex > 0 ? 'visible' : 'hidden';
+            document.getElementById('viewerRightBtn').style.visibility = currentViewerIndex < viewerFilesList.length - 1 ? 'visible' : 'hidden';
+        }
+
+        window.navigateViewer = (direction) => {
+            const newIndex = currentViewerIndex + direction;
+            if (newIndex >= 0 && newIndex < viewerFilesList.length) {
+                currentViewerIndex = newIndex;
+                updateViewerUI();
+            }
+        };
+        // ----------------------------------------------------------------------
+
+        let currentRobotsOnlyTab = 'inCompany';
+        window.switchRobotsOnlyTab = (tabName) => {
+            currentRobotsOnlyTab = tabName;
+            document.getElementById('inCompanyContainer').classList.add('hidden');
+            document.getElementById('inWarehouseContainer').classList.add('hidden');
+            document.getElementById('tabRobotsInCompany').className = "whitespace-nowrap py-2 px-4 font-bold text-sm border-b-2 border-transparent text-gray-500";
+            document.getElementById('tabRobotsInWarehouse').className = "whitespace-nowrap py-2 px-4 font-bold text-sm border-b-2 border-transparent text-gray-500";
+            
+            document.getElementById(`tabRobots${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`).className = "whitespace-nowrap py-2 px-4 font-bold text-sm border-b-2 border-blue-600 text-blue-600";
+            document.getElementById(`${tabName}Container`).classList.remove('hidden');
+
+            document.getElementById('addRobotCompanyBtn').classList.toggle('hidden', tabName !== 'inCompany');
+            document.getElementById('addRobotWarehouseBtn').classList.toggle('hidden', tabName !== 'inWarehouse');
+            window.renderRobotsOnly();
+        };
+
+        window.renderRobotsOnly = () => {
+            if(currentRobotsOnlyTab === 'inCompany') renderCompanyRobots();
+            else renderWarehouseRobots();
+        };
+
+        let currentRentalsTab = 'rentedNow';
+        window.switchRentalsTab = (tabName) => {
+            currentRentalsTab = tabName;
+            document.getElementById('rentedNowContainer').classList.add('hidden');
+            document.getElementById('pastRentersContainer').classList.add('hidden');
+            document.getElementById('tabRentalsRentedNow').className = "whitespace-nowrap py-2 px-4 font-bold text-sm border-b-2 border-transparent text-gray-500";
+            document.getElementById('tabRentalsPastRenters').className = "whitespace-nowrap py-2 px-4 font-bold text-sm border-b-2 border-transparent text-gray-500";
+            
+            document.getElementById(`tabRentals${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`).className = "whitespace-nowrap py-2 px-4 font-bold text-sm border-b-2 border-indigo-600 text-indigo-600";
+            document.getElementById(`${tabName}Container`).classList.remove('hidden');
+            document.getElementById('addRentalBtn').classList.toggle('hidden', tabName !== 'rentedNow');
+            window.renderRentalsTab();
+        };
+        window.renderRentalsTab = () => {
+            if(currentRentalsTab === 'rentedNow') renderRentedNow();
+            else renderPastRenters();
+        };
+
+        let currentClientsTab = 'clients';
+        window.switchClientsTab = (tabName) => {
+            currentClientsTab = tabName;
+            const tabs = ['clients', 'signed', 'upcoming', 'last_visit'];
+            
+            tabs.forEach(t => {
+                const container = document.getElementById(`${t}Container`);
+                if(container) container.classList.add('hidden');
+                const btn = document.getElementById(`tabClients${t.charAt(0).toUpperCase() + t.slice(1)}`);
+                if(btn) btn.className = "whitespace-nowrap py-2 px-4 font-bold text-sm border-b-2 border-transparent text-gray-500 flex items-center gap-2 transition";
+            });
+            
+            const activeContainer = document.getElementById(`${tabName}Container`);
+            if(activeContainer) activeContainer.classList.remove('hidden');
+            
+            const activeBtn = document.getElementById(`tabClients${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`);
+            if(activeBtn) activeBtn.className = "whitespace-nowrap py-2 px-4 font-bold text-sm border-b-2 border-green-600 text-green-600 flex items-center gap-2 transition";
+            
+            const perms = currentUserData.permissions || {};
+            const isCEO = window.isAdmin();
+            const canManage = isCEO || perms.canManageClients;
+            const canAddCon = isCEO || perms.canAddContracts;
+
+            // إخفاء التبويبات بالكامل لمن لا يملك صلاحية
+            const tabClients = document.getElementById('tabClientsClients');
+            if (tabClients) tabClients.classList.toggle('hidden', !canManage);
+            
+            const tabSigned = document.getElementById('tabClientsSigned');
+            if (tabSigned) tabSigned.classList.toggle('hidden', !canAddCon);
+
+            document.getElementById('addClientBtn').classList.toggle('hidden', tabName !== 'clients' || !canManage);
+            document.getElementById('addSignedClientBtn').classList.toggle('hidden', tabName !== 'signed' || !canAddCon);
+            
+            if (tabName === 'signed') window.hideNewBadge('signedClientBadge');
+            
+            const addVisitBtn = document.getElementById('addVisitBtn');
+            // زر إضافة زيارة يظهر فقط للمدير أو لمن يملك صلاحية إدارة العملاء
+            if(addVisitBtn) addVisitBtn.classList.toggle('hidden', tabName !== 'upcoming' || !canManage);
+            
+            window.renderClientsTab();
+        };
+
+        window.renderClientsTab = () => {
+            const perms = currentUserData.permissions || {};
+            const isCEO = window.isAdmin();
+            const canViewContracts = isCEO || perms.canViewContracts;
+
+            // إخفاء تبويب "العملاء الموقعين" إذا لم يكن لديه صلاحية
+            const tabSigned = document.getElementById('tabClientsSigned');
+            if (tabSigned) tabSigned.classList.toggle('hidden', !canViewContracts);
+
+            if(currentClientsTab === 'clients') {
+                renderClients();
+            } else if(currentClientsTab === 'signed') {
+                if (!canViewContracts) {
+                    document.getElementById('signedContainer').innerHTML = '<p class="col-span-full text-center text-red-500 font-bold py-8">ليس لديك صلاحية لعرض هذا القسم.</p>';
+                } else {
+                    renderSignedClients();
+                }
+            } else if(currentClientsTab === 'upcoming' || currentClientsTab === 'last_visit') {
+                const cont = document.getElementById(`${currentClientsTab}Container`);
+                if(!cont) return;
+                cont.innerHTML = '';
+                
+                const now = Date.now();
+                // فلترة الزيارات لتظهر فقط الزيارات الخاصة بالموظف (إلا إذا كان مديراً)
+                let visitsToShow = globalVisits.filter(v => {
+                    const isMyVisit = window.isAdmin() || (v.assignedUsers && v.assignedUsers.includes(currentUserData.uid));
+                    if (!isMyVisit) return false;
+
+                    if(currentClientsTab === 'upcoming') return !v.completed; 
+                    else return v.completed; 
+                });
+
+                if(currentClientsTab === 'upcoming') {
+                    visitsToShow.sort((a,b) => a.dateTime - b.dateTime);
+                } else {
+                    visitsToShow.sort((a,b) => b.dateTime - a.dateTime);
+                }
+
+                if(visitsToShow.length === 0) {
+                    cont.innerHTML = `<p class="col-span-full text-center text-gray-500 py-8">لا يوجد زيارات ${currentClientsTab === 'upcoming' ? 'قادمة' : 'سابقة'} لعرضها.</p>`;
+                    return;
+                }
+
+                visitsToShow.forEach(v => {
+                    const client = globalClients.find(c => c.id === v.clientId);
+                    if(!client) return; 
+                    
+                    const logoHtml = client.logo ? `<img src="${client.logo}" class="w-12 h-12 rounded-full object-cover border border-gray-200 bg-white shadow-sm">` : `<div class="w-12 h-12 rounded-full bg-orange-100 text-orange-500 flex items-center justify-center text-xl font-bold"><i class="fa-solid fa-building"></i></div>`;
+                    
+                    let empsHtml = '';
+                    if(v.assignedUsers && v.assignedUsers.length > 0) {
+                        v.assignedUsers.forEach(uid => {
+                            const u = globalUsers.find(user => user.uid === uid);
+                            if(u) empsHtml += `<img src="${u.photoURL}" title="${u.name}" class="w-6 h-6 rounded-full border border-white -ml-2">`;
+                        });
+                    }
+
+                    const dObj = new Date(v.dateTime);
+                    const dateStr = dObj.toLocaleDateString('ar-EG', {weekday: 'long', year: 'numeric', month: 'short', day: 'numeric'});
+                    const timeStr = dObj.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+
+                    let actionBtns = '';
+                    const isTimePassed = v.dateTime <= Date.now();
+                    const isAssignedOrCEO = window.isAdmin() || (v.assignedUsers && v.assignedUsers.includes(currentUserData.uid));
+
+                    if (!v.completed && isTimePassed) {
+                        if (isAssignedOrCEO) {
+                            actionBtns = `
+                                <div class="flex gap-2 w-full mt-3 pt-3 border-t dark:border-gray-700">
+                                    <button onclick="window.openCompleteVisitModal('${v.id}')" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-1.5 rounded text-xs font-bold transition shadow animate-pulse"><i class="fa-solid fa-clipboard-check"></i> كتابة تقرير الزيارة وإنهائها</button>
+                                    <button onclick="window.openVisitModal('${v.id}')" class="bg-orange-50 hover:bg-orange-100 text-orange-600 px-3 py-1.5 rounded text-xs font-bold transition border border-orange-200" title="تأجيل"><i class="fa-solid fa-clock-rotate-left"></i></button>
+                                </div>
+                            `;
+                        } else {
+                            actionBtns = `<p class="mt-3 pt-3 border-t dark:border-gray-700 text-xs text-red-500 font-bold text-center">بانتظار كتابة التقرير من قبل المكلفين بالزيارة</p>`;
+                        }
+                    } else if (currentClientsTab === 'upcoming') {
+                        actionBtns = `
+                            <div class="flex gap-2 w-full mt-3 pt-3 border-t dark:border-gray-700">
+                                <button onclick="window.openVisitModal('${v.id}')" class="flex-1 bg-orange-50 hover:bg-orange-100 text-orange-600 dark:bg-gray-700 dark:text-orange-400 py-1.5 rounded text-xs font-bold transition border border-orange-200 dark:border-gray-600"><i class="fa-solid fa-clock-rotate-left"></i> تأجيل / تعديل</button>
+                                <button onclick="window.deleteVisit('${v.id}')" class="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded text-xs font-bold transition border border-red-200"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        `;
+                    } else if (v.completed) {
+                        actionBtns = `
+                            <div class="flex flex-col gap-2 w-full mt-3 pt-3 border-t dark:border-gray-700">
+                                <span class="text-center text-xs text-green-700 font-bold bg-green-100 py-1.5 rounded"><i class="fa-solid fa-check-circle"></i> الزيارة تمت بنجاح</span>
+                                <div class="text-xs text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-600 whitespace-pre-wrap"><strong class="text-green-600">التقرير:</strong><br>${escapeHTML(v.report)}</div>
+                            </div>
+                        `;
+                    }
+
+                    cont.innerHTML += `
+                        <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border-t-4 ${currentClientsTab === 'upcoming' ? 'border-orange-500' : 'border-gray-400'} flex flex-col hover:shadow-md transition">
+                            <div class="flex items-center gap-3 mb-3">
+                                ${logoHtml}
+                                <div>
+                                    <h3 class="font-bold text-base text-gray-800 dark:text-white">${escapeHTML(client.name)}</h3>
+                                    <div class="flex flex-row-reverse justify-end mt-1">${empsHtml}</div>
+                                </div>
+                            </div>
+                            <div class="text-xs text-gray-600 dark:text-gray-300 space-y-2 flex-1 bg-gray-50 dark:bg-gray-900/50 p-2 rounded-lg border dark:border-gray-700">
+                                <p class="flex justify-between"><span class="font-bold"><i class="fa-regular fa-calendar text-orange-500 mx-1"></i> التاريخ:</span> <span class="text-gray-800 dark:text-gray-200">${dateStr}</span></p>
+                                <p class="flex justify-between"><span class="font-bold"><i class="fa-regular fa-clock text-orange-500 mx-1"></i> الوقت:</span> <span class="text-gray-800 dark:text-gray-200" dir="ltr">${timeStr}</span></p>
+                               ${v.notes ? `<p class="mt-2 pt-2 border-t dark:border-gray-700 text-gray-800 dark:text-gray-200 bg-orange-50 dark:bg-gray-800 p-2 rounded whitespace-pre-wrap font-bold text-[11px]"><i class="fa-solid fa-circle-info text-orange-400 mr-1"></i> سبب الزيارة: ${escapeHTML(v.notes)}</p>` : ''}
+                            </div>
+                            ${actionBtns}
+                        </div>
+                    `;
+                });
+            }
+        };
+
+        // --- قسم برمجة الزيارات (المواعيد) ---
+        
+
+        // دوال القائمة المخصصة للزيارات
+        window.toggleVisitClientDropdown = () => {
+            window.renderVisitClientDropdownList(); // تحديث القائمة لجلب العملاء الجدد فوراً
+            document.getElementById('visitClientDropdown').classList.toggle('hidden');
+            document.getElementById('visitClientRealSearch').focus();
+        };
+        window.closeVisitCustomDropdown = (e) => {
+            const drop = document.getElementById('visitClientDropdown');
+            if(drop && !drop.classList.contains('hidden')) drop.classList.add('hidden');
+        };
+        window.selectVisitClient = (id, name) => {
+            document.getElementById('visitClientSearchInput').value = name;
+            document.getElementById('visitClientSelect').value = id;
+            document.getElementById('visitClientDropdown').classList.add('hidden');
+        };
+        window.filterVisitClientsList = () => {
+            window.renderVisitClientDropdownList(document.getElementById('visitClientRealSearch').value.toLowerCase());
+        };
+        window.renderVisitClientDropdownList = (searchTerm = '') => {
+            const list = document.getElementById('visitClientListItems');
+            list.innerHTML = '';
+            const filtered = globalClients.filter(c => c.name.toLowerCase().includes(searchTerm));
+            
+            if(filtered.length === 0) {
+                list.innerHTML = '<p class="text-xs text-gray-500 text-center p-2">لا يوجد عملاء بهذا الاسم</p>';
+                return;
+            }
+            
+            filtered.forEach(c => {
+                const logo = c.logo ? `<img src="${c.logo}" class="w-6 h-6 rounded-full object-cover border">` : `<i class="fa-solid fa-building text-gray-400 text-lg"></i>`;
+                list.innerHTML += `
+                    <div onclick="window.selectVisitClient('${c.id}', '${escapeHTML(c.name)}')" class="flex items-center gap-2 p-2 hover:bg-orange-50 dark:hover:bg-gray-700 cursor-pointer rounded transition">
+                        ${logo}
+                        <span class="text-xs font-bold text-gray-700 dark:text-gray-200">${escapeHTML(c.name)}</span>
+                    </div>
+                `;
+            });
+        };
+
+        window.openVisitModal = (visitId = null) => {
+            document.getElementById('visitForm').reset();
+            document.getElementById('visitId').value = visitId || '';
+            document.getElementById('visitModalTitle').innerText = visitId ? 'تأجيل / تعديل الزيارة' : 'إضافة زيارة قادمة';
+            document.getElementById('visitClientSearchInput').value = '';
+            document.getElementById('visitClientSelect').value = '';
+            document.getElementById('visitClientDropdown').classList.add('hidden');
+            
+            window.renderVisitClientDropdownList();
+
+            // تعبئة قائمة الموظفين
+            const membersList = document.getElementById('visitMembersList');
+            membersList.innerHTML = '';
+            globalUsers.forEach(u => {
+                membersList.innerHTML += `
+                    <label class="flex items-center gap-2 p-1.5 hover:bg-gray-100 dark:hover:bg-gray-600 rounded cursor-pointer transition">
+                        <input type="checkbox" value="${u.uid}" class="visit-member-cb w-4 h-4 text-orange-500 rounded">
+                        <img src="${u.photoURL}" class="w-5 h-5 rounded-full object-cover">
+                        <span class="text-xs font-bold text-gray-700 dark:text-gray-200">${escapeHTML(u.name)}</span>
+                    </label>
+                `;
+            });
+
+            if(visitId) {
+                const visit = globalVisits.find(v => v.id === visitId);
+                if(visit) {
+                    const clientObj = globalClients.find(c => c.id === visit.clientId);
+                    document.getElementById('visitClientSearchInput').value = clientObj ? clientObj.name : '';
+                    document.getElementById('visitClientSelect').value = visit.clientId;
+                    
+                    if(visit.dateTime) {
+                        const d = new Date(visit.dateTime);
+                        const isoStr = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0,16);
+                        document.getElementById('visitDateTime').value = isoStr;
+                    }
+                    document.getElementById('visitNotes').value = visit.notes || '';
+                    const checkboxes = document.querySelectorAll('.visit-member-cb');
+                    checkboxes.forEach(cb => {
+                        if(visit.assignedUsers && visit.assignedUsers.includes(cb.value)) cb.checked = true;
+                    });
+                }
+            }
+
+            window.openModal('visitModal');
+        };
+
+        document.getElementById('visitForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if(!currentUserData) return;
+
+            const id = document.getElementById('visitId').value;
+            const clientId = document.getElementById('visitClientSelect').value;
+            const dateTimeStr = document.getElementById('visitDateTime').value;
+            const notes = document.getElementById('visitNotes').value;
+            
+            const checkboxes = document.querySelectorAll('.visit-member-cb:checked');
+            const assignedUsers = Array.from(checkboxes).map(cb => cb.value);
+
+            if(!clientId) {
+                showToast('يرجى اختيار العميل من القائمة', 'warning'); return;
+            }
+            if(!dateTimeStr) {
+                showToast('يرجى تحديد الموعد', 'warning'); return;
+            }
+            if(assignedUsers.length === 0) {
+                showToast('يرجى تحديد موظف واحد على الأقل للزيارة', 'warning'); return;
+            }
+
+            const timestamp = new Date(dateTimeStr).getTime();
+
+            const data = {
+                clientId: clientId,
+                dateTime: timestamp,
+                assignedUsers: assignedUsers,
+                notes: notes,
+                addedBy: currentUserData.uid,
+                timestamp: Date.now()
+            };
+
+            try {
+                const btn = document.getElementById('saveVisitBtn');
+                btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                
+                if(id) {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'visits', id), data);
+                    showToast('تم تحديث وتأجيل الموعد بنجاح', 'success');
+                } else {
+                    await addDoc(getColRef('visits'), data);
+                    showToast('تم إضافة الزيارة بنجاح', 'success');
+                }
+                
+                const clientObj = globalClients.find(c => c.id === clientId);
+                const cName = clientObj ? clientObj.name : 'عميل';
+                const dStr = new Date(timestamp).toLocaleString('ar-EG', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+                
+                assignedUsers.forEach(uid => {
+                    if(uid !== currentUserData.uid || id) {
+                         window.sendSystemNotification(uid, 'موعد زيارة', `تم تكليفك بزيارة العميل ${cName} في الموعد: ${dStr}`, 'notices', 'clients_mgmt');
+                    }
+                });
+
+                window.closeModal('visitModal');
+                window.renderClientsTab();
+            } catch(err) {
+                console.error(err); showToast('حدث خطأ', 'error');
+            } finally {
+                const btn = document.getElementById('saveVisitBtn');
+                btn.disabled = false; btn.innerHTML = 'حفظ الموعد';
+            }
+        });
+
+        window.deleteVisit = async (id) => {
+            if(confirm('هل أنت متأكد من حذف هذه الزيارة نهائياً؟')) {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'visits', id));
+                showToast('تم الحذف', 'success');
+            }
+        };
+
+        window.openCompleteVisitModal = (visitId) => {
+            document.getElementById('completeVisitForm').reset();
+            document.getElementById('reportVisitId').value = visitId;
+            window.openModal('completeVisitModal');
+        };
+
+        window.submitVisitReport = async (e) => {
+            e.preventDefault();
+            const visitId = document.getElementById('reportVisitId').value;
+            const report = document.getElementById('visitReportText').value;
+            if(!visitId || !report) return;
+            
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'visits', visitId), { 
+                    completed: true, 
+                    report: report,
+                    completedAt: Date.now()
+                });
+                showToast('تم حفظ التقرير وإنهاء الزيارة بنجاح', 'success');
+                window.closeModal('completeVisitModal');
+                window.renderClientsTab();
+            } catch(err) {
+                console.error(err);
+                showToast('حدث خطأ في الحفظ', 'error');
+            }
+        };
+
+        function checkUpcomingVisitsNotifications() {
+            if(!currentUserData) return;
+            const now = Date.now();
+            
+            globalVisits.forEach(v => {
+                // التأكد أن المستخدم مكلف بالزيارة وأنها لم تكتمل بعد
+                if(v.assignedUsers && v.assignedUsers.includes(currentUserData.uid) && !v.completed) {
+                    const timeDiffHours = (v.dateTime - now) / (1000 * 60 * 60);
+                    // حساب الوقت الكلي من لحظة إنشاء الزيارة حتى موعدها
+                    const totalDurationHours = (v.dateTime - v.timestamp) / (1000 * 60 * 60);
+                    
+                    const client = globalClients.find(c => c.id === v.clientId);
+                    if(!client) return;
+
+                    // دالة إرسال الإشعار وتذكره في المتصفح حتى لا يتكرر
+                    const sendReminder = (timeKey, timeText) => {
+    const storageKey = `sent_notif_${v.id}_${timeKey}`;
+    if (localStorage.getItem(storageKey)) return; 
+
+    window.sendSystemNotification(currentUserData.uid, 'تذكير بزيارة قادمة', `موعد زيارة العميل ${client.name} متبقي له ${timeText}.`, 'meetings', 'clients_mgmt');
+    showToast(`تذكير: زيارة ${client.name} متبقي لها ${timeText}`, 'warning');
+    
+    // إرسال إيميل التذكير
+    auth.currentUser.getIdToken().then(token => {
+        fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ 
+                action: 'sendVisitReminder', 
+                to_email: currentUserData.email, 
+                to_name: currentUserData.name, 
+                client_name: client.name, 
+                time_left: timeText, 
+                token: token 
+            })
+        }).catch(e => console.log(e));
+    });
+
+    localStorage.setItem(storageKey, 'true');
+};
+
+                    // تحديد متى يتم إرسال التنبيهات بناءً على وقت إضافة الزيارة
+                    let threshold1, threshold2;
+                    let text1, text2;
+
+                    if (totalDurationHours > 24) {
+                        // أضيفت قبل أكثر من 24 ساعة
+                        threshold1 = 24; text1 = "24 ساعة";
+                        threshold2 = 3;  text2 = "3 ساعات";
+                    } else if (totalDurationHours >= 6) {
+                        // أضيفت قبل 6 إلى 24 ساعة
+                        threshold1 = 5; text1 = "5 ساعات";
+                        threshold2 = 2; text2 = "ساعتين";
+                    } else {
+                        // أضيفت قبل أقل من 6 ساعات (نذكرهم في منتصف الوقت وقبل ربع الوقت)
+                        threshold1 = totalDurationHours * 0.5; 
+                        threshold2 = totalDurationHours * 0.2; 
+                        text1 = "حوالي " + Math.round(threshold1 * 60) + " دقيقة";
+                        text2 = "حوالي " + Math.round(threshold2 * 60) + " دقيقة";
+                    }
+
+                    // إطلاق التنبيه الأول إذا وصلنا لوقته
+                    if (timeDiffHours > 0 && timeDiffHours <= threshold1) {
+                        sendReminder('remind1', text1);
+                    }
+                    // إطلاق التنبيه الثاني إذا وصلنا لوقته
+                    if (timeDiffHours > 0 && timeDiffHours <= threshold2) {
+                        sendReminder('remind2', text2);
+                    }
+
+                    // تنبيه عند الانتهاء ولم يكتب التقرير
+                    if(timeDiffHours < 0 && !v.completed) {
+                        const reportTitle = 'مطلوب تقرير الزيارة';
+                        const reportBody = `لقد انتهى وقت الزيارة للعميل ${client.name}، يرجى كتابة التقرير.`;
+                        const alreadySentReport = currentUserData.notifications && currentUserData.notifications.some(n => n.title === reportTitle && n.body === reportBody);
+                        
+                        if(!alreadySentReport) {
+                            window.sendSystemNotification(currentUserData.uid, reportTitle, reportBody, 'meetings', 'clients_mgmt');
+                        }
+                    }
+                }
+            });
+        }
+
+window.openSignedClientModal = () => {
+    document.getElementById('signedClientForm').reset();
+    document.getElementById('signedContractFileUrl').value = '';
+    document.getElementById('signedClientName').value = '';
+    document.getElementById('signedClientSearchInput').value = '';
+    document.getElementById('customClientDropdown').classList.add('hidden');
+    window.renderCustomClientDropdownList();
+    window.openModal('signedClientModal');
+};
+
+// دوال القائمة المخصصة للعملاء
+window.toggleCustomDropdown = () => {
+    document.getElementById('customClientDropdown').classList.toggle('hidden');
+    document.getElementById('customClientRealSearch').focus();
+};
+window.closeCustomDropdown = (e) => {
+    document.getElementById('customClientDropdown').classList.add('hidden');
+};
+window.selectCustomClient = (name) => {
+    document.getElementById('signedClientSearchInput').value = name;
+    document.getElementById('signedClientName').value = name;
+    document.getElementById('customClientDropdown').classList.add('hidden');
+};
+window.filterCustomClientsList = () => {
+    window.renderCustomClientDropdownList(document.getElementById('customClientRealSearch').value.toLowerCase());
+};
+window.renderCustomClientDropdownList = (searchTerm = '') => {
+    const list = document.getElementById('customClientListItems');
+    list.innerHTML = '';
+    const filtered = globalClients.filter(c => c.name.toLowerCase().includes(searchTerm));
+    
+    if(filtered.length === 0) {
+        list.innerHTML = '<p class="text-xs text-gray-500 text-center p-2">لا يوجد عملاء بهذا الاسم</p>';
+        return;
+    }
+    
+    filtered.forEach(c => {
+        const logo = c.logo ? `<img src="${c.logo}" class="w-6 h-6 rounded-full object-cover border">` : `<i class="fa-solid fa-building text-gray-400 text-lg"></i>`;
+        list.innerHTML += `
+            <div onclick="window.selectCustomClient('${escapeHTML(c.name)}')" class="flex items-center gap-2 p-2 hover:bg-teal-50 dark:hover:bg-gray-700 cursor-pointer rounded transition">
+                ${logo}
+                <span class="text-xs font-bold text-gray-700 dark:text-gray-200">${escapeHTML(c.name)}</span>
+            </div>
+        `;
+    });
+};
+
+document.getElementById('signedContractFileInput').addEventListener('change', async function(e) {
+    const file = e.target.files[0];
+    if(!file) return;
+    if(file.size > 100 * 1024 * 1024) { showToast('الملف كبير جداً!', 'error'); e.target.value = ''; return; }
+    
+    showToast('جاري رفع العقد إلى السحابة...', 'info');
+    try {
+        const fileUrl = await window.uploadToFirebase(file, 'contracts');
+        document.getElementById('signedContractFileUrl').value = fileUrl;
+        showToast('تم رفع العقد بنجاح', 'success');
+    } catch (err) {
+        console.error(err);
+        showToast('فشل رفع العقد، يرجى المحاولة مجدداً', 'error');
+        document.getElementById('signedContractFileInput').value = '';
+    }
+});
+
+document.getElementById('signedClientForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if(!currentUserData) return;
+
+    const clientName = document.getElementById('signedClientName').value.trim();
+    const date = document.getElementById('signedContractDate').value;
+    const fileUrl = document.getElementById('signedContractFileUrl').value;
+    const notes = document.getElementById('signedContractNotes').value;
+
+    if(!fileUrl) {
+        showToast('يرجى الانتظار حتى يكتمل رفع الملف', 'warning'); return;
+    }
+
+    const client = globalClients.find(c => c.name === clientName);
+    if(!client) {
+        showToast('العميل غير موجود، يرجى التأكد من اختيار عميل مسجل من القائمة.', 'error'); return;
+    }
+
+    const btn = document.getElementById('signedClientSubmitBtn');
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الحفظ...';
+    btn.disabled = true;
+
+    try {
+        const currentContracts = client.contracts || [];
+        currentContracts.push({
+            date: date, file: fileUrl, notes: notes, addedBy: currentUserData.name, timestamp: Date.now()
+        });
+
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robot_clients', client.id), {
+            contracts: currentContracts, status: 'signed'
+        });
+
+        window.closeModal('signedClientModal');
+        showToast('تم إضافة العقد بنجاح', 'success');
+        renderSignedClients();
+    } catch(err) {
+        console.error(err); showToast('حدث خطأ', 'error');
+    } finally {
+        btn.innerHTML = 'حفظ العقد'; btn.disabled = false;
+    }
+});
+
+// دالة الانتقال للعميل الموقع مع تأثير الإضاءة
+window.goToSignedClient = (clientId) => {
+    // 1. الانتقال لتبويب العملاء الموقعين
+    window.switchClientsTab('signed');
+    
+    // 2. إعطاء وقت قصير جداً ليتم بناء الـ HTML
+    setTimeout(() => {
+        const card = document.getElementById(`signed-card-${clientId}`);
+        if(card) {
+            // رفع الشاشة للبطاقة المحددة في المنتصف
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // إضافة تأثير الإضاءة الخضراء والـ Hover
+            card.classList.add('ring-4', 'ring-green-400', 'bg-green-50', 'dark:bg-green-900/30', 'scale-[1.02]');
+            
+            // إزالة التأثير بعد ثانية ونصف
+            setTimeout(() => {
+                card.classList.remove('ring-4', 'ring-green-400', 'bg-green-50', 'dark:bg-green-900/30', 'scale-[1.02]');
+            }, 1500);
+        }
+    }, 100);
+};
+
+        document.getElementById('rentalLogoInput').addEventListener('change', async function(e) {
+    const file = e.target.files[0];
+    if(!file) return;
+    showToast('جاري رفع الشعار ...', 'info');
+    document.getElementById('rentalLogoUrl').value = '';
+    
+    try {
+        const fileUrl = await window.uploadToFirebase(file, 'rental_logos');
+        document.getElementById('rentalLogoBase64').value = fileUrl;
+        document.getElementById('rentalLogoPreview').src = fileUrl;
+        document.getElementById('rentalLogoPreviewContainer').classList.remove('hidden');
+        showToast('تم رفع الشعار بنجاح', 'success');
+    } catch (err) {
+        console.error(err);
+        showToast('فشل رفع الصورة، يرجى المحاولة مجدداً', 'error');
+        e.target.value = '';
+    }
+});
+
+        document.getElementById('rentalLogoUrl').addEventListener('input', function(e) {
+            const url = e.target.value;
+            if(url) {
+                document.getElementById('rentalLogoBase64').value = url;
+                document.getElementById('rentalLogoInput').value = ''; 
+                document.getElementById('rentalLogoPreview').src = url;
+                document.getElementById('rentalLogoPreviewContainer').classList.remove('hidden');
+            } else {
+                document.getElementById('rentalLogoBase64').value = '';
+                document.getElementById('rentalLogoPreviewContainer').classList.add('hidden');
+            }
+        });
+
+        window.toggleLogoRequirement = () => {
+    const noLogo = document.getElementById('noClientLogo').checked;
+    const logoInput = document.getElementById('clientLogoInput');
+    const urlInput = document.getElementById('clientLogoUrl');
+    const asterisk = document.getElementById('logoAsterisk');
+    const existingLogo = document.getElementById('clientLogoBase64').value;
+    
+    if (noLogo) {
+        logoInput.required = false;
+        logoInput.disabled = true;
+        if(urlInput) urlInput.disabled = true;
+        asterisk.classList.add('hidden');
+    } else {
+        logoInput.disabled = false;
+        if(urlInput) urlInput.disabled = false;
+        if(!existingLogo && !(urlInput && urlInput.value)) logoInput.required = true;
+        else logoInput.required = false;
+        asterisk.classList.remove('hidden');
+    }
+};
+
+window.addClientRobotRow = (name='', serial='', date='', hasWarranty=false, warrantyDate='') => {
+    const container = document.getElementById('clientRobotsList');
+    const row = document.createElement('div');
+    row.className = "flex flex-col gap-2 bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700 client-robot-row shadow-sm";
+    row.innerHTML = `
+        <div class="flex flex-wrap md:flex-nowrap gap-2 items-end">
+            <div class="flex-1 min-w-[150px]">
+                <label class="text-[10px] text-gray-500 font-bold mb-1 block">اسم الروبوت</label>
+                <input type="text" placeholder="مثال: Bella bot" value="${escapeHTML(name)}" class="cr-name w-full border dark:border-gray-600 rounded px-2 py-2 text-xs outline-none dark:bg-gray-900 dark:text-white font-bold focus:border-indigo-500" list="robotNamesList" required>
+            </div>
+           <div class="flex-1 min-w-[120px]">
+                <label class="text-[10px] text-gray-500 font-bold mb-1 block">الرقم التسلسلي</label>
+                <input type="text" placeholder="S/N" value="${escapeHTML(serial)}" class="cr-serial w-full border dark:border-gray-600 rounded px-2 py-2 text-xs outline-none dark:bg-gray-900 dark:text-white focus:border-indigo-500" dir="ltr" required>
+            </div>
+            <div class="flex-1 min-w-[120px]">
+                <label class="text-[10px] text-gray-500 font-bold mb-1 block">تاريخ البيع</label>
+                <input type="date" value="${date}" class="cr-date w-full border dark:border-gray-600 rounded px-2 py-2 text-xs outline-none dark:bg-gray-900 dark:text-white text-gray-600 focus:border-indigo-500" required>
+            </div>
+            <div class="pb-1">
+                <button type="button" onclick="this.parentElement.parentElement.parentElement.remove()" class="text-red-500 hover:text-white hover:bg-red-500 border border-red-500 px-3 py-1.5 rounded transition text-xs" title="حذف هذا الروبوت"><i class="fa-solid fa-trash"></i></button>
+            </div>
+        </div>
+        <div class="flex items-center gap-3 bg-gray-50 dark:bg-gray-900/50 p-2 rounded mt-1 border border-gray-100 dark:border-gray-600">
+            <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" class="cr-has-warranty w-4 h-4 text-indigo-600 rounded" ${hasWarranty ? 'checked' : ''} onchange="this.parentElement.nextElementSibling.classList.toggle('hidden', !this.checked)">
+                <span class="text-xs font-bold text-gray-700 dark:text-gray-300">الروبوت مكفول</span>
+            </label>
+            <div class="flex items-center gap-2 ${hasWarranty ? '' : 'hidden'}">
+                <label class="text-[10px] text-gray-500 font-bold">صالح لغاية:</label>
+                <input type="date" value="${warrantyDate}" class="cr-warranty-date border dark:border-gray-600 rounded px-2 py-1 text-xs outline-none dark:bg-gray-800 dark:text-white focus:border-indigo-500">
+            </div>
+        </div>
+    `;
+    container.appendChild(row);
+};
+
+        document.getElementById('clientLogoInput').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if(!file) return;
+
+            showToast('جاري رفع الشعار إلى السحابة...', 'info');
+            document.getElementById('clientLogoUrl').value = '';
+
+            try {
+                // نستخدم Firebase Storage مباشرة لضمان سرعة الرفع وتفادي مشكلة الحجم
+                const fileUrl = await window.uploadToFirebase(file, 'client_logos');
+                
+                document.getElementById('clientLogoBase64').value = fileUrl;
+                document.getElementById('clientLogoPreview').src = fileUrl;
+                document.getElementById('clientLogoPreviewContainer').classList.remove('hidden');
+                
+                window.toggleLogoRequirement();
+                showToast('تم رفع الشعار بنجاح', 'success');
+            } catch (err) {
+                console.error('Upload Error:', err);
+                showToast('فشل رفع الصورة، يرجى المحاولة مجدداً', 'error');
+                document.getElementById('clientLogoInput').value = '';
+            }
+        });
+
+        document.getElementById('clientLogoUrl').addEventListener('input', function(e) {
+            const url = e.target.value;
+            const logoInput = document.getElementById('clientLogoInput');
+            if(url) {
+                document.getElementById('clientLogoBase64').value = url;
+                logoInput.value = ''; 
+                logoInput.required = false;
+                document.getElementById('clientLogoPreview').src = url;
+                document.getElementById('clientLogoPreviewContainer').classList.remove('hidden');
+            } else {
+                document.getElementById('clientLogoBase64').value = '';
+                if(!document.getElementById('noClientLogo').checked) logoInput.required = true;
+                document.getElementById('clientLogoPreviewContainer').classList.add('hidden');
+            }
+            window.toggleLogoRequirement(); 
+        });
+
+        window.toggleLogoRequirement = () => {
+            const noLogo = document.getElementById('noClientLogo').checked;
+            const logoInput = document.getElementById('clientLogoInput');
+            const urlInput = document.getElementById('clientLogoUrl');
+            const asterisk = document.getElementById('logoAsterisk');
+            const existingLogo = document.getElementById('clientLogoBase64').value;
+            
+            if (noLogo) {
+                logoInput.required = false;
+                logoInput.disabled = true;
+                if(urlInput) urlInput.disabled = true;
+                asterisk.classList.add('hidden');
+            } else {
+                logoInput.disabled = false;
+                if(urlInput) urlInput.disabled = false;
+                if(!existingLogo && !(urlInput && urlInput.value)) logoInput.required = true;
+                else logoInput.required = false;
+                asterisk.classList.remove('hidden');
+            }
+        };
+
+        // ----------------- دوال إضافة الروبوتات للعميل وإخفائها عند البيع -----------------
+        window.toggleInventoryRobotSelector = () => {
+            const drop = document.getElementById('invRobotSelectorDropdown');
+            if(!drop) return;
+            drop.classList.toggle('hidden');
+            if(!drop.classList.contains('hidden')) {
+                document.getElementById('invRobotSearchInput').value = '';
+                window.filterInvRobotsForClient();
+                document.getElementById('invRobotSearchInput').focus();
+            }
+        };
+
+        window.filterInvRobotsForClient = () => {
+            const term = document.getElementById('invRobotSearchInput').value.toLowerCase();
+            const list = document.getElementById('invRobotSelectorList');
+            if(!list) return;
+            list.innerHTML = '';
+            
+            // فلترة صارمة: الروبوت غير المؤجر وغير المباع وحالته ليست معطلة
+            const availableRobots = globalRobots.filter(r => !r.isRented && !r.isSold && r.status !== 'معطل' && (r.name.toLowerCase().includes(term) || r.serialNumber.toLowerCase().includes(term)));
+            
+            if(availableRobots.length === 0) {
+                list.innerHTML = '<p class="text-[10px] text-gray-500 text-center p-2 font-bold">لا يوجد روبوتات متوفرة</p>';
+                return;
+            }
+
+            availableRobots.forEach(r => {
+                const loc = r.location === 'company' ? 'الشركة' : 'المستودع';
+                list.innerHTML += `
+                    <div onclick="window.selectInvRobotForClient('${r.id}', '${escapeHTML(r.name.replace(/'/g, "\\'"))}', '${escapeHTML(r.serialNumber.replace(/'/g, "\\'"))}')" class="p-2 hover:bg-teal-50 dark:hover:bg-gray-600 cursor-pointer border-b dark:border-gray-700 flex justify-between items-center transition">
+                        <span class="text-xs font-bold text-gray-800 dark:text-white">${escapeHTML(r.name)} <span class="text-[10px] text-gray-400">(${escapeHTML(r.serialNumber)})</span></span>
+                        <span class="text-[9px] bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded">${loc}</span>
+                    </div>
+                `;
+            });
+        };
+
+        window.selectInvRobotForClient = (id, name, serial) => {
+            window.addClientRobotRow(name, serial, '', false, '', id);
+            document.getElementById('invRobotSelectorDropdown').classList.add('hidden');
+        };
+
+        window.addClientRobotRow = (name='', serial='', date='', hasWarranty=false, warrantyDate='', invRobotId='') => {
+            const container = document.getElementById('clientRobotsList');
+            if(!container) return;
+            const row = document.createElement('div');
+            row.className = "flex flex-col gap-2 bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 client-robot-row shadow-sm";
+            row.innerHTML = `
+                <input type="hidden" class="cr-invid" value="${invRobotId}">
+                <div class="flex flex-wrap md:flex-nowrap gap-2 items-end">
+                    <div class="flex-1 min-w-[120px]">
+                        <label class="text-[10px] text-gray-500 font-bold mb-1 block">اسم الروبوت</label>
+                        <input type="text" placeholder="مثال: Bella bot" value="${escapeHTML(name)}" class="cr-name w-full border dark:border-gray-600 rounded px-2 py-1.5 text-xs outline-none dark:bg-gray-900 dark:text-white font-bold focus:border-indigo-500" ${invRobotId ? 'readonly bg-gray-50' : ''} required>
+                    </div>
+                   <div class="flex-1 min-w-[100px]">
+                        <label class="text-[10px] text-gray-500 font-bold mb-1 block">S/N</label>
+                        <input type="text" placeholder="S/N" value="${escapeHTML(serial)}" class="cr-serial w-full border dark:border-gray-600 rounded px-2 py-1.5 text-xs outline-none dark:bg-gray-900 dark:text-white focus:border-indigo-500" dir="ltr" ${invRobotId ? 'readonly bg-gray-50' : ''} required>
+                    </div>
+                    <div class="flex-1 min-w-[100px]">
+                        <label class="text-[10px] text-gray-500 font-bold mb-1 block">تاريخ البيع</label>
+                        <input type="date" value="${date}" class="cr-date w-full border dark:border-gray-600 rounded px-2 py-1.5 text-[11px] outline-none dark:bg-gray-900 dark:text-white focus:border-indigo-500" required>
+                    </div>
+                    <div class="pb-0.5">
+                        <button type="button" onclick="this.parentElement.parentElement.parentElement.remove()" class="text-red-500 hover:text-red-700 p-1 rounded transition text-xs" title="حذف"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 bg-gray-50 dark:bg-gray-900/50 p-1.5 rounded border border-gray-100 dark:border-gray-600">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" class="cr-has-warranty w-3.5 h-3.5 text-indigo-600 rounded" ${hasWarranty ? 'checked' : ''} onchange="this.parentElement.nextElementSibling.classList.toggle('hidden', !this.checked)">
+                        <span class="text-[11px] font-bold text-gray-700 dark:text-gray-300">مكفول</span>
+                    </label>
+                    <div class="flex items-center gap-2 ${hasWarranty ? '' : 'hidden'}">
+                        <label class="text-[10px] text-gray-500 font-bold">لغاية:</label>
+                        <input type="date" value="${warrantyDate}" class="cr-warranty-date border dark:border-gray-600 rounded px-2 py-1 text-[11px] outline-none dark:bg-gray-800 dark:text-white focus:border-indigo-500">
+                    </div>
+                </div>
+            `;
+            container.appendChild(row);
+        };
+
+        window.openAddClientModal = (id = null) => {
+            document.getElementById('clientForm').reset();
+            document.getElementById('clientId').value = id || '';
+            document.getElementById('clientModalTitle').innerText = id ? 'تعديل بيانات العميل' : 'إضافة عميل جديد';
+            document.getElementById('clientLogoBase64').value = '';
+            document.getElementById('clientLogoPreviewContainer').classList.add('hidden');
+            document.getElementById('clientLogoPreview').src = '';
+            document.getElementById('clientRobotsList').innerHTML = '';
+            document.getElementById('noClientLogo').checked = false;
+            window.toggleLogoRequirement();
+
+            if (id) {
+                const client = globalClients.find(c => c.id === id);
+                if (client) {
+                    document.getElementById('clientName').value = client.name || '';
+                    document.getElementById('clientContactPerson').value = client.contactPerson || '';
+                    document.getElementById('clientPhone').value = client.phone || '';
+                    document.getElementById('clientEmail').value = client.email || '';
+                    document.getElementById('clientNotes').value = client.notes || '';
+
+                    if (client.logo) {
+                        document.getElementById('clientLogoBase64').value = client.logo;
+                        document.getElementById('clientLogoPreview').src = client.logo;
+                        document.getElementById('clientLogoPreviewContainer').classList.remove('hidden');
+                        window.toggleLogoRequirement(); 
+                    } else {
+                        document.getElementById('noClientLogo').checked = true;
+                        window.toggleLogoRequirement();
+                    }
+
+                    if (client.clientRobots && client.clientRobots.length > 0) {
+                        client.clientRobots.forEach(r => {
+                            window.addClientRobotRow(r.name, r.serial, r.date, r.hasWarranty, r.warrantyDate, r.invRobotId || '');
+                        });
+                    }
+                }
+            }
+
+            window.openModal('addClientModal');
+        };
+
+        document.getElementById('clientForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if(!currentUserData) return;
+
+                // فك حظر الصوت فور الضغط لتخطي قيود المتصفحات
+            const sound = document.getElementById('fireworksSound');
+            if(sound) {
+                sound.volume = 0;
+                let initPlay = sound.play();
+                if (initPlay !== undefined) {
+                    initPlay.then(() => { sound.pause(); sound.currentTime = 0; sound.volume = 1; }).catch(()=>{});
+                }
+            }
+
+            const noLogoChecked = document.getElementById('noClientLogo').checked;
+            const logoBase64 = document.getElementById('clientLogoBase64').value;
+            
+            if (!noLogoChecked && !logoBase64) {
+                showToast('يرجى رفع شعار الشركة أو تفعيل خيار (لا يوجد شعار)', 'warning');
+                return;
+            }
+
+            const id = document.getElementById('clientId').value;
+            const robotRows = document.querySelectorAll('.client-robot-row');
+            const clientRobots = Array.from(robotRows).map(row => ({
+                invRobotId: row.querySelector('.cr-invid') ? row.querySelector('.cr-invid').value : '',
+                name: row.querySelector('.cr-name').value.trim(),
+                serial: row.querySelector('.cr-serial').value.trim(),
+                date: row.querySelector('.cr-date').value,
+                hasWarranty: row.querySelector('.cr-has-warranty').checked,
+                warrantyDate: row.querySelector('.cr-warranty-date').value,
+                type: 'buy'
+            })).filter(r => r.name !== '');
+            
+            const data = {
+                name: document.getElementById('clientName').value.trim(),
+                contactPerson: document.getElementById('clientContactPerson').value.trim(),
+                phone: document.getElementById('clientPhone').value,
+                email: document.getElementById('clientEmail').value,
+                logo: noLogoChecked ? '' : logoBase64,
+                clientRobots: clientRobots,
+                notes: document.getElementById('clientNotes').value,
+                addedBy: currentUserData.name,
+                uid: currentUserData.uid,
+                timestamp: Date.now()
+            };
+
+            try {
+                let finalClientId = id;
+                if(id) {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robot_clients', id), data);
+                    showToast('تم تعديل بيانات العميل', 'success');
+                } else {
+                    const docRef = await addDoc(getColRef('robot_clients'), data);
+                    finalClientId = docRef.id;
+                    showToast('تمت إضافة العميل بنجاح', 'success');
+
+                    const fw = document.getElementById('fireworksOverlay');
+                    const sound = document.getElementById('fireworksSound');
+                    if(fw) {
+                        fw.classList.remove('hidden', 'opacity-0');
+                        fw.classList.add('opacity-100');
+
+                        if(sound) { 
+                            sound.currentTime = 0; 
+                            sound.play().catch(e => console.log("خطأ في تشغيل الصوت:", e));
+                        }
+                        
+                        // تفعيل الكونفيتي
+                        if(window.confetti) {
+                            var duration = 4 * 1000; // 4 ثواني
+                            var end = Date.now() + duration;
+                            (function frame() {
+                                confetti({ particleCount: 8, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#00839b', '#002d74', '#eab308', '#ffffff'] });
+                                confetti({ particleCount: 8, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#00839b', '#002d74', '#eab308', '#ffffff'] });
+                                if (Date.now() < end) requestAnimationFrame(frame);
+                            }());
+                        }
+                        
+                        // إخفاء شاشة المبروك تدريجياً
+                        setTimeout(() => {
+                            fw.classList.replace('opacity-100', 'opacity-0');
+                            setTimeout(() => fw.classList.add('hidden'), 500); 
+                        }, 4000);
+                    }
+                }
+                
+                // تحديث حالة الروبوت في قاعدة البيانات فوراً ليختفي من المستودع
+                for(const r of clientRobots) {
+                    if(r.invRobotId) {
+                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robots', r.invRobotId), {
+                            isSold: true, 
+                            clientId: finalClientId, 
+                            status: 'مباع'
+                        }).catch(e=>console.error('Error updating inventory status:', e));
+                    }
+                }
+
+                window.closeModal('addClientModal');
+                window.renderClientsTab(); 
+
+            } catch(e) { 
+                console.error(e); 
+                showToast('حدث خطأ', 'error'); 
+            }
+        });
+
+        // ----------------- إدارة العقود (تعديل، حذف، تنبيهات) -----------------
+        window.openSignedClientModal = (contractIndex = -1, clientId = null) => {
+            document.getElementById('signedClientForm').reset();
+            document.getElementById('signedContractFileUrl').value = '';
+            document.getElementById('editContractIndex').value = contractIndex;
+
+            if (clientId && contractIndex > -1) {
+                const client = globalClients.find(c => c.id === clientId);
+                if(client && client.contracts && client.contracts[contractIndex]) {
+                    const con = client.contracts[contractIndex];
+                    document.getElementById('signedClientSearchInput').value = client.name;
+                    document.getElementById('signedClientName').value = client.name;
+                    document.getElementById('signedContractDate').value = con.date || '';
+                    document.getElementById('signedContractEndDate').value = con.endDate || '';
+                    document.getElementById('signedContractFileUrl').value = con.file || '';
+                    document.getElementById('signedContractNotes').value = con.notes || '';
+                    document.getElementById('customClientDropdown').classList.add('hidden');
+                }
+            } else {
+                document.getElementById('signedClientName').value = '';
+                document.getElementById('signedClientSearchInput').value = '';
+                document.getElementById('customClientDropdown').classList.add('hidden');
+                window.renderCustomClientDropdownList();
+            }
+            window.openModal('signedClientModal');
+        };
+
+        window.deleteContract = async (clientId, contractIndex) => {
+            if(!confirm('هل أنت متأكد من حذف هذا العقد نهائياً؟')) return;
+            const client = globalClients.find(c => c.id === clientId);
+            if(!client || !client.contracts) return;
+            
+            client.contracts.splice(contractIndex, 1);
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robot_clients', clientId), { contracts: client.contracts });
+                showToast('تم حذف العقد', 'success');
+                renderSignedClients();
+            } catch(e) { console.error(e); showToast('خطأ في الحذف', 'error'); }
+        };
+
+        window.acknowledgeContract = async (clientId, contractIndex) => {
+            if(!window.isAdmin()) return;
+            const client = globalClients.find(c => c.id === clientId);
+            if(!client || !client.contracts) return;
+            
+            client.contracts[contractIndex].acknowledged = true;
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robot_clients', clientId), { contracts: client.contracts });
+                showToast('تم إخفاء التنبيه', 'success');
+                renderSignedClients();
+            } catch(e) { console.error(e); }
+        };
+
+        function renderSignedClients() {
+            const cont = document.getElementById('signedContainer');
+            if(!cont) return;
+            cont.innerHTML = '';
+            const searchInput = document.getElementById('searchClients');
+            const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+            
+            const signedClients = globalClients.filter(c => c.contracts && c.contracts.length > 0 && c.name.toLowerCase().includes(searchTerm));
+            updateSearchBadge('robotsSearchCount', signedClients.length, searchTerm);
+
+            if(signedClients.length === 0) {
+                cont.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8 font-bold">لا يوجد عملاء موقعين لعرضهم.</p>';
+                return;
+            }
+
+            const now = Date.now();
+            const isCEO = window.isAdmin();
+
+            signedClients.forEach(c => {
+                const logoHtml = c.logo ? `<img src="${c.logo}" class="w-10 h-10 rounded-full object-cover border border-gray-200 bg-white">` : `<div class="w-10 h-10 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center text-lg"><i class="fa-solid fa-building"></i></div>`;
+                
+                let contractsHtml = '<div class="space-y-1 mt-2">';
+                
+                c.contracts.slice().reverse().forEach((contract, revIndex) => {
+                    const originalIndex = c.contracts.length - 1 - revIndex;
+                    let linkHref = contract.file;
+                    if(linkHref.includes('drive.google.com/file/d/')) {
+                        const match = linkHref.match(/\/d\/(.+?)\//);
+                        if(match && match[1]) linkHref = `https://drive.google.com/uc?export=view&id=${match[1]}`;
+                    }
+                    
+                    let expiryBadge = '';
+                    let hideContract = false;
+                    if (contract.endDate) {
+                        const endDt = new Date(contract.endDate).getTime();
+                        const diffDays = Math.ceil((endDt - now) / (1000 * 3600 * 24));
+                        
+                        if (diffDays < 0) {
+                            if (contract.acknowledged) {
+                                hideContract = true;
+                            } else {
+                                expiryBadge = `<div class="w-full bg-red-100 text-red-700 text-[10px] font-bold p-1 mt-1 flex justify-between items-center rounded"><span class="animate-pulse"><i class="fa-solid fa-triangle-exclamation"></i> العقد منتهي!</span> ${isCEO ? `<button onclick="window.acknowledgeContract('${c.id}', ${originalIndex})" class="bg-red-500 text-white px-2 rounded">تم / إخفاء</button>` : ''}</div>`;
+                            }
+                        } else if (diffDays <= 7) {
+                            expiryBadge = `<div class="w-full bg-yellow-100 text-yellow-700 text-[10px] font-bold p-1 mt-1 rounded"><i class="fa-solid fa-clock"></i> ينتهي خلال ${diffDays} أيام</div>`;
+                        } else {
+                            expiryBadge = `<div class="text-[9px] text-gray-400 mt-1">ينتهي في: ${contract.endDate}</div>`;
+                        }
+                    }
+
+                    if (!hideContract) {
+                        contractsHtml += `
+                            <div class="bg-gray-50 dark:bg-gray-900 border dark:border-gray-600 p-2 rounded-lg text-xs shadow-sm group relative">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="font-bold text-gray-700 dark:text-gray-200">عقد رقم ${c.contracts.length - revIndex}</p>
+                                        <p class="text-[10px] text-gray-500">مُوقع: ${contract.date}</p>
+                                    </div>
+                                    <div class="flex gap-1">
+                                        <button onclick="window.viewExternalDocument('${linkHref}', '${contract.file}')" class="text-teal-600 hover:bg-teal-100 dark:hover:bg-gray-700 p-1.5 rounded transition" title="عرض"><i class="fa-solid fa-eye"></i></button>
+                                        ${isCEO || (currentUserData.permissions && currentUserData.permissions.canAddContracts) ? `
+                                            <button onclick="window.openSignedClientModal(${originalIndex}, '${c.id}')" class="text-indigo-500 hover:bg-indigo-100 dark:hover:bg-gray-700 p-1.5 rounded transition" title="تعديل"><i class="fa-solid fa-pen"></i></button>
+                                            <button onclick="window.deleteContract('${c.id}', ${originalIndex})" class="text-red-500 hover:bg-red-100 dark:hover:bg-gray-700 p-1.5 rounded transition" title="حذف"><i class="fa-solid fa-trash"></i></button>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                                ${expiryBadge}
+                            </div>
+                        `;
+                    }
+                });
+                contractsHtml += '</div>';
+
+                cont.innerHTML += `
+                    <div id="signed-card-${c.id}" class="bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border-t-4 border-teal-500 flex flex-col h-full hover:shadow-md transition duration-500">
+                        <div class="flex items-center gap-2 mb-2 border-b dark:border-gray-700 pb-2">
+                            ${logoHtml}
+                            <div>
+                                <h3 class="font-bold text-sm text-teal-700 dark:text-teal-400 truncate w-32" title="${escapeHTML(c.name)}">${escapeHTML(c.name)}</h3>
+                                <p class="text-[9px] text-gray-500 flex items-center gap-1"><i class="fa-solid fa-file-signature text-teal-500"></i> ${c.contracts.length} عقود / اتفاقيات</p>
+                            </div>
+                        </div>
+                        <div class="flex-1">
+                            ${contractsHtml}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        window.openAddRobotModal = (location) => {
+            document.getElementById('robotForm').reset();
+            document.getElementById('robotLocation').value = location;
+            document.getElementById('addRobotTitle').innerText = location === 'company' ? 'إضافة روبوت إلى الشركة' : 'إضافة روبوت إلى المستودع';
+            window.openModal('addRobotModal');
+        };
+
+        window.openEditRobotModal = (id) => {
+            const r = globalRobots.find(x => x.id === id);
+            if(!r) return;
+            document.getElementById('robotForm').reset();
+            document.getElementById('robotLocation').value = id; // نستخدم هذا الحقل لتمرير الـ ID
+            document.getElementById('newRobotName').value = r.name;
+            document.getElementById('newRobotSerial').value = r.serialNumber;
+            document.getElementById('newRobotStatus').value = r.status;
+            document.getElementById('newRobotNotes').value = r.notes || '';
+            document.getElementById('addRobotTitle').innerText = 'تعديل بيانات الروبوت';
+            window.openModal('addRobotModal');
+        };
+
+        document.getElementById('robotForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if(!currentUserData) return;
+            
+            const data = {
+                name: document.getElementById('newRobotName').value,
+                serialNumber: document.getElementById('newRobotSerial').value || 'بدون رقم',
+                status: document.getElementById('newRobotStatus').value,
+                notes: document.getElementById('newRobotNotes').value || '',
+                location: document.getElementById('robotLocation').value,
+                isRented: false,
+                addedBy: currentUserData.name,
+                timestamp: Date.now()
+            };
+
+            try {
+                const locOrId = document.getElementById('robotLocation').value;
+                // إضافة شرط التحقق الناقص هنا لتجنب خطأ الـ Syntax Error
+                if (locOrId !== 'company' && locOrId !== 'warehouse') {
+                    // وضع التعديل (لوجود ID)
+                    const existingRobot = globalRobots.find(x => x.id === locOrId);
+                    data.location = existingRobot ? existingRobot.location : 'company';
+                    data.isRented = existingRobot ? (existingRobot.isRented || false) : false; 
+                    
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robots', locOrId), data);
+                    showToast('تم تعديل بيانات الروبوت بنجاح', 'success');
+                } else {
+                    // وضع الإضافة (لأن القيمة هي company أو warehouse)
+                    await addDoc(getColRef('robots'), data);
+                    showToast('تم إضافة الروبوت بنجاح', 'success');
+                }
+                window.closeModal('addRobotModal');
+            } catch(e) { console.error(e); showToast('حدث خطأ', 'error'); }
+        });
+
+        window.deleteRobot = async (id) => {
+            if(confirm('هل أنت متأكد من الحذف؟')) {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robots', id));
+                    showToast('تم الحذف', 'success');
+                } catch(e) { console.error(e); }
+            }
+        };
+
+        window.moveRobotLocation = async (id, newLocation) => {
+            const locName = newLocation === 'company' ? 'الشركة' : 'المستودع';
+            if(confirm(`هل أنت متأكد من نقل هذا الروبوت إلى ${locName}؟`)) {
+                try {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robots', id), { location: newLocation });
+                    showToast(`تم النقل إلى ${locName} بنجاح`, 'success');
+                } catch(e) { console.error(e); showToast('حدث خطأ أثناء النقل', 'error'); }
+            }
+        };
+
+        function renderCompanyRobots() {
+            const cont = document.getElementById('inCompanyContainer');
+            if(!cont) return;
+            cont.innerHTML = '';
+            const searchInput = document.getElementById('searchRobotsOnly');
+            const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+            
+            const robots = globalRobots.filter(r => r.location === 'company' && !r.isRented && !r.isSold && (r.name.toLowerCase().includes(searchTerm) || r.serialNumber.toLowerCase().includes(searchTerm)));
+            updateSearchBadge('robotsSearchCount', robots.length, searchTerm);
+
+            // الصلاحية
+            const isCEO = window.isAdmin();
+            const canManageRobots = isCEO || (currentUserData.permissions && currentUserData.permissions.permManageRobots);
+            
+            // إخفاء الأزرار العلوية لإضافة الروبوتات
+            const addRobCompBtn = document.getElementById('addRobotCompanyBtn');
+            if(addRobCompBtn) addRobCompBtn.style.display = (canManageRobots && currentRobotsOnlyTab === 'inCompany') ? 'flex' : 'none';
+
+            if(robots.length === 0) {
+                cont.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">لا يوجد روبوتات غير مؤجرة في الشركة حالياً.</p>'; return;
+            }
+
+            robots.forEach(r => {
+                const statusColor = r.status === 'جديد' ? 'text-green-500' : (r.status === 'معطل' ? 'text-red-500' : 'text-yellow-500');
+                
+                let actionBtnsHtml = '';
+                if(canManageRobots) {
+                    actionBtnsHtml = `
+                        <div class="mt-auto pt-2 flex justify-between items-center border-t dark:border-gray-700">
+                            <button onclick="window.moveRobotLocation('${r.id}', 'warehouse')" class="text-blue-600 hover:bg-blue-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold mt-2 border border-blue-200"><i class="fa-solid fa-truck-moving mx-1"></i> نقل للمستودع</button>
+                            <button onclick="window.openEditRobotModal('${r.id}')" class="text-indigo-500 hover:bg-indigo-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold mt-2"><i class="fa-solid fa-pen mx-1"></i> تعديل</button>
+                            <button onclick="window.deleteRobot('${r.id}')" class="text-red-500 hover:bg-red-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold mt-2"><i class="fa-solid fa-trash mx-1"></i> حذف</button>
+                        </div>
+                    `;
+                }
+                
+                cont.innerHTML += `
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col h-full hover:shadow-md transition">
+                        <div class="flex justify-between items-start mb-3 border-b dark:border-gray-700 pb-2">
+                            <h3 class="font-bold text-lg text-teal-700 dark:text-teal-400"><i class="fa-solid fa-robot mx-1"></i> ${escapeHTML(r.name)}</h3>
+                            <span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold">متوفر في الشركة</span>
+                        </div>
+                        <div class="text-xs text-gray-600 dark:text-gray-300 space-y-2 mb-4 flex-1">
+                            <p class="flex justify-between"><span>الرقم التسلسلي:</span> <span class="font-bold" dir="ltr">${escapeHTML(r.serialNumber)}</span></p>
+                            <p class="flex justify-between"><span>الحالة:</span> <span class="font-bold ${statusColor}">${escapeHTML(r.status)}</span></p>
+                            <p class="flex justify-between"><span>أضيف بواسطة:</span> <span>${escapeHTML(r.addedBy)}</span></p>
+                            <p class="flex justify-between text-gray-400 pt-2 border-t dark:border-gray-700 text-[10px]"><span>التاريخ:</span> <span>${new Date(r.timestamp).toLocaleDateString('ar-EG')}</span></p>
+                            ${r.notes ? `<p class="text-[10px] text-gray-500 mt-2 p-2 bg-gray-50 dark:bg-gray-900 rounded">${escapeHTML(r.notes)}</p>` : ''}
+                        </div>
+                        ${actionBtnsHtml}
+                    </div>
+                `;
+            });
+        }
+
+        function renderWarehouseRobots() {
+            const cont = document.getElementById('inWarehouseContainer');
+            if(!cont) return;
+            cont.innerHTML = '';
+            const searchInput = document.getElementById('searchRobotsOnly');
+            const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+            
+            const robots = globalRobots.filter(r => r.location === 'warehouse' && !r.isRented && !r.isSold && (r.name.toLowerCase().includes(searchTerm) || r.serialNumber.toLowerCase().includes(searchTerm)));
+            updateSearchBadge('robotsSearchCount', robots.length, searchTerm);
+
+            // الصلاحية
+            const isCEO = window.isAdmin();
+            const canManageRobots = isCEO || (currentUserData.permissions && currentUserData.permissions.permManageRobots);
+            
+            // إخفاء الأزرار العلوية لإضافة الروبوتات
+            const addRobWhBtn = document.getElementById('addRobotWarehouseBtn');
+            if(addRobWhBtn) addRobWhBtn.style.display = (canManageRobots && currentRobotsOnlyTab === 'inWarehouse') ? 'flex' : 'none';
+
+            if(robots.length === 0) {
+                cont.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">لا يوجد روبوتات غير مؤجرة في المستودع حالياً.</p>'; return;
+            }
+
+            robots.forEach(r => {
+                const statusColor = r.status === 'جديد' ? 'text-green-500' : (r.status === 'معطل' ? 'text-red-500' : 'text-yellow-500');
+                
+                let actionBtnsHtml = '';
+                if(canManageRobots) {
+                    actionBtnsHtml = `
+                        <div class="mt-auto pt-2 flex justify-between items-center border-t dark:border-gray-700">
+                            <button onclick="window.moveRobotLocation('${r.id}', 'company')" class="text-teal-600 hover:bg-teal-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold mt-2 border border-teal-200"><i class="fa-solid fa-building-circle-arrow-right mx-1"></i> نقل للشركة</button>
+                            <button onclick="window.openEditRobotModal('${r.id}')" class="text-indigo-500 hover:bg-indigo-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold mt-2"><i class="fa-solid fa-pen mx-1"></i> تعديل</button>
+                            <button onclick="window.deleteRobot('${r.id}')" class="text-red-500 hover:bg-red-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold mt-2"><i class="fa-solid fa-trash mx-1"></i> حذف</button>
+                        </div>
+                    `;
+                }
+                
+                cont.innerHTML += `
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col h-full hover:shadow-md transition">
+                        <div class="flex justify-between items-start mb-3 border-b dark:border-gray-700 pb-2">
+                            <h3 class="font-bold text-lg text-orange-700 dark:text-orange-400"><i class="fa-solid fa-robot mx-1"></i> ${escapeHTML(r.name)}</h3>
+                            <span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold">متوفر في المستودع</span>
+                        </div>
+                        <div class="text-xs text-gray-600 dark:text-gray-300 space-y-2 mb-4 flex-1">
+                            <p class="flex justify-between"><span>الرقم التسلسلي:</span> <span class="font-bold" dir="ltr">${escapeHTML(r.serialNumber)}</span></p>
+                            <p class="flex justify-between"><span>الحالة:</span> <span class="font-bold ${statusColor}">${escapeHTML(r.status)}</span></p>
+                            <p class="flex justify-between"><span>أضيف بواسطة:</span> <span>${escapeHTML(r.addedBy)}</span></p>
+                            <p class="flex justify-between text-gray-400 pt-2 border-t dark:border-gray-700 text-[10px]"><span>التاريخ:</span> <span>${new Date(r.timestamp).toLocaleDateString('ar-EG')}</span></p>
+                            ${r.notes ? `<p class="text-[10px] text-gray-500 mt-2 p-2 bg-gray-50 dark:bg-gray-900 rounded">${escapeHTML(r.notes)}</p>` : ''}
+                        </div>
+                        ${actionBtnsHtml}
+                    </div>
+                `;
+            });
+        }
+
+        window.openAddRentalModal = (id = null) => {
+    document.getElementById('rentalForm').reset();
+    document.getElementById('rentalId').value = '';
+    document.getElementById('rentalModalTitle').innerText = 'إضافة مستأجر جديد';
+    document.getElementById('searchRentalRobotsInput').value = ''; // تصفير البحث
+
+    const robotsDiv = document.getElementById('rentalRobotsSelection');
+    robotsDiv.innerHTML = '';
+    const availableRobots = globalRobots.filter(r => !r.isRented);
+
+    if(availableRobots.length === 0) {
+        robotsDiv.innerHTML = '<p class="text-sm text-gray-500 p-2 font-bold">لا يوجد روبوتات متوفرة في الشركة أو المستودع حالياً.</p>';
+    } else {
+        availableRobots.forEach(r => {
+            const loc = r.location === 'company' ? 'الشركة' : 'المستودع';
+            robotsDiv.innerHTML += `
+                <label class="rental-robot-label flex items-center justify-between p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded cursor-pointer transition border border-transparent hover:border-gray-200">
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" value="${r.id}" class="rental-robot-checkbox w-4 h-4 text-blue-600 rounded">
+                        <span class="robot-name-text text-sm font-bold text-gray-700 dark:text-gray-200">${escapeHTML(r.name)} <span class="text-gray-400 text-xs">(${escapeHTML(r.serialNumber)})</span></span>
+                    </div>
+                    <span class="text-[10px] bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-2 py-1 rounded">${loc}</span>
+                </label>
+            `;
+        });
+    }
+
+    if(id) {
+        const r = globalRentals.find(x => x.id === id);
+        if(r) {
+            document.getElementById('rentalModalTitle').innerText = 'تعديل بيانات الاستئجار';
+            document.getElementById('rentalId').value = r.id;
+            document.getElementById('rentalClientName').value = r.clientName || '';
+            document.getElementById('rentalPhone').value = r.phone || '';
+            document.getElementById('rentalEmail').value = r.email || '';
+            document.getElementById('rentalLogoBase64').value = r.logo || '';
+            if(r.logo) {
+                document.getElementById('rentalLogoPreview').src = r.logo;
+                document.getElementById('rentalLogoPreviewContainer').classList.remove('hidden');
+            } else {
+                document.getElementById('rentalLogoPreviewContainer').classList.add('hidden');
+            }
+            document.getElementById('rentalFrom').value = r.fromDate || '';
+            document.getElementById('rentalTo').value = r.toDate || '';
+            document.getElementById('rentalNotes').value = r.notes || '';
+
+            setTimeout(() => {
+                const checkboxes = document.querySelectorAll('.rental-robot-checkbox');
+                checkboxes.forEach(cb => {
+                    if(r.robotIds && r.robotIds.includes(cb.value)) cb.checked = true;
+                });
+
+                if(r.robotIds) {
+                    r.robotIds.forEach(rid => {
+                        const rb = globalRobots.find(x => x.id === rid);
+                        if(rb && rb.isRented && !Array.from(checkboxes).some(cb => cb.value === rid)) {
+                            const loc = rb.location === 'company' ? 'الشركة' : 'المستودع';
+                            robotsDiv.innerHTML += `
+                                <label class="rental-robot-label flex items-center justify-between p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded cursor-pointer transition border border-transparent hover:border-gray-200">
+                                    <div class="flex items-center gap-2">
+                                        <input type="checkbox" value="${rb.id}" checked class="rental-robot-checkbox w-4 h-4 text-blue-600 rounded">
+                                        <span class="robot-name-text text-sm font-bold text-gray-700 dark:text-gray-200">${escapeHTML(rb.name)} <span class="text-gray-400 text-xs">(${escapeHTML(rb.serialNumber)})</span></span>
+                                    </div>
+                                    <span class="text-[10px] bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 px-2 py-1 rounded">${loc}</span>
+                                </label>
+                            `;
+                        }
+                    });
+                }
+            }, 50);
+        }
+    }
+    window.openModal('addRentalModal');
+};
+
+window.filterRentalRobots = () => {
+    const term = document.getElementById('searchRentalRobotsInput').value.toLowerCase();
+    document.querySelectorAll('.rental-robot-label').forEach(label => {
+        const text = label.querySelector('.robot-name-text').innerText.toLowerCase();
+        label.style.display = text.includes(term) ? 'flex' : 'none';
+    });
+};
+
+document.getElementById('rentalForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if(!currentUserData) return;
+    
+    const btn = document.getElementById('saveRentalBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الحفظ...';
+
+    const id = document.getElementById('rentalId').value;
+    const checkboxes = document.querySelectorAll('.rental-robot-checkbox:checked');
+    const robotIds = Array.from(checkboxes).map(cb => cb.value);
+
+    const data = {
+        clientName: document.getElementById('rentalClientName').value.trim(),
+        phone: document.getElementById('rentalPhone').value.trim(),
+        email: document.getElementById('rentalEmail').value.trim(),
+        logo: document.getElementById('rentalLogoBase64').value || '',
+        fromDate: document.getElementById('rentalFrom').value,
+        toDate: document.getElementById('rentalTo').value,
+        robotIds: robotIds,
+        notes: document.getElementById('rentalNotes').value,
+        status: 'active', 
+        addedBy: currentUserData.name,
+        timestamp: Date.now()
+    };
+
+    try {
+        if(id) {
+            const oldRental = globalRentals.find(r => r.id === id);
+            if(oldRental && oldRental.robotIds) {
+                for(const oldId of oldRental.robotIds) {
+                    if(!robotIds.includes(oldId)) {
+                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robots', oldId), { isRented: false });
+                    }
+                }
+            }
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rentals', id), data);
+            showToast('تم تعديل الاستئجار', 'success');
+        } else {
+            await addDoc(getColRef('rentals'), data);
+            showToast('تمت إضافة الاستئجار بنجاح', 'success');
+        }
+
+        // تحديث حالة الروبوتات كمؤجرة (مما يخفيها تلقائياً من قوائم الشركة/المستودع)
+        for(const rid of robotIds) {
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robots', rid), { isRented: true });
+        }
+
+        // فتح تبويب "المستأجرة الآن"
+        window.closeModal('addRentalModal'); // إغلاق وتفريغ النافذة بعد أخذ البيانات بنجاح
+        window.switchRentalsTab('rentedNow');
+
+    } catch(e) {
+        console.error(e); 
+        showToast('حدث خطأ', 'error'); 
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'حفظ بيانات الاستئجار';
+    }
+});
+
+        window.endRental = async (id) => {
+            if(confirm('هل أنت متأكد من إنهاء هذا الاستئجار؟ سيتم نقل العميل إلى "المستأجرين السابقين" وستعود الروبوتات كـ "متوفرة".')) {
+                try {
+                    const rental = globalRentals.find(r => r.id === id);
+                    if(rental) {
+                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rentals', id), { status: 'ended', endedAt: Date.now() });
+                        
+                        if(rental.robotIds) {
+                            for(const rid of rental.robotIds) {
+                                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robots', rid), { isRented: false });
+                            }
+                        }
+                        showToast('تم إنهاء الاستئجار بنجاح', 'success');
+                    }
+                } catch (e) { console.error(e); }
+            }
+        };
+
+        window.deleteRental = async (id) => {
+            if(confirm('هل أنت متأكد من حذف هذا السجل نهائياً؟')) {
+                try {
+                    const rental = globalRentals.find(r => r.id === id);
+                    // تحرير الروبوتات وإعادتها للشركة/المستودع إذا تم حذف سجل الاستئجار
+                    if(rental && rental.robotIds) {
+                        for(const rid of rental.robotIds) {
+                            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robots', rid), { isRented: false });
+                        }
+                    }
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rentals', id));
+                    showToast('تم حذف السجل بنجاح', 'success');
+                } catch(e) { console.error(e); }
+            }
+        };
+
+        window.deleteClient = async (id, name) => {
+            if (!window.isAdmin()) return;
+            if (confirm(`هل أنت متأكد من حذف العميل (${name}) بالكامل؟\nملاحظة: سيتم فك ارتباط الروبوتات المباعة وإرجاعها للنظام كـ "مستعمل".`)) {
+                try {
+                    const client = globalClients.find(c => c.id === id);
+                    if (client && client.clientRobots) {
+                        for (const cr of client.clientRobots) {
+                            if (cr.invRobotId) {
+                                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robots', cr.invRobotId), {
+                                    isSold: false, clientId: null, status: 'مستعمل', location: 'company'
+                                }).catch(e => console.log('Error freeing robot', e));
+                            }
+                        }
+                    }
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robot_clients', id));
+                    showToast('تم حذف العميل بنجاح', 'success');
+                } catch(e) { 
+                    console.error(e); 
+                    showToast('حدث خطأ أثناء الحذف', 'error'); 
+                }
+            }
+        };
+
+        function renderClients() {
+            const cont = document.getElementById('clientsContainer');
+            if(!cont) return;
+            cont.innerHTML = '';
+            const searchInput = document.getElementById('searchClients');
+            const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+            
+            const clients = globalClients.filter(c => c.name.toLowerCase().includes(searchTerm) || (c.phone && c.phone.includes(searchTerm)));
+            updateSearchBadge('robotsSearchCount', clients.length, searchTerm);
+
+            if(clients.length === 0) {
+                cont.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">لا يوجد عملاء مسجلين بعد أو غير مطابقين للبحث.</p>';
+                return;
+            }
+
+            clients.forEach(c => {
+                const logoHtml = c.logo ? `<img src="${c.logo}" class="w-12 h-12 rounded-full object-cover border border-gray-200 dark:border-gray-600 bg-white">` : `<div class="w-12 h-12 rounded-full bg-indigo-100 text-indigo-500 flex items-center justify-center text-xl font-bold"><i class="fa-solid fa-user-tie"></i></div>`;
+                const phoneHtml = c.phone ? `<a href="tel:${c.phone}" class="hover:text-indigo-500 transition">${escapeHTML(c.phone)}</a>` : 'لا يوجد رقم';
+                // تعديل ميزة الزيارات في بطاقة العميل
+                const uncompletedVisit = globalVisits.find(v => v.clientId === c.id && !v.completed);
+                let visitHtml = '';
+                if(uncompletedVisit) {
+                    const isTimePassed = uncompletedVisit.dateTime <= Date.now();
+                    const isAssigned = uncompletedVisit.assignedUsers && uncompletedVisit.assignedUsers.includes(currentUserData.uid);
+                    const isCEO = window.isAdmin();
+                    
+                    if (isTimePassed) {
+                        if (isAssigned || isCEO) {
+                            visitHtml = `<p onclick="event.stopPropagation(); window.openCompleteVisitModal('${uncompletedVisit.id}')" class="text-[11px] text-white bg-red-500 hover:bg-red-600 cursor-pointer px-2 py-1 rounded shadow-sm font-bold inline-block mb-1 animate-pulse"><i class="fa-solid fa-pen mx-1"></i> يجب كتابة تقرير عن الزيارة</p>`;
+                        } else {
+                            visitHtml = `<p class="text-[11px] text-red-600 bg-red-100 px-2 py-1 rounded shadow-sm font-bold inline-block mb-1"><i class="fa-solid fa-clock mx-1"></i> بانتظار تقرير الزيارة</p>`;
+                        }
+                    } else {
+                        const vDate = new Date(uncompletedVisit.dateTime).toLocaleDateString('ar-EG', {month: 'short', day: 'numeric'});
+                        visitHtml = `<p class="text-[11px] text-orange-600 bg-orange-100 dark:bg-orange-900/40 dark:text-orange-300 px-2 py-1 rounded shadow-sm font-bold inline-block mb-1"><i class="fa-solid fa-calendar-check mx-1"></i> زيارة قادمة: ${vDate}</p>`;
+                    }
+                }
+                
+                let badgeHtml = '';
+                if(c.contracts && c.contracts.length > 0) {
+                    badgeHtml = `<button onclick="window.goToSignedClient('${c.id}')" class="mt-1 text-[10px] bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300 px-2 py-0.5 rounded shadow-sm font-bold border border-teal-200 cursor-pointer hover:bg-teal-200 transition"><i class="fa-solid fa-file-signature"></i> موقع عقد صيانة</button>`;
+                }
+
+                let robotsInfoHtml = '';
+                if(c.clientRobots && c.clientRobots.length > 0) {
+                    robotsInfoHtml = `<div class="bg-indigo-50 dark:bg-indigo-900/20 p-2 rounded mt-2 border border-indigo-100 dark:border-indigo-800">
+                        <p class="font-bold text-indigo-800 dark:text-indigo-300 text-[10px] mb-1">الروبوتات المسجلة للعميل:</p>
+                        <div class="space-y-1">`;
+                    c.clientRobots.forEach(cr => {
+                        // إصلاح مشكلة ظهور علامة مكفول
+                        const isWarranted = cr.hasWarranty === true || cr.hasWarranty === "true";
+                        const warrantyBadge = isWarranted ? `<span class="text-green-600 bg-green-50 dark:bg-green-900/30 px-1 rounded mx-1 font-bold">مكفول لغاية: ${escapeHTML(cr.warrantyDate || 'غير محدد')}</span>` : '';
+                        robotsInfoHtml += `<div class="text-[10px] text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 p-1.5 rounded flex justify-between items-center"><span>${escapeHTML(cr.name)} ${warrantyBadge}</span><span dir="ltr">(${escapeHTML(cr.serial || 'N/A')})</span></div>`;
+                    });
+                    robotsInfoHtml += `</div></div>`;
+                }
+
+                cont.innerHTML += `
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col h-full hover:shadow-md transition group">
+                        <div class="flex items-center gap-3 mb-3 border-b dark:border-gray-700 pb-3">
+                            ${logoHtml}
+                            <div>
+                                <h3 class="font-bold text-lg text-indigo-700 dark:text-indigo-400">${escapeHTML(c.name)}</h3>
+                                <p class="text-[10px] text-gray-500 mb-1" dir="ltr">${phoneHtml}</p>
+                                ${visitHtml}
+                                ${badgeHtml}
+                            </div>
+                        </div>
+                        <div class="text-xs text-gray-600 dark:text-gray-300 space-y-2 mb-4 flex-1">
+                            ${c.email ? `<p><i class="fa-solid fa-envelope text-gray-400 mx-1"></i> ${escapeHTML(c.email)}</p>` : ''}
+                            ${robotsInfoHtml}
+                            ${c.notes ? `<p class="text-[10px] text-gray-500 mt-2 p-2 bg-gray-50 dark:bg-gray-900 rounded">${escapeHTML(c.notes)}</p>` : ''}
+                        </div>
+                        <div class="pt-3 border-t dark:border-gray-700 flex gap-2 mt-auto">
+                            ${(window.isAdmin() || (currentUserData.permissions && currentUserData.permissions.canManageClients)) ? `<button onclick="window.openAddClientModal('${c.id}')" class="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs py-1.5 rounded font-bold transition"><i class="fa-solid fa-pen mx-1"></i> تعديل</button>` : '<span class="text-xs text-gray-400 font-bold mx-auto">لا تملك صلاحية التعديل</span>'}
+                            ${window.isAdmin() ? `<button onclick="window.deleteClient('${c.id}', '${escapeHTML(c.name.replace(/'/g, "\\'"))}')" class="flex-1 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-600 text-xs py-1.5 rounded font-bold transition border border-red-200 dark:border-red-800"><i class="fa-solid fa-trash mx-1"></i> حذف</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderSoldRobots() {
+            const cont = document.getElementById('soldContainer');
+            if(!cont) return;
+            cont.innerHTML = '';
+            const searchTerm = document.getElementById('searchRobots').value.toLowerCase();
+            
+            let soldRobots = [];
+            globalClients.forEach(c => {
+                if(c.clientRobots && c.clientRobots.length > 0) {
+                    c.clientRobots.forEach(cr => {
+                        soldRobots.push({ ...cr, clientName: c.name, logo: c.logo });
+                    });
+                }
+            });
+
+            soldRobots = soldRobots.filter(r => r.name.toLowerCase().includes(searchTerm) || (r.serial && r.serial.toLowerCase().includes(searchTerm)));
+
+            updateSearchBadge('robotsSearchCount', soldRobots.length, searchTerm);
+
+            if(soldRobots.length === 0) {
+                cont.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">لا يوجد روبوتات مباعة مسجلة.</p>';
+                return;
+            }
+
+            soldRobots.forEach(r => {
+                const logoHtml = r.logo ? `<img src="${r.logo}" class="w-6 h-6 rounded-full object-cover border border-gray-200">` : `<i class="fa-solid fa-user-tie text-gray-400"></i>`;
+                
+                cont.innerHTML += `
+                    <div class="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4 rounded-xl shadow-sm flex flex-col hover:shadow-md transition">
+                        <div class="flex justify-between items-start mb-3 border-b dark:border-gray-700 pb-2">
+                            <h3 class="font-bold text-lg text-gray-800 dark:text-white"><i class="fa-solid fa-cart-shopping text-gray-400 mx-1"></i> ${escapeHTML(r.name)}</h3>
+                            <span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold">مباع</span>
+                        </div>
+                        <div class="text-xs text-gray-600 dark:text-gray-300 space-y-2 mb-4">
+                            <p class="flex justify-between"><span>الرقم التسلسلي:</span> <span class="font-bold" dir="ltr">${escapeHTML(r.serial || '---')}</span></p>
+                            <p class="flex justify-between"><span>تاريخ البيع:</span> <span>${escapeHTML(r.date || '---')}</span></p>
+                            <div class="flex items-center gap-2 mt-2 p-2 bg-white dark:bg-gray-700 rounded border dark:border-gray-600">
+                                <span class="text-gray-500 text-[10px]">العميل:</span>
+                                ${logoHtml}
+                                <span class="font-bold text-sm">${escapeHTML(r.clientName)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderRentedNow() {
+            const cont = document.getElementById('rentedNowContainer');
+            if(!cont) return;
+            cont.innerHTML = '';
+            const searchInput = document.getElementById('searchRentals');
+            const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+            
+            const activeRentals = globalRentals.filter(r => r.status === 'active' && r.clientName.toLowerCase().includes(searchTerm));
+            updateSearchBadge('robotsSearchCount', activeRentals.length, searchTerm);
+
+            if(activeRentals.length === 0) {
+                cont.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">لا يوجد روبوتات مستأجرة حالياً.</p>';
+                return;
+            }
+
+            activeRentals.forEach(r => {
+                const clientObj = globalClients.find(c => c.name === r.clientName);
+                const logoHtml = (clientObj && clientObj.logo) ? `<img src="${clientObj.logo}" class="w-8 h-8 rounded-full object-cover border border-gray-200">` : `<i class="fa-solid fa-handshake text-blue-500 text-xl"></i>`;
+                const phoneHtml = r.phone ? `<a href="tel:${r.phone}" class="hover:text-blue-600 transition"><i class="fa-solid fa-phone mx-1"></i>${escapeHTML(r.phone)}</a>` : '<span class="text-gray-400">---</span>';
+                
+                let robotsNamesHtml = '<span class="text-gray-400">لم يتم تحديد روبوت</span>';
+                if(r.robotIds && r.robotIds.length > 0) {
+                    const names = r.robotIds.map(rid => {
+                        const inv = globalRobots.find(i => i.id === rid);
+                        return inv ? `${escapeHTML(inv.name)} <span class="font-normal opacity-70">(${escapeHTML(inv.serialNumber)})</span>` : 'روبوت محذوف';
+                    });
+                    robotsNamesHtml = names.map(n => `<span class="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 px-2 py-0.5 rounded text-[10px] m-0.5 inline-block font-bold">${n}</span>`).join('');
+                }
+
+                const fromStr = formatDateTimeStr(r.fromDate);
+                const toStr = formatDateTimeStr(r.toDate);
+
+                cont.innerHTML += `
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-blue-200 dark:border-blue-900/50 flex flex-col h-full hover:shadow-md transition">
+                        <div class="flex justify-between items-center mb-3 border-b dark:border-gray-700 pb-2">
+                            <div class="flex items-center gap-2">
+                                ${logoHtml}
+                                <div>
+                                    <h3 class="font-bold text-sm text-blue-700 dark:text-blue-400">${escapeHTML(r.clientName)}</h3>
+                                    <p class="text-[10px] text-gray-500" dir="ltr">${phoneHtml}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-xs text-gray-600 dark:text-gray-300 space-y-2 mb-4 flex-1">
+                            <p class="flex justify-between bg-blue-50 dark:bg-gray-900 p-1.5 rounded text-blue-900 dark:text-blue-200"><span class="font-bold">الاستلام:</span> <span dir="ltr">${fromStr}</span></p>
+                            <p class="flex justify-between bg-blue-50 dark:bg-gray-900 p-1.5 rounded text-blue-900 dark:text-blue-200"><span class="font-bold">الانتهاء:</span> <span dir="ltr">${toStr}</span></p>
+                            <div class="mt-2 pt-2 border-t dark:border-gray-700">
+                                <p class="text-[10px] font-bold text-gray-500 mb-1">الروبوتات المستأجرة:</p>
+                                <div>${robotsNamesHtml}</div>
+                            </div>
+                            ${r.notes ? `<p class="text-[10px] text-gray-500 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded mt-2 border border-yellow-100 dark:border-yellow-800">${escapeHTML(r.notes)}</p>` : ''}
+                        </div>
+                        
+                        <div class="pt-3 border-t dark:border-gray-700 flex gap-2 mt-auto">
+                            <button onclick="window.openAddRentalModal('${r.id}')" class="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs py-1.5 rounded font-bold transition">تعديل</button>
+                            <button onclick="window.endRental('${r.id}')" class="flex-1 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 text-xs py-1.5 rounded font-bold transition border border-red-200 dark:border-red-800">إنهاء الاستئجار</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderPastRenters() {
+            const cont = document.getElementById('pastRentersContainer');
+            if(!cont) return;
+            cont.innerHTML = '';
+            const searchInput = document.getElementById('searchRentals');
+            const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+            
+            const endedRentals = globalRentals.filter(r => r.status === 'ended' && r.clientName.toLowerCase().includes(searchTerm));
+            updateSearchBadge('robotsSearchCount', endedRentals.length, searchTerm);
+
+            if(endedRentals.length === 0) {
+                cont.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">لا يوجد سجلات لاستئجارات سابقة.</p>';
+                return;
+            }
+
+            endedRentals.forEach(r => {
+                const clientObj = globalClients.find(c => c.name === r.clientName);
+                const logoHtml = (clientObj && clientObj.logo) ? `<img src="${clientObj.logo}" class="w-8 h-8 rounded-full object-cover border border-gray-200 grayscale">` : `<i class="fa-solid fa-handshake text-gray-400 text-xl"></i>`;
+                
+                let robotsNamesHtml = '<span class="text-gray-400">لم يتم تحديد روبوت</span>';
+                if(r.robotIds && r.robotIds.length > 0) {
+                    const names = r.robotIds.map(rid => {
+                        const inv = globalRobots.find(i => i.id === rid);
+                        return inv ? `${escapeHTML(inv.name)} <span class="font-normal opacity-70">(${escapeHTML(inv.serialNumber)})</span>` : 'روبوت محذوف';
+                    });
+                    robotsNamesHtml = names.map(n => `<span class="bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 px-2 py-0.5 rounded text-[10px] m-0.5 inline-block font-bold">${n}</span>`).join('');
+                }
+
+                const fromStr = formatDateTimeStr(r.fromDate);
+                const endedDateStr = r.endedAt ? new Date(r.endedAt).toLocaleDateString('ar-EG') : '---';
+
+                cont.innerHTML += `
+                    <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col h-full opacity-90 transition">
+                        <div class="flex justify-between items-center mb-3 border-b dark:border-gray-700 pb-2">
+                            <div class="flex items-center gap-2">
+                                ${logoHtml}
+                                <div>
+                                    <h3 class="font-bold text-sm text-gray-700 dark:text-gray-300 line-through decoration-gray-400">${escapeHTML(r.clientName)}</h3>
+                                </div>
+                            </div>
+                            <span class="text-[10px] bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400 px-2 py-1 rounded font-bold flex gap-2 items-center">
+                                منتهي
+                                <button onclick="window.deleteRental('${r.id}')" class="text-red-500 hover:text-red-700 transition" title="حذف السجل"><i class="fa-solid fa-trash"></i></button>
+                            </span>
+                        </div>
+                        
+                        <div class="text-xs text-gray-500 dark:text-gray-400 space-y-2 mb-2 flex-1">
+                            <p class="flex justify-between p-1"><span class="font-bold">الاستلام:</span> <span dir="ltr">${fromStr}</span></p>
+                            <p class="flex justify-between p-1"><span class="font-bold">تاريخ الإنهاء الفعلي:</span> <span dir="ltr">${endedDateStr}</span></p>
+                            <div class="mt-2 pt-2 border-t dark:border-gray-700">
+                                <p class="text-[10px] font-bold text-gray-400 mb-1">الروبوتات المستأجرة:</p>
+                                <div>${robotsNamesHtml}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        window.exportSystemData = (format) => {
+            if(!currentUserData || !window.isAdmin()) return;
+
+            showToast('جاري تجهيز البيانات، سيتم التحميل خلال لحظات...', 'info');
+
+            const now = new Date();
+            let content = "";
+            let htmlContent = "";
+
+            if (format === 'excel') {
+                content = "\uFEFF"; 
+                content += `تقرير نظام شركة Quill الشامل (كامل السجل)\nتاريخ السحب: ${now.toLocaleString('ar-EG')}\n\n`;
+
+                content += "--- الموظفون ---\nالاسم,الوظيفة,تاريخ الانضمام\n";
+                globalUsers.forEach(u => { content += `"${escapeHTML(u.name)}","${u.role}","${new Date(u.timestamp||0).toLocaleDateString('ar-EG')}"\n`; });
+                
+                content += "\n--- الحضور والانصراف (السجل الكامل) ---\nالموظف,التاريخ,تسجيل الدخول,تسجيل الانصراف,الحالة\n";
+                globalAttendance.forEach(a => {
+                    const pIn = a.punchIn ? new Date(a.punchIn).toLocaleTimeString('ar-EG') : '-';
+                    const pOut = a.punchOut ? new Date(a.punchOut).toLocaleTimeString('ar-EG') : '-';
+                    content += `"${escapeHTML(a.name)}","${a.date}","${pIn}","${pOut}","${a.status}"\n`;
+                });
+
+                content += "\n--- الإجازات والمغادرات (السجل الكامل) ---\nالموظف,النوع,من,إلى,السبب,الحالة\n";
+                globalLeaves.forEach(l => {
+                    const fromStr = new Date(l.from).toLocaleString('ar-EG');
+                    const toStr = new Date(l.to).toLocaleString('ar-EG');
+                    const reasonStr = l.reason ? l.reason.replace(/"/g, '""').replace(/\n/g, ' ') : '-';
+                    content += `"${escapeHTML(l.name)}","${l.type}","${fromStr}","${toStr}","${escapeHTML(reasonStr)}","${l.status}"\n`;
+                });
+
+                content += "\n--- المهام (السجل الكامل) ---\nالعنوان,المسؤول,تاريخ الإنشاء,وقت التسليم,الحالة\n";
+                globalTasks.forEach(t => {
+                    const createdStr = new Date(t.timestamp).toLocaleString('ar-EG');
+                    const deadlineStr = t.deadline ? new Date(t.deadline).toLocaleString('ar-EG') : '-';
+                    content += `"${escapeHTML(t.title).replace(/"/g, '""')}","${escapeHTML(t.assigneeName)}","${createdStr}","${deadlineStr}","${t.status}"\n`;
+                });
+
+                if(globalExpenses.length > 0) {
+                    content += "\n--- المصاريف والنثريات (السجل الكامل) ---\nالتاريخ,البيان,المبلغ,بواسطة\n";
+                    globalExpenses.forEach(e => { content += `"${e.date}","${escapeHTML(e.desc).replace(/"/g, '""')}","${e.amount}","${escapeHTML(e.addedBy)}"\n`; });
+                }
+
+                const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.setAttribute("href", url);
+                link.setAttribute("download", `Quill_System_Export_${now.getTime()}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+            } else if (format === 'pdf') {
+                htmlContent = `
+                    <div style="font-family: 'Cairo', sans-serif; padding: 20px;">
+                        <h1 style="color: #002d74; border-bottom: 2px solid #00839b; padding-bottom: 10px;">تقرير نظام شركة Quill الشامل</h1>
+                        <p style="color: gray;">تاريخ سحب التقرير: ${now.toLocaleString('ar-EG')}</p>
+                        
+                        <h3 style="color: #00839b; margin-top: 30px;">إحصائيات النظام:</h3>
+                        <ul>
+                            <li>عدد الموظفين المسجلين: ${globalUsers.length}</li>
+                            <li>إجمالي المهام في النظام: ${globalTasks.length}</li>
+                            <li>إجمالي طلبات الإجازات والمغادرات: ${globalLeaves.length}</li>
+                            <li>إجمالي عدد المصاريف المسجلة: ${globalExpenses.length}</li>
+                        </ul>
+                        <p style="margin-top: 50px; text-align: center; color: gray; font-size: 12px;">نهاية التقرير.</p>
+                    </div>
+                `;
+                const printDiv = document.getElementById('printArea') || document.createElement('div');
+                if(!document.getElementById('printArea')) {
+                    printDiv.id = 'printArea';
+                    document.body.appendChild(printDiv);
+                }
+                printDiv.innerHTML = htmlContent;
+                window.print();
+                // مسح التقرير من الخلفية بعد انتهاء الحفظ لتخفيف العبء على المتصفح
+                setTimeout(() => { if(printDiv.parentNode) printDiv.parentNode.removeChild(printDiv); }, 1000);
+            }
+
+            const exportTime = Date.now();
+            updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), { lastSystemExport: exportTime }).catch(e=>console.log(e));
+            const txt = document.getElementById('lastSystemExportTxt');
+            if(txt) txt.innerText = 'آخر سحب: ' + new Date(exportTime).toLocaleString('ar-EG');
+            
+            window.closeModal('exportModal');
+            window.logAction('تحميل تقرير', `قام المدير بسحب تفاصيل النظام الكاملة بصيغة ${format.toUpperCase()}`);
+        };
+
+        let currentMeetingId = null;
+        let jitsiApi = null; 
+
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            if(!container) return;
+            const toast = document.createElement('div');
+            let colorClass = type === 'success' ? 'bg-green-600' : (type === 'warning' ? 'bg-yellow-500' : (type === 'error' ? 'bg-red-600' : 'bg-blue-600'));
+            let icon = type === 'success' ? 'fa-check-circle' : (type === 'warning' ? 'fa-exclamation-triangle' : (type === 'error' ? 'fa-times-circle' : 'fa-info-circle'));
+
+            toast.className = `toast-enter ${colorClass} text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 text-sm font-bold min-w-[250px] max-w-sm justify-center`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-lg"></i><span>${message}</span>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.replace('toast-enter', 'toast-leave');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+       window.checkSystemPassword = async () => {
+            const errorEl = document.getElementById('sysPassError');
+            const btn = document.querySelector('#systemPasswordScreen button');
+            const inputEl = document.getElementById('sysPasswordInput');
+            
+            // 1. التحقق مما إذا كان المستخدم محظوراً حالياً
+            let lockedUntil = localStorage.getItem('quill_sys_lockout');
+            if (lockedUntil && Date.now() < parseInt(lockedUntil)) {
+                let waitSecs = Math.ceil((parseInt(lockedUntil) - Date.now()) / 1000);
+                let mins = Math.floor(waitSecs / 60);
+                let secs = waitSecs % 60;
+                
+                errorEl.innerHTML = `<i class="fa-solid fa-lock mx-1"></i> محاولات خاطئة كثيرة! يرجى الانتظار ${mins}:${secs < 10 ? '0'+secs : secs}`;
+                errorEl.classList.remove('hidden');
+                if(btn) {
+                    btn.disabled = true;
+                    btn.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+                
+                // تحديث العداد التنازلي كل ثانية
+                setTimeout(() => window.checkSystemPassword(), 1000);
+                return;
+            } else if (lockedUntil) {
+                // انتهى وقت الحظر، نقوم بفك القفل
+                localStorage.removeItem('quill_sys_lockout');
+                localStorage.removeItem('quill_sys_attempts');
+                if(btn) {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+                errorEl.classList.add('hidden');
+                errorEl.innerText = 'رمز الدخول غير صحيح!';
+            }
+
+            const inputVal = inputEl.value.trim();
+            if (!inputVal && !lockedUntil) return; // منع التفعيل إذا كان الحقل فارغاً ولم يكن محظوراً
+
+            // إظهار حالة التحميل على الزر
+            if(btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التحقق...';
+            }
+
+            try {
+                // جلب كلمة السر من قاعدة البيانات بدلاً من كتابتها في الكود
+                const passDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'systemPass'));
+                
+                if (!passDoc.exists() || !passDoc.data().password) {
+                    showToast('خطأ: لم يتم إعداد كلمة سر النظام في قاعدة البيانات!', 'error');
+                    return;
+                }
+                
+                const actualPassword = passDoc.data().password;
+
+                if(inputVal === actualPassword) {
+                    // مسح العدادات عند النجاح
+                    localStorage.removeItem('quill_sys_attempts');
+                    localStorage.removeItem('quill_sys_lockout');
+                    
+                    document.getElementById('systemPasswordScreen').classList.add('hidden');
+                    errorEl.classList.add('hidden');
+                    document.getElementById('loginScreen').classList.remove('hidden');
+                    inputEl.value = ''; // تصفير الحقل
+                } else {
+                    // تسجيل المحاولة الخاطئة
+                    let attempts = parseInt(localStorage.getItem('quill_sys_attempts') || '0') + 1;
+                    localStorage.setItem('quill_sys_attempts', attempts);
+                    
+                    if (attempts >= 5) {
+                        // حظر لمدة 3 دقائق (180,000 ملي ثانية)
+                        localStorage.setItem('quill_sys_lockout', Date.now() + 180000);
+                        window.checkSystemPassword(); // لتشغيل العداد التنازلي فوراً
+                    } else {
+                        errorEl.innerHTML = `رمز الدخول غير صحيح! متبقي لديك <span class="text-xl mx-1">${5 - attempts}</span> محاولات.`;
+                        errorEl.classList.remove('hidden');
+                    }
+                }
+            } catch (error) {
+                console.error("Firebase Error:", error);
+                if (error.code === 'permission-denied') {
+                    showToast('خطأ: فايربيس يمنع قراءة كلمة السر للمستخدمين الجدد. يرجى تعديل الصلاحيات (Rules).', 'error');
+                } else {
+                    showToast('تعذر الاتصال بقاعدة البيانات. تأكد من الإنترنت.', 'error');
+                }
+            } finally {
+                // إعادة الزر لشكله الطبيعي في حالة الفشل أو الخطأ (إذا لم يكن محظوراً)
+                if(btn && !localStorage.getItem('quill_sys_lockout')) {
+                    btn.disabled = false;
+                    btn.innerHTML = 'دخول النظام'; // يمكنك تغيير هذا النص ليطابق نص زرك الأصلي
+                }
+            }
+        };
+
+        // تشغيل الدالة صامتاً عند تحميل الصفحة لاكتشاف إذا كان المستخدم محظوراً من الجلسة السابقة
+        document.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('quill_sys_lockout')) {
+                window.checkSystemPassword();
+            }
+        });
+
+        window.saveProfileInfo = async () => {
+    const btn = document.getElementById('saveProfileBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري تأمين وحفظ البيانات...';
+    
+    try {
+        const newName = document.getElementById('settingsName').value.trim();
+        const newPhone = document.getElementById('settingsPhone').value.trim();
+        const newEmail = document.getElementById('settingsEmail').value.trim().toLowerCase();
+        const newPassword = document.getElementById('settingsPassword').value;
+
+        // استدعاء دوال الـ Auth لتحديث البيانات الحساسة
+        const { updateEmail, updatePassword } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+        const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+
+        // 1. تحديث الإيميل إذا تم تغييره
+        if (newEmail && newEmail !== currentUserAuth.email) {
+            await updateEmail(currentUserAuth, newEmail);
+        }
+        
+        // 2. تحديث الباسوورد إذا كتب الموظف باسوورد جديد
+        if (newPassword && newPassword.length >= 6) {
+            await updatePassword(currentUserAuth, newPassword);
+        } else if (newPassword && newPassword.length > 0 && newPassword.length < 6) {
+            showToast('كلمة السر يجب أن تكون 6 أحرف أو أكثر', 'warning');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-shield-check"></i> حفظ البيانات وتأمين الحساب';
+            return;
+        }
+
+        // 3. تحديث البيانات في قاعدة البيانات
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), {
+            name: newName,
+            phone: newPhone,
+            email: newEmail || currentUserAuth.email
+        });
+
+        // تحديث البيانات المحلية لكي لا يضطر لعمل ريفريش
+        currentUserData.name = newName;
+        currentUserData.phone = newPhone;
+        if(newEmail) currentUserData.email = newEmail;
+        
+        document.getElementById('userName').innerText = newName;
+        document.getElementById('settingsPassword').value = ''; // تصفير الباسوورد بعد النجاح
+        
+        showToast('تم تحديث وتأمين بيانات حسابك بنجاح!', 'success');
+        
+    } catch (error) {
+        console.error(error);
+        if (error.code === 'auth/requires-recent-login') {
+            showToast('لأسباب أمنية: لتغيير الإيميل أو الباسوورد، يرجى تسجيل الخروج والدخول من جديد ثم المحاولة.', 'error');
+        } else if (error.code === 'auth/email-already-in-use') {
+            showToast('هذا الإيميل مستخدم لحساب آخر في النظام!', 'error');
+        } else {
+            showToast('حدث خطأ أثناء حفظ البيانات.', 'error');
+        }
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-shield-check"></i> حفظ البيانات وتأمين الحساب';
+    }
+};
+
+        window.formatPhone = (phone) => {
+    let p = phone.trim();
+    // إزالة المسافات والشرطات
+    p = p.replace(/[\s\-]/g, '');
+    if (p.startsWith('00962')) p = '+962' + p.substring(5);
+    else if (p.startsWith('0')) p = '+962' + p.substring(1);
+    else if (p.startsWith('7') && p.length === 9) p = '+962' + p;
+    else if (!p.startsWith('+')) p = '+962' + p;
+    return p;
+};
+
+window.changePhoneNumber = () => {
+    let newPhone = document.getElementById('newPhoneInput').value.trim();
+    newPhone = window.formatPhone(newPhone);
+    if(newPhone.length < 10) { 
+        showToast('رقم الهاتف غير صالح، تأكد من الرقم', 'error'); 
+        return; 
+    }
+    targetPhoneNumber = newPhone;
+    document.getElementById('otpMainDesc').innerHTML = `سيتم إرسال رمز التحقق إلى:<br><b dir="ltr" class="text-secondary text-lg mt-2 inline-block">${targetPhoneNumber}</b>`;
+    window.triggerOTPFlow(true);
+};
+
+window.triggerOTPFlow = async (isResend = false) => {
+    // 1. إعداد الـ RecaptchaVerifier (مطلوب لـ Firebase Phone Auth)
+    if (!window.recaptchaVerifier) {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+            'size': 'invisible'
+        });
+    }
+
+    document.getElementById('loadingScreen').classList.remove('hidden');
+
+    try {
+        const formattedPhone = window.formatPhone(targetPhoneNumber);
+        
+        // 2. استخدام دالة Firebase لإرسال الـ SMS
+        const confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, window.recaptchaVerifier);
+        window.confirmationResult = confirmationResult; // حفظ النتيجة للتحقق لاحقاً
+
+        document.getElementById('loadingScreen').classList.add('hidden');
+        document.getElementById('otpScreen').classList.remove('hidden');
+        showToast('تم إرسال رمز التحقق إلى هاتفك', 'success');
+    } catch (error) {
+        document.getElementById('loadingScreen').classList.add('hidden');
+        console.error("Firebase OTP Error:", error);
+        showToast('حدث خطأ في إرسال الرسالة: ' + error.message, 'error');
+    }
+};
+
+window.verifyOTP = async () => {
+            const enteredOTP = document.getElementById('otpInput').value.trim();
+            if (!enteredOTP) return;
+
+            const btn = document.getElementById('verifyOtpBtn');
+            const oldBtnText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التحقق...';
+
+            try {
+                // التحقق من الرمز عبر Firebase
+                const result = await window.confirmationResult.confirm(enteredOTP);
+                
+                showToast('تم التحقق بنجاح!', 'success');
+                
+                // 1. تسجيل أن هذا المتصفح/الجهاز أصبح موثوقاً للمستخدم الحالي
+                localStorage.setItem('device_verified_' + currentUserData.uid, 'true');
+
+                // 2. تحديث حالة الهاتف في قاعدة البيانات (في حال كانت أول مرة)
+                if (!currentUserData.phoneVerified) {
+                    currentUserData.phoneVerified = true;
+                    const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), { 
+                        phoneVerified: true 
+                    });
+                }
+
+                // 3. إخفاء شاشة الـ OTP وإكمال الدخول
+                document.getElementById('otpScreen').classList.add('hidden');
+                finishLoginSetup(); 
+                document.getElementById('loadingScreen').classList.add('hidden');
+
+            } catch (error) {
+                console.error(error);
+                showToast('رمز التحقق غير صحيح أو منتهي الصلاحية', 'error');
+                const otpInputEl = document.getElementById('otpInput');
+                otpInputEl.classList.add('shake-error', 'bg-red-100');
+                setTimeout(() => otpInputEl.classList.remove('shake-error', 'bg-red-100'), 1000);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = oldBtnText;
+            }
+        };
+
+        // دالة مساعدة لإخفاء عناصر واجهة الـ OTP عند الحظر
+        function hideOtpControls(errorElement) {
+            document.getElementById('otpInput').classList.add('hidden');
+            document.getElementById('verifyOtpBtn').classList.add('hidden');
+            document.getElementById('resendOtpBtn').classList.add('hidden');
+            document.getElementById('otpTimerDisplay').classList.add('hidden');
+            document.getElementById('otpMainIcon').classList.add('hidden');
+            document.getElementById('otpMainTitle').classList.add('hidden');
+            document.getElementById('otpMainDesc').classList.add('hidden');
+            errorElement.classList.replace('text-sm', 'text-lg');
+        }
+            
+
+        function getColRef(colName) { return collection(db, 'artifacts', appId, 'public', 'data', colName); }
+        function getDriveDbRef(colName) { return collection(db, 'artifacts', appId, 'public', 'data', colName); }
+
+        window.logAction = async (action, details) => {
+            if(!currentUserData) return;
+            try {
+                await addDoc(getColRef('logs'), {
+                    action: action,
+                    details: details,
+                    userName: currentUserData.name,
+                    uid: currentUserData.uid,
+                    timestamp: Date.now()
+                });
+            } catch(e) { console.error("Error logging action", e); }
+        };
+
+        window.toggleNotifDropdown = () => {
+            const dropdown = document.getElementById('notifDropdownUI');
+            if(dropdown.classList.contains('hidden')) {
+                dropdown.classList.remove('hidden');
+                dropdown.style.visibility = 'visible';
+            } else {
+                dropdown.classList.add('hidden');
+            }
+        };
+
+        window.closeNotifDropdownIfOpen = (e) => {
+            const dropdown = document.getElementById('notifDropdownUI');
+            const btn = document.getElementById('headerNotifBtn');
+            if(!dropdown.classList.contains('hidden') && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+                dropdown.classList.add('hidden');
+            }
+        };
+
+        window.sendSystemNotification = async (targetUid, title, body, type, link) => {
+            try {
+                const docSnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', targetUid));
+                if (docSnap.exists()) {
+                    let currentNotifs = docSnap.data().notifications || [];
+                    currentNotifs.unshift({
+                        id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+                        title: title,
+                        body: body,
+                        type: type,
+                        link: link,
+                        read: false,
+                        timestamp: Date.now()
+                    });
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', targetUid), { 
+                        notifications: currentNotifs.slice(0, 50) 
+                    });
+                }
+            } catch(e) { console.error('Error sending notification', e); }
+        };
+
+        window.markAllNotifsAsRead = async () => {
+            if(!currentUserData) return;
+            let currentNotifs = currentUserData.notifications || [];
+            if(currentNotifs.every(n => n.read)) return; 
+
+            currentNotifs.forEach(n => n.read = true);
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), { 
+                    notifications: currentNotifs 
+                });
+                renderNotifications(currentNotifs);
+            } catch(e) { console.error(e); }
+        };
+
+        window.deleteAllNotifs = async () => {
+            if(!currentUserData) return;
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), { 
+                    notifications: [] 
+                });
+                currentUserData.notifications = [];
+                renderNotifications([]);
+                window.toggleNotifDropdown();
+                showToast('تم مسح جميع الإشعارات', 'success');
+            } catch(e) { console.error(e); }
+        };
+
+        function checkBackgroundNotifications(notifsArray) {
+            if (!("Notification" in window) || Notification.permission !== "granted") return;
+            
+            notifsArray.forEach(notif => {
+                if (!notif.read && !seenBackgroundNotifIds.has(notif.id)) {
+                    seenBackgroundNotifIds.add(notif.id);
+                    const n = new Notification(notif.title, {
+                        body: notif.body,
+                        icon: 'https://quill.world/wp-content/uploads/2022/01/New-Project-10-1.png'
+                    });
+                    n.onclick = () => {
+                        window.focus();
+                        if(notif.link) window.location.hash = notif.link;
+                        window.markAllNotifsAsRead();
+                    };
+                }
+            });
+        }
+
+        function renderNotifications(notifsArray) {
+            const listDropdown = document.getElementById('notifDropdownList');
+            if(listDropdown) listDropdown.innerHTML = '';
+            
+            if(!notifsArray || notifsArray.length === 0) {
+                const emptyMsg = '<p class="text-center text-gray-500 py-8 text-sm">لا توجد إشعارات حالياً.</p>';
+                if(listDropdown) listDropdown.innerHTML = emptyMsg;
+                updateNotificationBadge(notifsArray);
+                return;
+            }
+
+            notifsArray.forEach(notif => {
+                const timeStr = new Date(notif.timestamp).toLocaleString('ar-EG', {month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'});
+                const prefs = currentUserData.notificationPreferences || defaultNotifPreferences;
+                let colorClass = 'text-primary border-primary';
+                let borderColor = 'border-primary';
+                
+                if(notif.type === 'trainees') { colorClass = `text-${prefs.colors.trainees}-600 dark:text-${prefs.colors.trainees}-400`; borderColor = `border-${prefs.colors.trainees}-600`; }
+                if(notif.type === 'handover') { colorClass = `text-${prefs.colors.handover}-600 dark:text-${prefs.colors.handover}-400`; borderColor = `border-${prefs.colors.handover}-600`; }
+                if(notif.type === 'meetings') { colorClass = `text-${prefs.colors.meetings}-600 dark:text-${prefs.colors.meetings}-400`; borderColor = `border-${prefs.colors.meetings}-600`; }
+
+                const isReadClassDropdown = notif.read ? 'opacity-60 bg-gray-50 dark:bg-gray-800 border-transparent' : `bg-white dark:bg-gray-800 border-r-4 ${borderColor}`;
+                
+                const cardHtml = `
+                    <div class="p-3 rounded-lg border dark:border-gray-700 transition cursor-pointer hover:shadow-md mb-2 flex flex-col gap-1 ${isReadClassDropdown}" 
+                         onclick="window.location.hash='${notif.link}'; window.markAllNotifsAsRead(); window.toggleNotifDropdown();">
+                        <h4 class="font-bold text-sm ${colorClass}">${escapeHTML(notif.title)}</h4>
+                        <p class="text-xs text-gray-600 dark:text-gray-400 leading-tight">${escapeHTML(notif.body)}</p>
+                        <span class="text-[10px] text-gray-400 mt-1">${timeStr}</span>
+                    </div>
+                `;
+                
+                if(listDropdown) listDropdown.innerHTML += cardHtml;
+            });
+            
+            updateNotificationBadge(notifsArray);
+        }
+
+        function updateNotificationBadge(notifsArray) {
+            const prefs = currentUserData.notificationPreferences || defaultNotifPreferences;
+            const unreadCount = notifsArray ? notifsArray.filter(n => !n.read).length : 0;
+            
+            const headerNum = document.getElementById('headerNotifBadge');
+            const headerDot = document.getElementById('headerNotifDot');
+            const navNum = document.getElementById('navNotifBadgeNum');
+            const navDot = document.getElementById('navNotifBadgeDot');
+            const mobileMenuBadge = document.getElementById('mobileMenuBadge');
+
+            [headerNum, headerDot, navNum, navDot, mobileMenuBadge].forEach(el => { if(el) el.classList.add('hidden'); });
+
+            if (unreadCount > 0) {
+                if (mobileMenuBadge) mobileMenuBadge.classList.remove('hidden');
+                
+                if (prefs.style === 'number') {
+                    const text = unreadCount > 99 ? '+99' : unreadCount;
+                    headerNum.innerText = text; headerNum.classList.remove('hidden');
+                    navNum.innerText = text; navNum.classList.remove('hidden');
+                } else {
+                    const lastUnread = notifsArray.find(n => !n.read);
+                    let color = 'bg-red-500'; 
+                    if(lastUnread) {
+                        if(lastUnread.type === 'trainees') color = `bg-${prefs.colors.trainees}-500`;
+                        if(lastUnread.type === 'handover') color = `bg-${prefs.colors.handover}-500`;
+                        if(lastUnread.type === 'meetings') color = `bg-${prefs.colors.meetings}-500`;
+                    }
+                    
+                    headerDot.className = `absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full ${color}`;
+                    headerDot.innerHTML = `<span class="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping-slow ${color}"></span><span class="relative inline-flex rounded-full w-2.5 h-2.5 ${color}"></span>`;
+                    headerDot.classList.remove('hidden');
+
+                    navDot.className = `absolute left-6 w-2.5 h-2.5 rounded-full ${color}`;
+                    navDot.innerHTML = `<span class="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping-slow ${color}"></span><span class="relative inline-flex rounded-full w-2.5 h-2.5 ${color}"></span>`;
+                    navDot.classList.remove('hidden');
+                }
+            }
+        }
+
+        function loadNotificationSettingsToUI() {
+            if(!currentUserData) return;
+            const prefs = currentUserData.notificationPreferences || defaultNotifPreferences;
+            try {
+                const styleRadio = document.querySelector(`input[name="notifStyle"][value="${prefs.style || 'number'}"]`);
+                if(styleRadio) styleRadio.checked = true;
+
+                const cTrainees = document.getElementById('colorTrainees');
+                const cHandover = document.getElementById('colorHandover');
+                const cMeetings = document.getElementById('colorMeetings');
+
+                if(cTrainees && prefs.colors && prefs.colors.trainees) cTrainees.value = prefs.colors.trainees;
+                if(cHandover && prefs.colors && prefs.colors.handover) cHandover.value = prefs.colors.handover;
+                if(cMeetings && prefs.colors && prefs.colors.meetings) cMeetings.value = prefs.colors.meetings;
+            } catch (err) {
+                console.warn("عناصر إعدادات الإشعارات غير موجودة بالصفحة", err);
+            }
+        }
+            
+            window.saveNotificationSettings = async () => {
+            if(!currentUserData) return;
+            
+            const style = document.querySelector('input[name="notifStyle"]:checked').value;
+            const colors = {
+                trainees: document.getElementById('colorTrainees').value,
+                handover: document.getElementById('colorHandover').value,
+                meetings: document.getElementById('colorMeetings').value
+            };
+            
+            const newPrefs = { style, colors };
+            
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), {
+                    notificationPreferences: newPrefs
+                });
+                currentUserData.notificationPreferences = newPrefs;
+                localStorage.setItem('quill_user_cache_services', JSON.stringify(currentUserData));
+                updateNotificationBadge(currentUserData.notifications); 
+                showToast('تم حفظ تفضيلات الإشعارات', 'success');
+            } catch(e) { console.error(e); }
+        };
+
+        // إدارة المستندات
+        let isSelectMode = false;
+        
+        window.toggleSelectMode = () => {
+            isSelectMode = !isSelectMode;
+            const btn = document.getElementById('toggleSelectModeBtn');
+            const selectAllBtn = document.getElementById('selectAllDriveBtn');
+            btn.innerText = isSelectMode ? 'إلغاء التحديد' : 'تحديد ملفات';
+            
+            if(isSelectMode) {
+                btn.classList.replace('bg-blue-500', 'bg-gray-500');
+                btn.classList.replace('hover:bg-blue-600', 'hover:bg-gray-600');
+                selectAllBtn.classList.remove('hidden');
+                selectAllBtn.classList.add('flex');
+            } else {
+                btn.classList.replace('bg-gray-500', 'bg-blue-500');
+                btn.classList.replace('hover:bg-gray-600', 'hover:bg-blue-600');
+                selectAllBtn.classList.remove('flex');
+                selectAllBtn.classList.add('hidden');
+                document.querySelectorAll('.drive-item-cb').forEach(cb => cb.checked = false);
+            }
+            
+            window.updateBulkActionBtnsVisibility();
+            renderDriveFiles();
+        };
+
+        let isAllSelected = false;
+        window.selectAllDriveFiles = () => {
+            if(!isSelectMode) return;
+            isAllSelected = !isAllSelected;
+            const checkboxes = document.querySelectorAll('.drive-item-cb');
+            checkboxes.forEach(cb => cb.checked = isAllSelected);
+            document.getElementById('selectAllDriveBtn').innerText = isAllSelected ? 'إلغاء تحديد الكل' : 'تحديد الكل';
+            window.updateBulkActionBtnsVisibility();
+        };
+
+        window.toggleCheckbox = (id) => {
+            const cb = document.querySelector(`.drive-item-cb[data-id="${id}"]`);
+            if(cb) {
+                cb.checked = !cb.checked;
+                window.updateBulkActionBtnsVisibility();
+            }
+        };
+
+        window.updateBulkActionBtnsVisibility = () => {
+            const checkedCount = document.querySelectorAll('.drive-item-cb:checked').length;
+            const delBtn = document.getElementById('bulkDeleteDriveBtn');
+            const shareBtn = document.getElementById('bulkShareDriveBtn');
+            
+            if(checkedCount > 0) {
+                delBtn.classList.remove('hidden');
+                shareBtn.classList.remove('hidden');
+                delBtn.innerHTML = `<i class="fa-solid fa-trash-can mx-2"></i> حذف (${checkedCount})`;
+                shareBtn.innerHTML = `<i class="fa-solid fa-share-nodes mx-2"></i> مشاركة (${checkedCount})`;
+            } else {
+                delBtn.classList.add('hidden');
+                shareBtn.classList.add('hidden');
+            }
+        };
+
+        window.shareSelectedItems = async () => {
+            const checkedBoxes = document.querySelectorAll('.drive-item-cb:checked');
+            if(checkedBoxes.length === 0) return;
+            
+            let links = [];
+            checkedBoxes.forEach(cb => {
+                const id = cb.getAttribute('data-id');
+                const isFolder = cb.getAttribute('data-isfolder') === 'true';
+                if(!isFolder) {
+                    const file = globalFiles.find(f => f.id === id);
+                    if(file && file.data && file.data !== '#') {
+                        links.push(`${file.name}: \n${file.data}`);
+                    }
+                }
+            });
+
+            if(links.length === 0) {
+                showToast('لم يتم العثور على روابط صالحة للمشاركة (المجلدات لا تشارك حالياً)', 'warning');
+                return;
+            }
+
+            const shareText = "مرحباً، إليك الملفات التالية من نظام Quill:\n\n" + links.join('\n\n');
+
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: 'مشاركة ملفات من نظام Quill',
+                        text: shareText
+                    });
+                } catch (error) {
+                    console.log('تم إلغاء المشاركة أو غير مدعومة بالكامل', error);
+                    document.getElementById('shareTextContent').value = shareText;
+                    window.openModal('shareModalFallback');
+                }
+            } else {
+                document.getElementById('shareTextContent').value = shareText;
+                window.openModal('shareModalFallback');
+            }
+        };
+
+        window.shareViaOutlook = () => {
+            const text = encodeURIComponent(document.getElementById('shareTextContent').value);
+            const email = document.getElementById('shareEmailInput').value.trim();
+            window.open(`mailto:${email}?subject=ملفات مشتركة من نظام Quill&body=${text}`, '_blank');
+        };
+
+        window.handleCreateFolder = async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('newFolderName').value;
+            if(!name.trim()) return;
+            
+            try {
+                await addDoc(getDriveDbRef('folders'), {
+                    name: name,
+                    parentId: currentFolderId,
+                    creatorId: currentUserData.uid,
+                    timestamp: Date.now()
+                });
+                window.closeModal('createFolderModal');
+                showToast('تم إنشاء المجلد', 'success');
+            } catch(err) { console.error(err); }
+        };
+
+        window.navigateToFolder = (folderId) => {
+            if (folderId === null) {
+                folderHistory = [{id: null, name: 'الرئيسية'}];
+                currentFolderId = null;
+            } else {
+                const folder = globalFolders.find(f => f.id === folderId);
+                if (folder) {
+                    const idx = folderHistory.findIndex(h => h.id === folderId);
+                    if (idx > -1) {
+                        folderHistory = folderHistory.slice(0, idx + 1);
+                    } else {
+                        folderHistory.push({ id: folder.id, name: folder.name });
+                    }
+                    currentFolderId = folderId;
+                }
+            }
+            renderDriveFiles();
+        };
+
+        window.navigateBackFolder = () => {
+            if (folderHistory.length > 1) {
+                folderHistory.pop();
+                const prevFolder = folderHistory[folderHistory.length - 1];
+                currentFolderId = prevFolder.id;
+                renderDriveFiles();
+            }
+        };
+
+        window.handleDriveFileSelect = async (e) => {
+            const files = e.target.files;
+            if(!files || files.length === 0) return;
+
+            const targetFolderId = currentFolderId;
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                
+                if(file.size > MAX_FILE_SIZE) { 
+                    showToast(`حجم الملف ${file.name} تجاوز 100 ميجابايت.`, 'warning'); 
+                    continue; 
+                }
+
+                const currentStorage = globalFiles.reduce((acc, f) => acc + (f.size || 0), 0);
+                if(currentStorage + file.size > MAX_GLOBAL_STORAGE) { 
+                    showToast('لا يمكن إكمال الرفع، المساحة ممتلئة!', 'error'); 
+                    break; 
+                }
+
+                const sizeStr = formatBytes(file.size);
+                
+                const uploadId = 'upload_' + Date.now() + '_' + i;
+                activeUploads.push({
+                    id: uploadId,
+                    name: file.name,
+                    sizeStr: sizeStr,
+                    folderId: targetFolderId
+                });
+                renderDriveFiles();
+                
+                const reader = new FileReader();
+                reader.onload = async (ev) => {
+                    const base64Data = ev.target.result.split(',')[1];
+                    let fileUrl = "";
+                    
+                    try {
+                        fileUrl = await window.uploadToFirebase(file, 'drive_files');
+                    } catch(uploadError) {
+                        console.error("Firebase Storage Error:", uploadError);
+                        showToast(`فشل رفع الملف ${file.name}`, 'error');
+                        fileUrl = "#";
+                    }
+
+                    if(fileUrl !== "#") {
+                        try {
+                            await addDoc(getDriveDbRef('files'), {
+                                name: file.name,
+                                type: file.type || 'unknown',
+                                size: file.size, 
+                                sizeStr: sizeStr,
+                                data: fileUrl, 
+                                uploaderName: currentUserData.name,
+                                uploaderId: currentUserData.uid,
+                                folderId: targetFolderId,
+                                pinned: false,
+                                timestamp: Date.now()
+                            });
+
+                            showToast(`تم رفع ملف ${file.name} بنجاح!`, 'success');
+                            window.logAction('رفع ملف', `تم رفع ملف جديد: ${file.name} إلى المستندات`);
+                        } catch (dbError) {
+                            console.error(dbError);
+                            showToast(`حدث خطأ في قاعدة البيانات للملف ${file.name}`, 'error');
+                        }
+                    }
+                    
+                    activeUploads = activeUploads.filter(u => u.id !== uploadId);
+                    renderDriveFiles();
+                };
+                reader.readAsDataURL(file);
+            }
+            e.target.value = '';
+        };
+
+        window.togglePinFile = async (fileId, currentPinStatus) => {
+            try { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'files', fileId), { pinned: !currentPinStatus }); } catch(e) { console.error(e); }
+        };
+
+        window.deleteDriveItem = async (id, isFolder, itemName) => {
+            const msg = isFolder ? 'هل أنت متأكد من حذف المجلد؟ سيتم حذف جميع محتوياته أيضاً (ملفات ومجلدات فرعية).' : 'هل أنت متأكد من حذف هذا الملف؟';
+            if(confirm(msg)) {
+                try {
+                    if (!isFolder) {
+                        const fileObj = globalFiles.find(f => f.id === id);
+                        if (fileObj && fileObj.data && fileObj.data.includes('drive.google.com')) {
+                            try {
+                                fetch(GOOGLE_SCRIPT_URL, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                                    body: JSON.stringify({ action: 'delete', url: fileObj.data, token: await auth.currentUser.getIdToken() })
+                                }).catch(e => console.log('Drive delete request sent'));
+                            } catch(e) {}
+                        }
+                    }
+
+                    if (isFolder) {
+                        await recursivelyDeleteFolder(id);
+                    } else {
+                        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'files', id));
+                    }
+                    showToast('تم الحذف بنجاح', 'success');
+                    window.logAction(isFolder ? 'حذف مجلد' : 'حذف ملف', `تم الحذف: ${decodeURIComponent(itemName)}`);
+                } catch(e) { console.error(e); }
+            }
+        };
+
+        async function recursivelyDeleteFolder(folderId) {
+            const filesToDelete = globalFiles.filter(f => f.folderId === folderId);
+            for(let f of filesToDelete) {
+                if (f.data && f.data.includes('drive.google.com')) {
+                    try { fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'delete', url: f.data, token: await auth.currentUser.getIdToken() }) }).catch(e => {}); } catch(e){}
+                }
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'files', f.id));
+            }
+            const childFolders = globalFolders.filter(f => f.parentId === folderId);
+            for(let cf of childFolders) {
+                await recursivelyDeleteFolder(cf.id);
+            }
+            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'folders', folderId));
+        }
+
+        window.deleteSelectedDriveItems = async () => {
+            const checkedBoxes = document.querySelectorAll('.drive-item-cb:checked');
+            if(checkedBoxes.length === 0) return;
+            
+            if(confirm(`هل أنت متأكد من حذف ${checkedBoxes.length} عنصر/عناصر؟ (سيتم حذف المجلدات ومحتوياتها بالكامل)`)) {
+                showToast('جاري الحذف...', 'info');
+                try {
+                    for(let cb of checkedBoxes) {
+                        const id = cb.getAttribute('data-id');
+                        const isFolder = cb.getAttribute('data-isfolder') === 'true';
+                        
+                        if(isFolder) {
+                            await recursivelyDeleteFolder(id);
+                        } else {
+                            const fileObj = globalFiles.find(f => f.id === id);
+                            if (fileObj && fileObj.data && fileObj.data.includes('drive.google.com')) {
+                                try { 
+    fetch(GOOGLE_SCRIPT_URL, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'delete', url: fileObj.data, token: await auth.currentUser.getIdToken() }) 
+    }).catch(e => console.log('Drive delete request sent')); 
+} catch(e){}
+                            }
+                            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'files', id));
+                        }
+                    }
+                    showToast('تم حذف العناصر المحددة بنجاح', 'success');
+                    window.toggleSelectMode();
+                } catch(e) {
+                    console.error(e);
+                    showToast('حدث خطأ أثناء الحذف', 'error');
+                }
+            }
+        };
+
+        window.openRenameModal = (id, isFolder, encodedName) => {
+            document.getElementById('renameItemId').value = id;
+            document.getElementById('renameItemType').value = isFolder ? 'folder' : 'file';
+            document.getElementById('renameItemName').value = decodeURIComponent(encodedName);
+            window.openModal('renameModal');
+        };
+
+        window.handleRenameSubmit = async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('renameItemId').value;
+            const type = document.getElementById('renameItemType').value;
+            const newName = document.getElementById('renameItemName').value.trim();
+            
+            if(!newName) return;
+
+            try {
+                const collectionName = type === 'folder' ? 'folders' : 'files';
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', collectionName, id), { name: newName });
+                showToast('تمت إعادة التسمية بنجاح', 'success');
+                window.closeModal('renameModal');
+            } catch(err) {
+                console.error(err);
+                showToast('حدث خطأ أثناء إعادة التسمية', 'error');
+            }
+        };
+
+        window.openImageViewer = (fileId) => {
+            if(isSelectMode) return window.toggleCheckbox(fileId);
+
+            viewerFilesList = globalFiles.filter(f => 
+                (f.folderId || null) === currentFolderId
+            );
+            
+            currentViewerIndex = viewerFilesList.findIndex(f => f.id === fileId);
+            
+            if(currentViewerIndex === -1) {
+                 const file = globalFiles.find(f => f.id === fileId);
+                 if(file && file.data && file.data !== '#') {
+                     window.open(file.data, '_blank');
+                 } else {
+                     showToast('لا يمكن عرض هذا الملف.', 'warning');
+                 }
+                 return;
+            }
+            
+            updateViewerUI();
+            document.getElementById('imageViewerModal').classList.remove('hidden');
+        };
+
+        window.closeImageViewer = () => {
+    document.getElementById('imageViewerModal').classList.add('hidden');
+    document.getElementById('imageViewerImg').src = '';
+    
+    const vidEl = document.getElementById('imageViewerVideo');
+    // إيقاف وتفريغ الـ iframe يدوياً لتفادي الخطأ
+    vidEl.src = 'about:blank';
+    vidEl.classList.add('hidden');
+    
+    viewerFilesList = [];
+    currentViewerIndex = -1;
+};
+
+        window.viewExternalDocument = (url, originalUrl) => {
+    document.getElementById('imageViewerTitle').innerText = 'عرض المستند المرفق';
+    document.getElementById('imageViewerDownloadBtn').href = originalUrl;
+    document.getElementById('imageViewerDownloadBtn').download = 'document';
+
+    const imgEl = document.getElementById('imageViewerImg');
+    const vidEl = document.getElementById('imageViewerVideo');
+
+    if (url.includes('drive.google.com/file/d/')) {
+        const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+        if (match && match[1]) {
+            url = `https://drive.google.com/file/d/${match[1]}/preview`;
+        }
+    }
+
+    // نعرضه داخل الـ Iframe المخصص للفيديوهات لأنه يدعم عرض الـ PDF والدرايف
+    imgEl.classList.add('hidden');
+    vidEl.classList.remove('hidden');
+    vidEl.src = url;
+
+    document.getElementById('viewerLeftBtn').style.visibility = 'hidden';
+    document.getElementById('viewerRightBtn').style.visibility = 'hidden';
+    document.getElementById('imageViewerModal').classList.remove('hidden');
+};
+
+        window.renderDriveFiles = () => {
+            const allContainer = document.getElementById('allFilesContainer');
+            const pinnedContainer = document.getElementById('pinnedFilesContainer');
+            const breadcrumbs = document.getElementById('driveBreadcrumbs');
+            const searchTerm = document.getElementById('searchDrive')?.value.toLowerCase() || '';
+            
+            allContainer.innerHTML = '';
+            pinnedContainer.innerHTML = '';
+            breadcrumbs.innerHTML = '';
+            
+            const isCEO = currentUserData && window.isAdmin();
+
+            if (folderHistory.length > 1) {
+                breadcrumbs.innerHTML += `<button onclick="window.navigateBackFolder()" class="text-xs bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 px-3 py-1 rounded-lg hover:bg-indigo-200 transition flex items-center gap-1 font-bold ml-2 shadow-sm"><i class="fa-solid fa-arrow-right"></i> رجوع للخلف</button>`;
+            }
+
+            folderHistory.forEach((h, index) => {
+                const isLast = index === folderHistory.length - 1;
+                breadcrumbs.innerHTML += `
+                    <span class="cursor-pointer flex items-center gap-1 ${isLast ? 'text-primary dark:text-secondary' : 'hover:text-secondary text-gray-500'}" onclick="window.navigateToFolder(${h.id ? `'${h.id}'` : null})">
+                        ${h.id === null ? '<i class="fa-solid fa-house"></i>' : ''} ${escapeHTML(h.name)}
+                    </span>
+                    ${!isLast ? '<i class="fa-solid fa-chevron-left text-[10px] text-gray-400 mt-1"></i>' : ''}
+                `;
+            });
+
+            const currentFoldersList = globalFolders.filter(f => 
+                (f.parentId || null) === currentFolderId && 
+                f.name.toLowerCase().includes(searchTerm)
+            );
+            const currentFilesList = globalFiles.filter(f => 
+                (f.folderId || null) === currentFolderId &&
+                f.name.toLowerCase().includes(searchTerm)
+            );
+
+            breadcrumbs.innerHTML += `<span class="mr-auto text-xs bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full font-bold border dark:border-gray-700 shadow-sm">${currentFilesList.length} ملفات | ${currentFoldersList.length} مجلدات</span>`;
+
+            const currentActiveUploads = activeUploads.filter(u => u.folderId === currentFolderId);
+            currentActiveUploads.forEach(u => {
+                allContainer.innerHTML += `
+                    <div class="bg-gray-100 dark:bg-gray-800 border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-xl p-4 shadow-sm flex flex-col h-full relative opacity-70">
+                        <div class="flex justify-between items-start mb-2 pt-2">
+                            <i class="fa-solid fa-cloud-arrow-up text-blue-400 text-2xl animate-bounce"></i>
+                        </div>
+                        <h4 class="font-bold text-sm text-blue-800 dark:text-blue-300 truncate mb-1" title="${escapeHTML(u.name)}">${escapeHTML(u.name)}</h4>
+                        <p class="text-[10px] text-blue-500 font-bold loading-dots">جاري التحميل</p>
+                        <p class="text-[10px] text-gray-400 mt-1">${u.sizeStr}</p>
+                    </div>
+                `;
+            });
+
+            if(currentFoldersList.length === 0 && currentFilesList.length === 0 && currentActiveUploads.length === 0) {
+                allContainer.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">المجلد فارغ أو لا توجد نتائج مطابقة.</p>';
+            }
+
+            currentFoldersList.forEach(f => {
+                const isOwner = f.creatorId === currentUserData.uid;
+                const canManage = isOwner || isCEO;
+                const encodedName = encodeURIComponent(f.name);
+                const deleteBtn = canManage ? `<button onclick="event.stopPropagation(); window.deleteDriveItem('${f.id}', true, '${encodedName}')" class="text-red-400 hover:text-red-600 p-1 bg-red-50 dark:bg-gray-700 rounded transition"><i class="fa-solid fa-trash"></i></button>` : '';
+                const renameBtn = canManage ? `<button onclick="event.stopPropagation(); window.openRenameModal('${f.id}', true, '${encodedName}')" class="text-indigo-400 hover:text-indigo-600 p-1 bg-indigo-50 dark:bg-gray-700 rounded transition"><i class="fa-solid fa-pen"></i></button>` : '';
+                const checkBoxHtml = (canManage && isSelectMode) ? `<input type="checkbox" data-id="${f.id}" data-isfolder="true" class="drive-item-cb w-5 h-5 text-indigo-600 rounded cursor-pointer" onclick="event.stopPropagation()" onchange="window.updateBulkActionBtnsVisibility()">` : '';
+
+                const clickAction = isSelectMode ? `window.toggleCheckbox('${f.id}')` : `window.navigateToFolder('${f.id}')`;
+                
+                const innerFilesCount = globalFiles.filter(innerFile => innerFile.folderId === f.id).length;
+                const innerFoldersCount = globalFolders.filter(innerFolder => innerFolder.parentId === f.id).length;
+
+                allContainer.innerHTML += `
+                    <div onclick="${clickAction}" oncontextmenu="window.showDriveContextMenu(event, '${f.id}', true, '${encodedName}')" class="bg-indigo-50 dark:bg-indigo-900/20 border ${isSelectMode ? 'border-indigo-300 hover:bg-indigo-100' : 'border-indigo-100 hover:shadow-md'} dark:border-indigo-800 rounded-xl p-4 shadow-sm transition cursor-pointer group flex flex-col h-full relative">
+                        <div class="absolute top-3 right-3 z-10">
+                            ${checkBoxHtml}
+                        </div>
+                        <div class="flex justify-between items-start mb-2">
+                            <i class="fa-solid fa-folder text-indigo-500 text-3xl"></i>
+                            <div class="flex gap-1 ${isSelectMode ? 'hidden' : ''}" onclick="event.stopPropagation()">
+                                ${renameBtn}
+                                ${deleteBtn}
+                            </div>
+                        </div>
+                        <h4 class="font-bold text-sm text-indigo-800 dark:text-indigo-200 truncate mt-2" title="${escapeHTML(f.name)}">${escapeHTML(f.name)}</h4>
+                        <p class="text-[10px] text-gray-500 mt-1">${innerFilesCount} ملف | ${innerFoldersCount} مجلد</p>
+                    </div>
+                `;
+            });
+
+            currentFilesList.forEach(f => {
+                let iconClass = 'fa-file text-gray-400';
+                let isImageOrVideo = false;
+                
+                if(f.type.startsWith('image/')) { iconClass = 'fa-file-image text-blue-400'; isImageOrVideo = true; }
+                else if(f.type.startsWith('video/')) { iconClass = 'fa-file-video text-purple-400'; isImageOrVideo = true; }
+                else if(f.type.includes('pdf')) iconClass = 'fa-file-pdf text-red-400';
+                else if(f.type.includes('excel') || f.type.includes('spreadsheet')) iconClass = 'fa-file-excel text-green-500';
+                else if(f.type.includes('word')) iconClass = 'fa-file-word text-blue-600';
+
+                const isOwner = f.uploaderId === currentUserData.uid;
+                const canManage = isOwner || isCEO;
+                const encodedName = encodeURIComponent(f.name);
+                
+                const deleteBtn = canManage ? `<button onclick="event.stopPropagation(); window.deleteDriveItem('${f.id}', false, '${encodedName}')" class="text-red-400 hover:text-red-600 p-1.5 bg-red-50 dark:bg-gray-700 rounded transition" title="حذف"><i class="fa-solid fa-trash"></i></button>` : '';
+                const renameBtn = canManage ? `<button onclick="event.stopPropagation(); window.openRenameModal('${f.id}', false, '${encodedName}')" class="text-indigo-400 hover:text-indigo-600 p-1.5 bg-indigo-50 dark:bg-gray-700 rounded transition" title="تعديل الاسم"><i class="fa-solid fa-pen"></i></button>` : '';
+                const viewBtn = isImageOrVideo ? `<button onclick="event.stopPropagation(); window.openImageViewer('${f.id}')" class="text-teal-500 hover:text-teal-700 p-1.5 bg-teal-50 dark:bg-gray-700 rounded transition" title="عرض الملف"><i class="fa-solid fa-eye"></i></button>` : '';
+                const checkBoxHtml = (canManage && isSelectMode) ? `<input type="checkbox" data-id="${f.id}" data-isfolder="false" class="drive-item-cb w-5 h-5 text-indigo-600 rounded cursor-pointer absolute top-3 right-3 z-10" onclick="event.stopPropagation()" onchange="window.updateBulkActionBtnsVisibility()">` : '';
+
+                const pinBtnClass = canManage ? 'cursor-pointer hover:text-primary' : 'cursor-not-allowed opacity-50';
+                const pinBtnAction = canManage ? `onclick="event.stopPropagation(); window.togglePinFile('${f.id}', ${f.pinned})"` : '';
+
+                let targetUrl = f.data;
+                if(targetUrl && targetUrl.includes('drive.google.com/file/d/')) {
+                    const match = targetUrl.match(/\/d\/(.+?)\//);
+                    if(match && match[1]) targetUrl = `https://drive.google.com/uc?export=view&id=${match[1]}`;
+                }
+
+                const downloadLinkHtml = targetUrl !== "#" ? 
+                    `<a href="${targetUrl}" target="_blank" download="${escapeHTML(f.name)}" onclick="event.stopPropagation()" class="text-secondary hover:text-primary text-sm font-bold flex items-center gap-1 bg-gray-100 dark:bg-gray-700 px-3 py-1.5 rounded transition"><i class="fa-solid fa-download"></i> تحميل</a>` : 
+                    `<span class="text-gray-400 text-sm font-bold flex items-center gap-1"><i class="fa-solid fa-ban"></i> غير متاح</span>`;
+
+                const clickAction = isSelectMode ? `window.toggleCheckbox('${f.id}')` : `window.openImageViewer('${f.id}')`;
+
+                const cardHtml = `
+                    <div onclick="${clickAction}" oncontextmenu="window.showDriveContextMenu(event, '${f.id}', false, '${encodedName}')" class="bg-white dark:bg-gray-800 border ${isSelectMode ? 'border-blue-400 hover:bg-blue-50 dark:hover:bg-gray-700 cursor-pointer' : 'border-gray-200 dark:border-gray-700 hover:shadow-md cursor-pointer'} rounded-xl p-4 shadow-sm transition group flex flex-col h-full relative">
+                        ${checkBoxHtml}
+                        <div class="flex justify-between items-start mb-2 pt-2">
+                            <i class="fa-solid ${iconClass} text-2xl"></i>
+                            <button ${pinBtnAction} class="text-xl ${pinBtnClass} ${f.pinned ? 'text-primary dark:text-secondary' : 'text-gray-300 dark:text-gray-600'} ${isSelectMode ? 'hidden' : ''}"><i class="fa-solid fa-thumbtack"></i></button>
+                        </div>
+                        <h4 class="font-bold text-sm text-gray-800 dark:text-gray-200 truncate mb-1" title="${escapeHTML(f.name)}">${escapeHTML(f.name)}</h4>
+                        <p class="text-[10px] text-gray-400 mb-3">${f.sizeStr} • ${escapeHTML(f.uploaderName)} • ${new Date(f.timestamp).toLocaleDateString('ar-EG')}</p>
+                        
+                        <div class="mt-auto pt-3 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center gap-2 ${isSelectMode ? 'hidden' : ''}">
+                            ${downloadLinkHtml}
+                            <div class="flex gap-1 items-center">
+                                ${viewBtn}
+                                ${renameBtn}
+                                ${deleteBtn}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                if(f.pinned) {
+                    pinnedContainer.innerHTML += cardHtml;
+                } else {
+                    allContainer.innerHTML += cardHtml;
+                }
+            });
+            
+            document.getElementById('pinnedFilesTitle').classList.toggle('hidden', pinnedContainer.innerHTML === '' || isSelectMode);
+            document.getElementById('pinnedFilesContainer').classList.toggle('hidden', isSelectMode);
+        };
+
+        function updateStorageProgress() {
+            const currentStorage = globalFiles.reduce((acc, f) => acc + (f.size || 0), 0);
+            const percentage = (currentStorage / MAX_GLOBAL_STORAGE) * 100;
+            document.getElementById('storageText').innerText = `${formatBytes(currentStorage)} / 5 TB`;
+            const bar = document.getElementById('storageBar');
+            bar.style.width = `${percentage}%`;
+            
+            if(percentage > 90) { bar.className = "bg-red-500 h-full bg-striped animate-stripes"; document.getElementById('storageWarning').classList.remove('hidden'); } 
+            else if(percentage > 70) { bar.className = "bg-yellow-500 h-full bg-striped animate-stripes"; document.getElementById('storageWarning').classList.add('hidden'); } 
+            else { bar.className = "bg-green-500 h-full bg-striped animate-stripes"; document.getElementById('storageWarning').classList.add('hidden'); }
+        }
+
+        // الحضور والانصراف
+        function getTodayDateString() {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        }
+        
+        let locationRetries = 0;
+        let currentPunchAction = 'in'; // لتحديد إذا كان طلب الموقع للدخول أو للانصراف
+
+        window.punchIn = async () => {
+            if(!currentUserData) return;
+            currentPunchAction = 'in';
+            const btn = document.getElementById('punchInBtn');
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري تحديد الموقع...';
+            btn.disabled = true;
+            tryGetLocation(btn, '<i class="fa-solid fa-right-to-bracket"></i> تسجيل دخول');
+        };
+
+        window.punchOut = async () => {
+            if(!confirm('هل أنت متأكد من تسجيل الانصراف وإنهاء الدوام لهذا اليوم؟')) return;
+            if(!currentUserData) return;
+            
+            const btn = document.getElementById('punchOutBtn');
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري تسجيل الانصراف...';
+            btn.disabled = true;
+            
+            // تسجيل الانصراف مباشرة بدون طلب الموقع
+            executePunchOutFinal(null);
+        };
+
+        const tryGetLocation = (btnElement, originalHtml) => {
+            locationRetries = 0;
+            let isResolved = false;
+
+            // مؤقت طوارئ: إذا علق المتصفح ولم يرد خلال 7 ثوانٍ، يفتح الإدخال اليدوي فوراً
+            const fallbackTimer = setTimeout(() => {
+                if(isResolved) return;
+                isResolved = true;
+                btnElement.innerHTML = originalHtml;
+                btnElement.disabled = false;
+                document.getElementById('manualLocText').value = '';
+                window.openModal('manualLocationModal');
+                window.startLiveCamera();
+                showToast('تعذر تحديد الموقع تلقائياً، يرجى إدخاله يدوياً', 'warning');
+            }, 7000);
+
+            const fetchLoc = () => {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            if(isResolved) return;
+                            isResolved = true;
+                            clearTimeout(fallbackTimer);
+                            const gpsLink = `https://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}`;
+                            if (currentPunchAction === 'in') executePunchInFinal({ type: 'gps', link: gpsLink });
+                            else executePunchOutFinal({ type: 'gps', link: gpsLink });
+                        },
+                        (error) => {
+                            if(isResolved) return;
+                            locationRetries++;
+                            if (locationRetries >= 3 || error.code === error.PERMISSION_DENIED) {
+                                isResolved = true;
+                                clearTimeout(fallbackTimer);
+                                btnElement.innerHTML = originalHtml;
+                                btnElement.disabled = false;
+                                document.getElementById('manualLocText').value = '';
+                                window.openModal('manualLocationModal');
+                                window.startLiveCamera(); 
+                            } else {
+                                setTimeout(fetchLoc, 1000); 
+                            }
+                        },
+                        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                    );
+                } else {
+                    if(isResolved) return;
+                    isResolved = true;
+                    clearTimeout(fallbackTimer);
+                    btnElement.innerHTML = originalHtml;
+                    btnElement.disabled = false;
+                    document.getElementById('manualLocText').value = '';
+                    window.openModal('manualLocationModal');
+                    window.startLiveCamera(); 
+                }
+            };
+            fetchLoc();
+        };
+
+        document.getElementById('manualLocForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = document.getElementById('manualLocText').value.trim();
+            const base64Data = document.getElementById('manualLocPhotoBase64').value;
+            
+            if (!text) { showToast('يرجى كتابة موقعك', 'warning'); return; }
+
+            // --- بداية نظام مكتشف الكلام العشوائي (Gibberish Detector) ---
+            
+            // 1. فحص إذا كان النص عبارة عن أرقام أو رموز فقط (لا يوجد حروف عربية أو إنجليزية)
+            const hasLetters = /[a-zA-Z\u0600-\u06FF]/.test(text);
+            if (!hasLetters) {
+                showToast('مرفوض: يجب كتابة اسم الموقع بحروف واضحة ومفهومة وليس أرقام أو رموز فقط.', 'error');
+                return;
+            }
+
+            // 2. فحص تكرار الحروف (مثل ههههه أو ثثثثث أو ----- )
+            if (/(.)\1{4,}/.test(text)) {
+                showToast('مرفوض: يرجى عدم تكرار الحروف بشكل عشوائي، اكتب موقعاً حقيقياً.', 'warning');
+                return;
+            }
+
+            // 3. فحص الكلمات الطويلة جداً بدون مسافات (خبط عشوائي على الكيبورد مثل يهاؤقكخثرقكهثعلب)
+            const words = text.split(/\s+/);
+            for (let w of words) {
+                if (w.length > 12) {
+                    showToast('مرفوض: تم اكتشاف كلام غير مفهوم (خبط على اللوحة)، يرجى كتابة اسم الموقع بشكل صحيح.', 'warning');
+                    return;
+                }
+            }
+
+            // 4. فحص الطول الأدنى (يجب أن يكون أكثر من 3 حروف ليكون اسماً حقيقياً)
+            if (text.length < 4) {
+                showToast('الوصف قصير جداً، يرجى توضيح مكانك بدقة أكبر.', 'warning');
+                return;
+            }
+
+            // 5. كلمات ممنوعة صريحة (يمكنك إضافة أي كلمات هنا)
+            const blockedWords = ['هبل', 'تجربة', 'اي كلام', 'بطيخ', 'لا شيء', 'test'];
+            if (blockedWords.some(bw => text.includes(bw))) {
+                showToast('مرفوض: يرجى إدخال اسم موقع عملك الحقيقي بجدية.', 'error');
+                return;
+            }
+            // --- نهاية نظام مكتشف الكلام العشوائي ---
+
+            if (!base64Data) { showToast('يرجى التقاط صورة إثبات التواجد المباشرة من الكاميرا', 'warning'); return; }
+
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mx-1"></i> جاري الرفع...';
+
+            showToast('جاري رفع إثبات الموقع...', 'info');
+            try {
+                const fileName = `loc_${currentPunchAction}_${currentUserData.uid}_${Date.now()}.jpg`;
+                const storageRefInstance = ref(storage, `location_proofs/${fileName}`);
+                await uploadString(storageRefInstance, base64Data, 'base64', { contentType: 'image/jpeg' });
+                const photoUrl = await getDownloadURL(storageRefInstance);
+                
+                window.closeManualLocModal();
+                if (currentPunchAction === 'in') {
+                    executePunchInFinal({ type: 'manual', text: text, photo: photoUrl });
+                } else {
+                    executePunchOutFinal({ type: 'manual', text: text, photo: photoUrl });
+                }
+            } catch(err) {
+                console.error(err); showToast('حدث خطأ في الرفع', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'حفظ وتسجيل';
+            }
+        });
+
+        const executePunchInFinal = async (locationData) => {
+            const today = getTodayDateString();
+            const docId = `${currentUserData.uid}_${today}`;
+                localStorage.setItem('quill_my_attendance_state', JSON.stringify({ date: today, status: 'active' }));
+            try {
+                // تحديث الشاشة محلياً فوراً لمنع التعليق
+                const newRecord = {
+                    id: docId, uid: currentUserData.uid, name: currentUserData.name, date: today, punchIn: Date.now(), 
+                    breaks: [], punchOut: null, status: 'active', locationData: locationData
+                };
+                globalAttendance = globalAttendance.filter(a => a.id !== docId);
+                globalAttendance.push(newRecord);
+                
+                hasPunchedInToday = true;
+                unlockNavigation();
+                window.renderEmpAttendanceView(); 
+                window.location.hash = 'home-grid'; 
+
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance', docId), newRecord);
+                showToast('تم تسجيل الدخول بنجاح', 'success');
+                window.logAction('حضور', 'قام الموظف بتسجيل الدخول للدوام');
+            } catch(e) { console.error(e); showToast('حدث خطأ', 'error'); }
+        };
+
+        const executePunchOutFinal = async (locationDataOut) => {
+            const today = getTodayDateString();
+            const docId = `${currentUserData.uid}_${today}`;
+                localStorage.setItem('quill_my_attendance_state', JSON.stringify({ date: today, status: 'completed' }));
+            try {
+                let record = globalAttendance.find(a => a.uid === currentUserData.uid && a.date === today);
+                if(record) {
+                    if (record.status === 'completed') { showToast('مسجل انصراف مسبقاً', 'info'); return; }
+                    let breaks = record.breaks || [];
+                    if(breaks.length > 0 && breaks[breaks.length - 1].end === null) breaks[breaks.length - 1].end = Date.now();
+                    
+                    // تحديث محلي سريع
+                    record.breaks = breaks; record.punchOut = Date.now(); record.status = 'completed'; record.locationDataOut = locationDataOut;
+                    window.renderEmpAttendanceView(); 
+
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance', docId), { 
+                        breaks: breaks, punchOut: record.punchOut, status: 'completed', locationDataOut: locationDataOut 
+                    });
+                }
+                showToast('تم تسجيل الانصراف.', 'success');
+                window.logAction('انصراف', 'قام الموظف بتسجيل الانصراف');
+            } catch(e) { console.error(e); showToast('حدث خطأ', 'error'); }
+        };
+
+        window.punchBreak = async () => {
+            if(!currentUserData) return;
+            const today = getTodayDateString();
+            const docId = `${currentUserData.uid}_${today}`;
+            localStorage.setItem('quill_my_attendance_state', JSON.stringify({ date: today, status: 'break' }));
+            
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'attendance', docId);
+                const docSnap = await getDoc(docRef);
+                
+                if(docSnap.exists()) {
+                    let breaks = docSnap.data().breaks || [];
+                    breaks.push({ start: Date.now(), end: null });
+                    
+                    // تحديث محلي سريع لتغيير واجهة المستخدم فوراً
+                    let localRecord = globalAttendance.find(a => a.uid === currentUserData.uid && a.date === today);
+                    if(localRecord) { localRecord.breaks = breaks; localRecord.status = 'break'; }
+                    window.renderEmpAttendanceView();
+
+                    await updateDoc(docRef, { breaks: breaks, status: 'break' });
+                    showToast('تم تسجيل خروج مؤقت بنجاح', 'success');
+                } else {
+                    showToast('لم يتم العثور على سجل حضور لك اليوم!', 'error');
+                }
+            } catch(e) { console.error(e); showToast('حدث خطأ في الاتصال بقاعدة البيانات', 'error'); }
+        };
+
+        window.returnFromBreak = async () => {
+            if(!currentUserData) return;
+            const btn = document.getElementById('returnBreakBtn');
+            if(btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري العودة...'; }
+            
+            const today = getTodayDateString();
+            const docId = `${currentUserData.uid}_${today}`;
+            localStorage.setItem('quill_my_attendance_state', JSON.stringify({ date: today, status: 'active' }));
+            
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'attendance', docId);
+                const docSnap = await getDoc(docRef);
+                
+                if(docSnap.exists()) {
+                    let breaks = docSnap.data().breaks || [];
+                    let lastOpenBreakIndex = breaks.findIndex(b => b.end === null);
+                    if(lastOpenBreakIndex !== -1) {
+                        breaks[lastOpenBreakIndex].end = Date.now();
+                    } else if(breaks.length > 0) {
+                        breaks[breaks.length - 1].end = Date.now();
+                    }
+                    
+                    // تحديث محلي سريع
+                    let localRecord = globalAttendance.find(a => a.uid === currentUserData.uid && a.date === today);
+                    if(localRecord) { localRecord.breaks = breaks; localRecord.status = 'active'; }
+                    window.renderEmpAttendanceView();
+
+                    await updateDoc(docRef, { breaks: breaks, status: 'active' });
+                    showToast('عدت للعمل، أهلاً بك', 'success');
+                }
+            } catch(e) { 
+                console.error(e); 
+                showToast('حدث خطأ أثناء العودة للعمل', 'error');
+            } finally {
+                if(btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-briefcase mx-1"></i> عودة للعمل'; }
+            }
+        };
+
+        window.renderEmpAttendanceView = () => {
+            if(!currentUserData) return;
+            document.getElementById('currentDateStr').innerText = new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            
+            const today = getTodayDateString();
+            
+            // محاولة جلب السجل من قاعدة البيانات
+            let myTodayRecord = globalAttendance.find(a => a.uid === currentUserData.uid && a.date === today);
+            
+            // محاولة جلب السجل من ذاكرة المتصفح للسرعة ومنع التعليق
+            let localStatus = null;
+            try {
+                const cached = JSON.parse(localStorage.getItem('quill_my_attendance_state'));
+                if (cached && cached.date === today) {
+                    localStatus = cached.status;
+                } else if (cached && cached.date !== today) {
+                    localStorage.removeItem('quill_my_attendance_state'); // مسح سجل الأيام السابقة
+                }
+            } catch(e){}
+
+            // تحديد الحالة النهائية (الأولوية لقاعدة البيانات ثم الذاكرة المحلية)
+            let effectiveStatus = null;
+            if (myTodayRecord) {
+                effectiveStatus = myTodayRecord.status;
+                localStorage.setItem('quill_my_attendance_state', JSON.stringify({ date: today, status: effectiveStatus }));
+            } else if (localStatus) {
+                effectiveStatus = localStatus;
+            }
+            
+            const inBtn = document.getElementById('punchInBtn');
+            const breakBtn = document.getElementById('punchBreakBtn');
+            const returnBtn = document.getElementById('returnBreakBtn');
+            const outBtn = document.getElementById('punchOutBtn');
+            const msg = document.getElementById('attendanceStatusMsg');
+            const homePunchOutContainer = document.getElementById('homePunchOutContainer');
+
+            if(!effectiveStatus) {
+                msg.innerText = 'يجب تسجيل الدخول لفتح النظام.';
+                inBtn.classList.remove('hidden'); breakBtn.classList.add('hidden'); outBtn.classList.add('hidden'); returnBtn.classList.add('hidden');
+                if(homePunchOutContainer) homePunchOutContainer.classList.add('hidden');
+                hasPunchedInToday = false;
+                lockNavigationIfNeeded();
+            } else {
+                hasPunchedInToday = true;
+                unlockNavigation();
+                inBtn.classList.add('hidden');
+                
+                if(effectiveStatus === 'active') {
+                    msg.innerText = 'أنت الآن على رأس عملك.';
+                    breakBtn.classList.remove('hidden'); returnBtn.classList.add('hidden'); outBtn.classList.remove('hidden');
+                    if(homePunchOutContainer) homePunchOutContainer.classList.remove('hidden');
+                } else if(effectiveStatus === 'break') {
+                    msg.innerText = 'أنت الآن في فترة خروج مؤقت.';
+                    breakBtn.classList.add('hidden'); returnBtn.classList.remove('hidden'); outBtn.classList.remove('hidden');
+                    if(homePunchOutContainer) homePunchOutContainer.classList.remove('hidden');
+                } else if(effectiveStatus === 'completed') {
+                     msg.innerText = 'لقد قمت بتسجيل الانصراف لهذا اليوم.';
+                     breakBtn.classList.add('hidden'); returnBtn.classList.add('hidden'); outBtn.classList.add('hidden');
+                     document.getElementById('reEntryMainBtn').classList.remove('hidden');
+                    if(homePunchOutContainer) homePunchOutContainer.classList.add('hidden');
+    
+                    // القفل الحديدي: نعتبره غير مسجل دخول لمنعه من التحرك في النظام
+                    if (!window.isAdmin()) {
+                    hasPunchedInToday = false; 
+                    lockNavigationIfNeeded();
+                  }
+              } else {
+                    document.getElementById('reEntryMainBtn').classList.add('hidden');
+                }
+            }
+        };
+
+        window.renderSelectedEmpAttendance = () => {
+    const dateInput = document.getElementById('attendanceDateSelect');
+    if(!dateInput.value) dateInput.value = getTodayDateString();
+    const selectedDate = dateInput.value;
+
+    const empSelect = document.getElementById('searchAttendance');
+    const selectedUid = empSelect ? empSelect.value : 'all';
+    
+    const list = document.getElementById('attendanceRecordsList');
+    // تغيير العنوان للمدير
+    document.getElementById('attendanceTableTitle').innerText = 'سجل الحضور و الانصراف';
+    list.innerHTML = '';
+
+    if (selectedUid === 'all') {
+        const employees = globalUsers;
+        if(employees.length === 0) {
+            list.innerHTML = '<tr><td colspan="4" class="p-4 text-center">لا يوجد موظفين</td></tr>';
+            return;
+        }
+        employees.forEach(emp => {
+            const record = globalAttendance.find(a => a.uid === emp.uid && a.date === selectedDate);
+            list.innerHTML += buildAttendanceRow(emp, record);
+        });
+    } else {
+        const emp = globalUsers.find(u => u.uid === selectedUid);
+        if(!emp) return;
+        const empRecords = globalAttendance.filter(a => a.uid === selectedUid).sort((a,b) => b.date.localeCompare(a.date));
+        if(empRecords.length === 0) {
+            list.innerHTML = '<tr><td colspan="4" class="p-4 text-center">لا يوجد سجلات سابقة لهذا الموظف</td></tr>';
+            return;
+        }
+        empRecords.forEach(record => {
+            list.innerHTML += buildAttendanceRow(emp, record, true);
+        });
+    }
+};
+
+window.renderMyAttendanceHistory = () => {
+    const list = document.getElementById('attendanceRecordsList');
+    // تغيير العنوان للموظف
+    document.getElementById('attendanceTableTitle').innerText = 'سجل الحضور الخاص بي (آخر 30 يوم)';
+    list.innerHTML = '';
+    
+    const myRecords = globalAttendance
+        .filter(a => a.uid === currentUserData.uid)
+        .sort((a,b) => b.date.localeCompare(a.date))
+        .slice(0, 30);
+
+    if(myRecords.length === 0) {
+        list.innerHTML = '<tr><td colspan="4" class="p-4 text-center font-bold">لا يوجد لك سجلات حضور سابقة</td></tr>';
+        return;
+    }
+
+    const me = { name: currentUserData.name, photoURL: currentUserData.photoURL };
+    myRecords.forEach(record => {
+        list.innerHTML += buildAttendanceRow(me, record, true);
+    });
+};
+
+function buildAttendanceRow(emp, record, showDate = false) {
+    let pIn = '<span class="text-gray-400">لم يسجل دخول</span>';
+    let pOut = '<span class="text-gray-400">-</span>';
+    let breaksHtml = '<span class="text-gray-400">-</span>';
+    let statusBadge = '<span class="text-[10px] bg-red-100 text-red-600 px-2 py-1 rounded shadow-sm">غائب / لم يسجل</span>';
+    let dateBadge = showDate && record ? `<div class="text-[10px] text-blue-600 mt-1 font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-100" dir="ltr"><i class="fa-regular fa-calendar ml-1"></i>${record.date}</div>` : '';
+    let locHtml = '';
+
+    if(record) {
+        pIn = record.punchIn ? new Date(record.punchIn).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'}) : '-';
+        // إضافة وقت الانصراف وزر العودة للعمل إن وجد
+        pOut = record.punchOut ? new Date(record.punchOut).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'}) : '<span class="text-gray-400">-</span>';
+
+        if (record.reEntries && record.reEntries.length > 0) {
+            const isManager = currentUserData && window.isAdmin();
+            record.reEntries.forEach((re, idx) => {
+                const reTime = new Date(re.time).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+                
+                if (isManager) {
+                    // المدير يرى زراً أزرق يمكن النقر عليه لفتح الجاسوس
+                    pOut += `<br><button onclick="window.openSpecificReEntryLog('${record.id}', ${idx})" class="text-[10px] text-blue-600 bg-blue-50 px-2 py-1 rounded shadow-sm font-bold mt-1 inline-block border border-blue-200 hover:bg-blue-100 transition"><i class="fa-solid fa-rotate-left mx-1"></i>عاد للعمل (${reTime}) - تتبع الحركات</button>`;
+                } else {
+                    // الموظف يرى نصاً أخضر ثابتاً لا يمكن النقر عليه
+                    pOut += `<br><span class="text-[10px] text-green-700 bg-green-50 px-2 py-1 rounded shadow-sm font-bold mt-1 inline-block border border-green-200"><i class="fa-solid fa-check mx-1"></i>لقد عدت للعمل (${reTime})</span>`;
+                }
+            });
+        }
+
+        const todayStr = getTodayDateString();
+        const isPastDay = record.date < todayStr;
+
+        if (isPastDay && record.status !== 'completed') {
+            statusBadge = '<span class="text-[10px] bg-red-100 text-red-700 px-2 py-1 rounded shadow-sm font-bold border border-red-200"><i class="fa-solid fa-triangle-exclamation mx-1"></i>لم يسجل الانصراف</span>';
+        } else {
+            if(record.status === 'active') statusBadge = '<span class="text-[10px] bg-green-100 text-green-700 px-2 py-1 rounded shadow-sm font-bold">على رأس عمله</span>';
+            else if(record.status === 'break') statusBadge = '<span class="text-[10px] bg-yellow-100 text-yellow-700 px-2 py-1 rounded shadow-sm font-bold border border-yellow-200">خروج مؤقت</span>';
+            else if(record.status === 'completed') statusBadge = '<span class="text-[10px] bg-gray-200 text-gray-700 px-2 py-1 rounded shadow-sm font-bold border border-gray-300">منصرف</span>';
+        }
+
+        if (record.locationData) {
+            if (record.locationData.type === 'gps') { locHtml = `<a href="${record.locationData.link}" target="_blank" class="text-[10px] text-blue-500 hover:underline mt-1 block"><i class="fa-solid fa-map-location-dot"></i> GPS الدخول</a>`; }
+            else { locHtml = `<button onclick="event.stopPropagation(); window.viewExternalDocument('${record.locationData.photo}', '${record.locationData.photo}')" class="text-[10px] text-orange-500 hover:underline mt-1 block text-right"><i class="fa-solid fa-camera"></i> الدخول: ${escapeHTML(record.locationData.text)}</button>`; }
+        }
+        if (record.locationDataOut) {
+            if (record.locationDataOut.type === 'gps') { locHtml += `<a href="${record.locationDataOut.link}" target="_blank" class="text-[10px] text-blue-500 hover:underline mt-1 block border-t border-gray-200 dark:border-gray-700 pt-1"><i class="fa-solid fa-map-location-dot"></i> GPS الانصراف</a>`; }
+            else { locHtml += `<button onclick="event.stopPropagation(); window.viewExternalDocument('${record.locationDataOut.photo}', '${record.locationDataOut.photo}')" class="text-[10px] text-orange-500 hover:underline mt-1 block text-right border-t border-gray-200 dark:border-gray-700 pt-1"><i class="fa-solid fa-camera"></i> الانصراف: ${escapeHTML(record.locationDataOut.text)}</button>`; }
+        }
+
+        if(record.breaks && record.breaks.length > 0) {
+            breaksHtml = record.breaks.map(b => {
+                const start = b.start ? new Date(b.start).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'}) : '';
+                const end = b.end ? new Date(b.end).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'}) : '...';
+                return `<div class="text-[10px] bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded inline-block m-0.5" dir="ltr">${start} ➔ ${end}</div>`;
+            }).join('');
+        }
+    }
+    return `
+        <tr class="hover:bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700">
+            <td class="p-3 text-sm font-bold flex flex-col items-start gap-1"><div class="flex items-center gap-2"><img src="${emp.photoURL}" class="w-6 h-6 rounded-full">${escapeHTML(emp.name)}</div>${dateBadge}</td>
+            <td class="p-3 text-sm font-bold text-green-600 dark:text-green-400"><div class="flex flex-col gap-1 items-start">${statusBadge}<span>${pIn}</span>${locHtml}</div></td>
+            <td class="p-3">${breaksHtml}</td>
+            <td class="p-3 text-sm text-red-600 dark:text-red-400 font-bold">${pOut}</td>
+        </tr>
+    `;
+}
+
+        window.renderMyAttendanceHistory = () => {
+            const list = document.getElementById('attendanceRecordsList');
+            document.getElementById('attendanceTableTitle').innerText = 'سجل الحضور الخاص بي (آخر 30 يوم)';
+            list.innerHTML = '';
+            
+            const myRecords = globalAttendance
+                .filter(a => a.uid === currentUserData.uid)
+                .sort((a,b) => b.date.localeCompare(a.date))
+                .slice(0, 30); // عرض آخر 30 يوماً فقط
+
+            if(myRecords.length === 0) {
+                list.innerHTML = '<tr><td colspan="4" class="p-4 text-center font-bold">لا يوجد لك سجلات حضور سابقة</td></tr>';
+                return;
+            }
+
+            const me = { name: currentUserData.name, photoURL: currentUserData.photoURL };
+            myRecords.forEach(record => {
+                list.innerHTML += buildAttendanceRow(me, record, true);
+            });
+        };
+
+window.saveAttendanceSettings = async () => {
+    if(!window.isAdmin()) return;
+    const days = document.getElementById('autoDeleteAttendanceDays').value;
+    try {
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'attendance'), { autoDeleteDays: days }, { merge: true });
+        showToast('تم حفظ إعدادات الحذف التلقائي بنجاح', 'success');
+    } catch(e) { console.error(e); }
+};
+
+async function autoDeleteOldAttendance() {
+    if(!currentUserData || !window.isAdmin()) return;
+    try {
+        const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'attendance'));
+        if(snap.exists()) {
+            const days = snap.data().autoDeleteDays;
+            if(days && days !== 'never') {
+                const cutoffDate = new Date();
+                cutoffDate.setDate(cutoffDate.getDate() - parseInt(days));
+                const cutoffStr = `${cutoffDate.getFullYear()}-${String(cutoffDate.getMonth()+1).padStart(2,'0')}-${String(cutoffDate.getDate()).padStart(2,'0')}`;
+
+                globalAttendance.forEach(a => {
+                    if(a.date < cutoffStr) {
+                        deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance', a.id)).catch(e=>console.log(e));
+                    }
+                });
+            }
+            document.getElementById('autoDeleteAttendanceDays').value = days || 'never';
+        }
+    } catch(e) { console.error(e); }
+}
+
+        // الإجازات وإدارتها
+        document.getElementById('leaveAttachmentInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if(!file) {
+                document.getElementById('leaveAttachmentBase64').value = '';
+                return;
+            }
+            
+            // Allow up to 200MB 
+            if(file.size > 100 * 1024 * 1024) {
+                showToast('حجم المرفق تجاوز 100 ميجابايت.', 'error');
+                e.target.value = '';
+                return;
+            }
+
+            showToast('جاري تحضير المرفق (قد يستغرق وقتاً حسب الحجم)...', 'info');
+            
+            const reader = new FileReader();
+            reader.onload = async function(event) {
+                const base64Data = event.target.result.split(',')[1];
+                
+                try {
+                    const fileUrl = await window.uploadToFirebase(file, 'leaves_attachments');
+                    
+                    document.getElementById('leaveAttachmentBase64').value = fileUrl;
+                    showToast('تم تجهيز المرفق للمشاركة', 'success');
+
+                } catch (err) {
+                    console.error(err);
+                    showToast('حدث خطأ أثناء رفع المرفق.', 'error');
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+
+        window.handleLeaveTypeChange = () => {
+            const val = document.getElementById('leaveType').value;
+            const fromInput = document.getElementById('leaveFrom');
+            const toInput = document.getElementById('leaveTo');
+            const lblFrom = document.getElementById('lblLeaveFrom');
+            const lblTo = document.getElementById('lblLeaveTo');
+            
+            if (val.includes('مبكرة')) {
+                fromInput.type = 'datetime-local';
+                toInput.type = 'datetime-local';
+                lblFrom.innerText = 'من تاريخ / وقت';
+                lblTo.innerText = 'إلى تاريخ / وقت';
+            } else {
+                fromInput.type = 'date';
+                toInput.type = 'date';
+                lblFrom.innerText = 'من تاريخ';
+                lblTo.innerText = 'إلى تاريخ';
+            }
+        };
+
+        function getUserLeaveBalances(uid) {
+            const user = globalUsers.find(u => u.uid === uid);
+            if(user && user.leaveBalances) {
+                return user.leaveBalances;
+            }
+            return { days: 14, hours: 20 }; 
+        }
+
+        function calculateBalances(uid) {
+            const currentYear = new Date().getFullYear();
+            let usedDays = 0;
+            let usedHours = 0;
+            const totalBalances = getUserLeaveBalances(uid);
+
+            globalLeaves.forEach(l => {
+                if(l.uid === uid && l.status === 'approved') {
+                    const fromDate = new Date(l.from);
+                    if(fromDate.getFullYear() === currentYear) {
+                        const diffMs = l.to - l.from;
+                        if(l.type.includes('سنوية')) {
+                            usedDays += diffMs / (1000 * 60 * 60 * 24);
+                        } else if(l.type.includes('مبكرة')) {
+                            usedHours += diffMs / (1000 * 60 * 60);
+                        }
+                    }
+                }
+            });
+            
+            return {
+                daysLeft: Math.max(0, totalBalances.days - usedDays).toFixed(1),
+                hoursLeft: Math.max(0, totalBalances.hours - usedHours).toFixed(1),
+                totalDays: totalBalances.days,
+                totalHours: totalBalances.hours
+            };
+        }
+
+        window.loadSelectedEmpBalance = () => {
+            const empId = document.getElementById('balanceEmpSelect').value;
+            const btn = document.getElementById('saveBalanceBtn');
+            const daysInput = document.getElementById('empTotalDays');
+            const hoursInput = document.getElementById('empTotalHours');
+            
+            // If no specific employee is selected, just re-render to show all
+            if(!empId) {
+                btn.disabled = true;
+                daysInput.disabled = true;
+                hoursInput.disabled = true;
+                daysInput.value = '';
+                hoursInput.value = '';
+                renderLeaves();
+                return;
+            }
+            
+            btn.disabled = false;
+            daysInput.disabled = false;
+            hoursInput.disabled = false;
+            
+            const balances = getUserLeaveBalances(empId);
+            daysInput.value = balances.days;
+            hoursInput.value = balances.hours;
+            renderLeaves(); // Refilter list to show only this employee
+        };
+
+        window.saveEmpBalance = async () => {
+            const hasLeavePerm = window.isAdmin() || (currentUserData.permissions && currentUserData.permissions.canManageLeaves);
+            if(!hasLeavePerm) return;
+            
+            const empId = document.getElementById('balanceEmpSelect').value;
+            
+            // تأمين إضافي: لا يمكن لـ HR تعديل رصيده الخاص أبداً
+            if (!window.isAdmin() && empId === currentUserData.uid) {
+                showToast('لا يمكنك تعديل رصيد إجازاتك الخاصة!', 'error');
+                return;
+            }
+
+            const newDays = parseFloat(document.getElementById('empTotalDays').value);
+            const newHours = parseFloat(document.getElementById('empTotalHours').value);
+            
+            if(!empId || isNaN(newDays) || isNaN(newHours)) {
+                showToast('يرجى التأكد من الأرقام المدخلة', 'warning');
+                return;
+            }
+            
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', empId), {
+                    leaveBalances: { days: newDays, hours: newHours }
+                });
+                showToast('تم تحديث أرصدة الموظف بنجاح', 'success');
+                renderLeaves(); 
+            } catch(e) {
+                console.error(e);
+                showToast('حدث خطأ في الحفظ', 'error');
+            }
+        };
+
+        document.getElementById('leaveForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if(!currentUserData) return;
+            
+            const fromVal = document.getElementById('leaveFrom').value;
+            const toVal = document.getElementById('leaveTo').value;
+
+            if(!fromVal || !toVal) {
+                showToast('يرجى التأكد من تعبئة التواريخ', 'warning');
+                return;
+            }
+
+            const fromDate = new Date(fromVal).getTime();
+            const toDate = new Date(toVal).getTime();
+
+            if (isNaN(fromDate) || isNaN(toDate)) {
+                showToast('صيغة التاريخ غير صحيحة أو غير مكتملة، يرجى إعادة الإدخال.', 'error');
+                return;
+            }
+
+            const attachmentBase64 = document.getElementById('leaveAttachmentBase64').value;
+            
+            if(toDate <= fromDate) {
+                showToast('تاريخ الانتهاء يجب أن يكون بعد تاريخ البدء', 'warning');
+                return;
+            }
+
+            try {
+                await addDoc(getColRef('leaves'), {
+                    uid: currentUserData.uid, 
+                    name: currentUserData.name, 
+                    type: document.getElementById('leaveType').value,
+                    from: fromDate, 
+                    to: toDate,
+                    reason: document.getElementById('leaveReason').value, 
+                    attachment: attachmentBase64 || null,
+                    comments: [],
+                    status: 'pending', 
+                    timestamp: Date.now()
+                });
+                window.closeModal('leaveModal');
+                
+                const ceoUsers = globalUsers.filter(u => u.role === 'CEO' || u.role === 'مطور' || (u.role && u.role.toUpperCase() === 'DEVELOPER'));
+                ceoUsers.forEach(ceo => {
+                    const msgText = attachmentBase64 ? `طلب إجازة جديد (مرفق) من: ${currentUserData.name}` : `طلب جديد من: ${currentUserData.name}`;
+                    window.sendSystemNotification(ceo.uid, 'طلب إجازة جديد', msgText, 'leaves', 'leaves');
+                });
+
+                showToast('تم إرسال طلبك', 'success');
+                window.logAction('إجازات', 'تم تقديم طلب إجازة جديد');
+            } catch(err) { console.error(err); }
+        });
+
+        window.updateLeaveStatus = async (id, newStatus) => {
+            if(!window.isAdmin() && !(currentUserData.permissions && currentUserData.permissions.canManageLeaves)) return;
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leaves', id), { status: newStatus });
+                showToast('تم التحديث', 'success');
+                
+                const leave = globalLeaves.find(l => l.id === id);
+                if(leave && leave.uid) {
+                    const statusText = newStatus === 'approved' ? 'تمت الموافقة على' : 'تم رفض';
+                    window.sendSystemNotification(leave.uid, 'تحديث حالة الإجازة', `${statusText} طلب الإجازة الخاص بك.`, 'leaves', 'leaves');
+                }
+            } catch(e) { console.error(e); }
+        };
+
+        window.deleteLeave = async (id) => {
+            if(!window.isAdmin() && !(currentUserData.permissions && currentUserData.permissions.canManageLeaves)) return;
+            if(confirm('هل أنت متأكد من حذف هذا السجل نهائياً؟')) {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leaves', id));
+                    showToast('تم حذف السجل', 'success');
+                    window.logAction('حذف إجازة', 'تم حذف سجل إجازة/مغادرة');
+                } catch(e) { console.error(e); }
+            }
+        };
+
+        window.viewLeaveDetails = (id) => {
+            const leave = globalLeaves.find(l => l.id === id);
+            if(!leave) return;
+
+            groupReadTimestamps[id] = Date.now();
+            if(currentUserData) {
+                updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), {
+                    readReceipts: groupReadTimestamps
+                }).catch(e => console.error(e));
+            }
+
+            document.getElementById('currentLeaveIdForChat').value = leave.id;
+            document.getElementById('leaveDetailsName').innerText = `الموظف: ${leave.name}`;
+            document.getElementById('leaveDetailsText').innerText = leave.reason ? leave.reason : 'لا توجد تفاصيل إضافية';
+
+            // التحكم في إمكانية إرسال الرسائل بناءً على حالة الطلب
+            const chatInput = document.getElementById('leaveChatInput');
+            const chatBtn = chatInput.nextElementSibling;
+            if (leave.status !== 'pending') {
+                chatInput.disabled = true;
+                chatInput.placeholder = 'لا يمكن الرد، تم إغلاق الطلب.';
+                chatBtn.disabled = true;
+                chatBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                chatInput.disabled = false;
+                chatInput.placeholder = 'اكتب رداً... (اضغط Enter للإرسال)';
+                chatBtn.disabled = false;
+                chatBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+            
+            const attSection = document.getElementById('leaveAttachmentSection');
+            if(leave.attachment) {
+                attSection.classList.remove('hidden');
+                
+                let linkHref = leave.attachment;
+                if(linkHref.includes('drive.google.com/file/d/')) {
+                    const match = linkHref.match(/\/d\/(.+?)\//);
+                    if(match && match[1]) linkHref = `https://drive.google.com/uc?export=view&id=${match[1]}`;
+                }
+
+                document.getElementById('leaveAttachmentLink').href = linkHref;
+            } else {
+                attSection.classList.add('hidden');
+            }
+
+            renderLeaveComments(leave.comments || []);
+            window.openModal('leaveDetailsModal');
+            
+            setTimeout(() => {
+                const chatBox = document.getElementById('leaveChatHistory');
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }, 100);
+            
+            renderLeaves();
+        };
+
+        function renderLeaveComments(comments) {
+            const chatBox = document.getElementById('leaveChatHistory');
+            chatBox.innerHTML = '';
+            if(comments.length === 0) {
+                chatBox.innerHTML = '<p class="text-xs text-gray-400 text-center mt-4">لا توجد رسائل سابقة. يمكنك بدء المحادثة.</p>';
+                return;
+            }
+            comments.forEach(c => {
+                const isMe = c.senderId === currentUserData.uid;
+                const align = isMe ? 'self-end bg-pink-100 dark:bg-pink-900/40 border-pink-200 dark:border-pink-800' : 'self-start bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700';
+                const time = new Date(c.timestamp).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+                chatBox.innerHTML += `
+                    <div class="border rounded px-3 py-2 w-[85%] ${align}">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="font-bold text-[10px] text-gray-800 dark:text-gray-200">${escapeHTML(c.senderName)}</span>
+                            <span class="text-[9px] text-gray-400">${time}</span>
+                        </div>
+                        <p class="text-xs text-gray-700 dark:text-gray-300">${escapeHTML(c.text)}</p>
+                    </div>
+                `;
+            });
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        window.sendLeaveComment = async () => {
+            const input = document.getElementById('leaveChatInput');
+            const text = input.value.trim();
+            const leaveId = document.getElementById('currentLeaveIdForChat').value;
+            if(!text || !leaveId || !currentUserData) return;
+
+            const leave = globalLeaves.find(l => l.id === leaveId);
+            if(!leave) return;
+
+            let currentComments = leave.comments || [];
+            currentComments.push({
+                senderId: currentUserData.uid,
+                senderName: currentUserData.name,
+                text: text,
+                timestamp: Date.now()
+            });
+
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leaves', leaveId), { comments: currentComments });
+                input.value = '';
+                
+                setTimeout(() => {
+                    const chatBox = document.getElementById('leaveChatHistory');
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }, 50);
+
+                const targetUid = (window.isAdmin()) ? leave.uid : globalUsers.find(u => u.role === 'CEO' || u.role === 'مطور' || (u.role && u.role.toUpperCase() === 'DEVELOPER'))?.uid;
+                if(targetUid) {
+                    window.sendSystemNotification(targetUid, 'رسالة جديدة في الطلب', `أرسل ${currentUserData.name} تعليقاً على طلب الإجازة.`, 'leaves', 'leaves');
+                }
+            } catch(e) { console.error(e); }
+        };
+
+        window.renderLeaves = () => {
+            const list = document.getElementById('leavesList');
+            const searchTerm = document.getElementById('searchLeaves')?.value.toLowerCase() || '';
+            list.innerHTML = '';
+            const isCEO = currentUserData && (window.isAdmin() || (currentUserData.permissions && currentUserData.permissions.canManageLeaves));
+            
+            let pendingCount = 0;
+            globalLeaves.forEach(l => { if(l.status === 'pending') pendingCount++; });
+            const badge1 = document.getElementById('gridLeavesBadge');
+            const badge2 = document.getElementById('sidebarLeavesBadge');
+            if(isCEO && pendingCount > 0) {
+                if(badge1) { badge1.innerText = pendingCount; badge1.classList.remove('hidden'); }
+                if(badge2) { badge2.innerText = pendingCount; badge2.classList.remove('hidden'); }
+            } else {
+                if(badge1) badge1.classList.add('hidden');
+                if(badge2) badge2.classList.add('hidden');
+            }
+
+            const empFilterSelect = document.getElementById('balanceEmpSelect');
+            const selectedEmpId = empFilterSelect ? empFilterSelect.value : '';
+
+            if(isCEO) {
+                document.getElementById('leaveActionHeader').classList.remove('hidden');
+                document.getElementById('myLeaveBalances').classList.add('hidden');
+                document.getElementById('ceoLeaveBalancesSection').classList.remove('hidden');
+                
+                if(empFilterSelect && empFilterSelect.options.length <= 1 && globalUsers.length > 0) {
+                    globalUsers.forEach(u => {
+                        if(u.role !== 'CEO' && u.role !== 'مطور' && u.role !== 'Developer') empFilterSelect.innerHTML += `<option value="${u.uid}">${u.name}</option>`;
+                    });
+                }
+            } else {
+                document.getElementById('leaveActionHeader').classList.add('hidden');
+                document.getElementById('myLeaveBalances').classList.remove('hidden');
+                document.getElementById('ceoLeaveBalancesSection').classList.add('hidden');
+                
+                const myBalances = calculateBalances(currentUserData.uid);
+                document.getElementById('balDaysTxt').innerHTML = `${myBalances.daysLeft} <span class="text-sm font-normal text-gray-400">من ${myBalances.totalDays}</span>`;
+                document.getElementById('balHoursTxt').innerHTML = `${myBalances.hoursLeft} <span class="text-sm font-normal text-gray-400">من ${myBalances.totalHours}</span>`;
+            }
+
+            const filteredLeaves = globalLeaves.filter(l => {
+                const matchUser = isCEO ? (selectedEmpId ? l.uid === selectedEmpId : true) : l.uid === currentUserData.uid;
+                const matchSearch = l.name.toLowerCase().includes(searchTerm) || 
+                                    l.type.toLowerCase().includes(searchTerm) || 
+                                    (l.reason && l.reason.toLowerCase().includes(searchTerm));
+                return matchUser && matchSearch;
+            });
+
+            if(filteredLeaves.length === 0) { list.innerHTML = `<tr><td colspan="${isCEO ? 7 : 6}" class="p-4 text-center text-gray-500">لا توجد طلبات مطابقة</td></tr>`; return; }
+
+            filteredLeaves.forEach(l => {
+                let fromStr, toStr;
+                if (!l.type.includes('مبكرة')) {
+                    fromStr = new Date(l.from).toLocaleDateString('ar-EG');
+                    toStr = new Date(l.to).toLocaleDateString('ar-EG');
+                } else {
+                    fromStr = new Date(l.from).toLocaleString('ar-EG', {month: 'short', day: 'numeric', hour:'2-digit', minute:'2-digit'});
+                    toStr = new Date(l.to).toLocaleString('ar-EG', {month: 'short', day: 'numeric', hour:'2-digit', minute:'2-digit'});
+                }
+
+                let statusHtml = l.status === 'pending' ? '<span class="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-bold shadow-sm">قيد الانتظار</span>' : (l.status === 'approved' ? '<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold shadow-sm">مقبول</span>' : '<span class="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold shadow-sm">مرفوض</span>');
+
+                const bal = calculateBalances(l.uid);
+                let balInfo = '';
+                if(l.type.includes('سنوية')) balInfo = `<br><span class="text-[10px] text-gray-500">متبقي: ${bal.daysLeft} من ${bal.totalDays}</span>`;
+                else if(l.type.includes('مبكرة')) balInfo = `<br><span class="text-[10px] text-gray-500">متبقي: ${bal.hoursLeft} من ${bal.totalHours}</span>`;
+
+                const lastRead = groupReadTimestamps[l.id] || 0;
+                const unreadCount = l.comments ? l.comments.filter(c => c.senderId !== currentUserData.uid && c.timestamp > lastRead).length : 0;
+
+                const attachIcon = l.attachment ? '<i class="fa-solid fa-paperclip text-blue-500 mx-1"></i>' : '';
+                const unreadComments = unreadCount > 0 ? `<span class="bg-pink-500 text-white rounded-full px-1.5 text-[10px] absolute -top-2 -right-2">${unreadCount}</span>` : '';
+                const reasonBtn = `<button onclick="window.viewLeaveDetails('${l.id}')" class="relative text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 px-3 py-1.5 rounded-lg transition font-bold text-gray-700 dark:text-gray-300 shadow-sm">${attachIcon} التفاصيل / المحادثة ${unreadComments}</button>`;
+
+                let actionHtml = '';
+                const isMyOwnLeave = l.uid === currentUserData.uid;
+                // السماح للمدير التنفيذي بقبول كل شيء، أما من يملك الصلاحية (مثل الـ HR) فيمكنه قبول إجازات الجميع باستثناء إجازته هو
+                const canApproveThisLeave = window.isAdmin() || ((currentUserData.permissions && currentUserData.permissions.canManageLeaves) && !isMyOwnLeave);
+
+                if(canApproveThisLeave) {
+                    if(l.status === 'pending') {
+                        actionHtml = `<td class="p-3 whitespace-nowrap text-center">
+                            <button onclick="window.updateLeaveStatus('${l.id}', 'approved')" class="bg-green-500 hover:bg-green-600 text-white p-1.5 rounded mr-1 shadow" title="موافقة"><i class="fa-solid fa-check"></i></button>
+                            <button onclick="window.updateLeaveStatus('${l.id}', 'rejected')" class="bg-red-500 hover:bg-red-600 text-white p-1.5 rounded mr-1 shadow" title="رفض"><i class="fa-solid fa-xmark"></i></button>
+                            <button onclick="window.deleteLeave('${l.id}')" class="bg-gray-500 hover:bg-gray-600 text-white p-1.5 rounded shadow" title="حذف"><i class="fa-solid fa-trash"></i></button>
+                        </td>`;
+                    } else {
+                        actionHtml = `<td class="p-3 whitespace-nowrap text-center">
+                            <span class="text-xs text-gray-400 font-bold mr-2">تم الإجراء</span>
+                            <button onclick="window.deleteLeave('${l.id}')" class="text-red-400 hover:text-red-600 p-1 rounded transition" title="حذف السجل"><i class="fa-solid fa-trash"></i></button>
+                        </td>`;
+                    }
+                }
+
+                list.innerHTML += `
+                    <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                        <td class="p-3 font-bold text-sm text-primary dark:text-secondary">${escapeHTML(l.name)}</td>
+                        <td class="p-3 text-sm font-bold text-gray-700 dark:text-gray-300">${l.type} ${isCEO ? balInfo : ''}</td>
+                        <td class="p-3 text-center">${reasonBtn}</td>
+                        <td class="p-3 text-xs font-semibold" dir="ltr">${fromStr}</td>
+                        <td class="p-3 text-xs font-semibold" dir="ltr">${toStr}</td>
+                        <td class="p-3">${statusHtml}</td>${actionHtml}
+                    </tr>
+                `;
+            });
+        };
+
+        window.openCreateMeetingModal = () => {
+            const container = document.getElementById('meetingMembersSelection');
+            container.innerHTML = '';
+            globalUsers.forEach(emp => {
+                if(emp.uid !== currentUserData.uid) {
+                    container.innerHTML += `
+                        <label class="flex items-center gap-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded cursor-pointer transition border border-transparent hover:border-gray-200">
+                            <input type="checkbox" value="${emp.uid}" class="meeting-member-checkbox w-4 h-4 text-green-600 rounded">
+                            <img src="${emp.photoURL}" class="w-6 h-6 rounded-full"><span class="text-sm font-bold text-gray-700 dark:text-gray-200">${escapeHTML(emp.name)}</span>
+                        </label>
+                    `;
+                }
+            });
+            window.openModal('createMeetingModal');
+        };
+
+        document.getElementById('createMeetingForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if(!window.isAdmin() && !(currentUserData.permissions && currentUserData.permissions.canCreateMeetings)) return;
+            const title = document.getElementById('newMeetingTitle').value;
+            const timeVal = document.getElementById('newMeetingTime').value;
+            let scheduledTime = null;
+            let status = 'active';
+
+            if (timeVal) {
+                scheduledTime = new Date(timeVal).getTime();
+                if (isNaN(scheduledTime)) {
+                    showToast('الوقت المدخل غير صحيح.', 'error');
+                    return;
+                }
+                if (scheduledTime > Date.now()) status = 'scheduled';
+            }
+
+            const checkboxes = document.querySelectorAll('.meeting-member-checkbox:checked');
+            const invited = Array.from(checkboxes).map(cb => cb.value);
+            invited.push(currentUserData.uid); 
+
+            try {
+                await addDoc(getColRef('meetings'), {
+                    title: title, scheduledFor: scheduledTime, createdBy: currentUserData.uid, creatorName: currentUserData.name,
+                    invitedUsers: invited, status: status, startedAt: status === 'active' ? Date.now() : null, endedAt: null, events: [], timestamp: Date.now()
+                });
+                window.closeModal('createMeetingModal');
+                showToast('تم الإنشاء بنجاح', 'success');
+                
+                const timeStr = scheduledTime ? new Date(scheduledTime).toLocaleString('ar-EG') : 'الآن';
+                invited.forEach(async uid => {
+                    if (uid === currentUserData.uid) return; 
+                    
+                    const user = globalUsers.find(u => u.uid === uid);
+                    if (user && user.email) {
+                        fetch(GOOGLE_SCRIPT_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify({
+                                action: 'sendMeetingEmail',
+                                to_email: user.email, 
+                                to_name: user.name, 
+                                creator_name: currentUserData.name,
+                                meeting_title: title, 
+                                meeting_time: timeStr, 
+                                meeting_link: window.location.href,
+                                token: await auth.currentUser.getIdToken()
+                            })
+                        }).catch(e => console.error(e));
+                    }
+
+                    window.sendSystemNotification(uid, 'اجتماع جديد', `تمت دعوتك لاجتماع: ${title} - ${timeStr}`, 'meetings', 'meetings');
+                });
+                window.logAction('إجتماع', `تم إنشاء اجتماع جديد بعنوان: ${title}`);
+            } catch(e) { console.error(e); }
+        });
+
+        window.joinMeeting = async (meetingId, title) => {
+            currentMeetingId = meetingId;
+            const roomName = `QuillWorldApp_${appId.substring(0,5)}_${meetingId.replace(/[^a-zA-Z0-9]/g, "")}`;
+            document.getElementById('videoCallTitle').innerText = `اجتماع: ${title}`;
+            document.getElementById('videoCallModal').classList.remove('hidden'); document.getElementById('videoCallModal').classList.add('flex');
+
+            const domain = 'meet.jit.si';
+            const options = {
+                roomName: roomName, width: '100%', height: '100%', parentNode: document.querySelector('#jitsiContainer'),
+                userInfo: { displayName: currentUserData.name }, configOverwrite: { prejoinPageEnabled: false }
+            };
+            document.querySelector('#jitsiContainer').innerHTML = '';
+            jitsiApi = new JitsiMeetExternalAPI(domain, options);
+            logMeetingEvent(meetingId, 'joined');
+
+            if (window.isSuperAdmin()) {
+                const meeting = globalMeetings.find(m => m.id === meetingId);
+                if (meeting && meeting.status === 'scheduled') {
+                    updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'meetings', meetingId), { status: 'active', startedAt: Date.now() });
+                }
+            }
+
+            jitsiApi.addEventListener('videoConferenceLeft', () => {
+                logMeetingEvent(meetingId, 'left'); window.endVideoCall();
+            });
+        };
+
+        window.endVideoCall = () => {
+            if(jitsiApi) { jitsiApi.dispose(); jitsiApi = null; if(currentMeetingId) logMeetingEvent(currentMeetingId, 'left'); }
+            document.getElementById('videoCallModal').classList.add('hidden'); document.getElementById('videoCallModal').classList.remove('flex');
+            document.querySelector('#jitsiContainer').innerHTML = ''; currentMeetingId = null;
+        };
+
+        window.endMeetingForEveryone = async (meetingId) => {
+            if(!window.isAdmin()) return;
+            if(confirm('إنهاء الاجتماع للجميع ونقله للسجل؟')) {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'meetings', meetingId), { status: 'ended', endedAt: Date.now() });
+            }
+        };
+
+        window.deleteMeeting = async (id) => {
+            if(!window.isAdmin()) return;
+            if(confirm('هل أنت متأكد من حذف هذا الاجتماع من السجل نهائياً؟')) {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'meetings', id));
+                    showToast('تم حذف الاجتماع', 'success');
+                } catch(e) { console.error(e); }
+            }
+        };
+                
+        window.renderMeetings = () => {
+            const activeList = document.getElementById('activeMeetingsList');
+            const pastList = document.getElementById('pastMeetingsList');
+            const searchTerm = document.getElementById('searchMeetings')?.value.toLowerCase() || '';
+            activeList.innerHTML = '';let hasPast = false, hasActive = false;
+
+            globalMeetings.forEach(meeting => {
+                const isInvited = meeting.invitedUsers.includes(currentUserData.uid) || window.isAdmin();
+                if(!isInvited) return;
+                
+                if(!meeting.title.toLowerCase().includes(searchTerm)) return;
+
+                const isCEO = window.isAdmin();
+                let timeStr = meeting.scheduledFor ? new Date(meeting.scheduledFor).toLocaleString('ar-EG') : 'الآن';
+                
+                if (meeting.status === 'scheduled' || meeting.status === 'active') {
+                    hasActive = true;
+                    let statusBadge = meeting.status === 'active' ? `<span class="bg-red-100 text-red-600 font-bold text-[10px] px-2 py-1 rounded shadow-sm"><i class="fa-solid fa-circle text-[8px] animate-pulse"></i> جاري الآن</span>` : `<span class="bg-blue-100 text-blue-600 font-bold text-[10px] px-2 py-1 rounded shadow-sm">مجدول</span>`;
+                    let actionsHtml = `<button onclick="window.joinMeeting('${meeting.id}', '${meeting.title.replace(/'/g, "\\'")}')" class="flex-1 bg-green-500 hover:bg-green-600 text-white text-xs py-2 rounded font-bold shadow"><i class="fa-solid fa-video mx-1"></i> انضمام</button>`;
+                    
+                    if (isCEO) {
+                        actionsHtml += `<button onclick="window.endMeetingForEveryone('${meeting.id}')" class="bg-red-100 hover:bg-red-200 text-red-600 w-8 h-8 rounded transition" title="إنهاء للجميع"><i class="fa-solid fa-power-off"></i></button>`;
+                    }
+
+                    activeList.innerHTML += `
+                        <div class="bg-white dark:bg-gray-800 border dark:border-gray-700 p-4 rounded-xl shadow-sm hover:shadow-md transition">
+                            <div class="flex justify-between mb-2"><h4 class="font-bold text-gray-800 dark:text-gray-100">${escapeHTML(meeting.title)}</h4>${statusBadge}</div>
+                            <p class="text-xs text-gray-500 font-bold mb-4"><i class="fa-regular fa-clock ml-1"></i> الموعد: ${timeStr}</p>
+                            <div class="flex gap-2">${actionsHtml}</div>
+                        </div>
+                    `;
+                } else if (meeting.status === 'ended') {
+                    const myEvents = meeting.events ? meeting.events.filter(e => e.uid === currentUserData.uid) : [];
+                    if (!isCEO && myEvents.length === 0) return;
+                    hasPast = true;
+                    
+                    const durationMins = meeting.endedAt && meeting.startedAt ? Math.max(1, Math.round((meeting.endedAt - meeting.startedAt) / 60000)) : 0;
+                    const dateStr = meeting.startedAt ? new Date(meeting.startedAt).toLocaleDateString('ar-EG', {year: 'numeric', month: 'numeric', day: 'numeric'}) : '';
+                    
+                    const uniqueJoins = [];
+                    const seenUids = new Set();
+                    if(meeting.events) {
+                        meeting.events.filter(e => e.action === 'joined').forEach(e => {
+                            if(!seenUids.has(e.uid)) {
+                                seenUids.add(e.uid);
+                                uniqueJoins.push(e);
+                            }
+                        });
+                    }
+
+                    let joinLogsHtml = '';
+                    uniqueJoins.forEach(e => {
+                         const t = new Date(e.timestamp).toLocaleTimeString('ar-EG', {hour: '2-digit', minute: '2-digit'});
+                         joinLogsHtml += `<span class="inline-block text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-600 px-2 py-1 rounded m-0.5">وقت دخولك: ${t} | الحضور: ${escapeHTML(e.name)}</span> `;
+                    });
+
+                    if(!joinLogsHtml && isCEO) joinLogsHtml = '<span class="text-gray-400">لم يسجل دخول أي شخص</span>';
+
+                    let deleteBtnHtml = '';
+                    if(isCEO) {
+                        deleteBtnHtml = `<button onclick="window.deleteMeeting('${meeting.id}')" class="text-red-400 hover:text-red-600 p-1.5 rounded transition" title="حذف من السجل"><i class="fa-solid fa-trash"></i></button>`;
+                    }
+
+                    pastList.innerHTML += `
+                        <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition flex flex-col">
+                            <div class="p-4 flex justify-between items-center bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
+                                <div>
+                                    <h4 class="font-bold text-sm text-gray-800 dark:text-white mb-1">${escapeHTML(meeting.title)}</h4>
+                                    <div class="text-[10px] text-gray-500 font-semibold flex gap-3 items-center">
+                                        <span><i class="fa-regular fa-calendar ml-1"></i> ${dateStr}</span>
+                                        <span><i class="fa-solid fa-stopwatch ml-1"></i> المدة: ${durationMins} دقيقة</span>
+                                        ${deleteBtnHtml}
+                                    </div>
+                                </div>
+                                <span class="text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold px-2 py-1 rounded flex items-center gap-1 border border-gray-200 dark:border-gray-600"><i class="fa-solid fa-check"></i> منتهي</span>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-900 p-3 text-[10px] font-medium leading-relaxed">
+                                ${joinLogsHtml}
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            if(!hasActive) activeList.innerHTML = '<p class="text-sm text-gray-400 text-center col-span-full p-4">لا يوجد اجتماعات حالياً مطابقة للبحث.</p>';
+            if(!hasPast) pastList.innerHTML = '<p class="text-sm text-gray-400 text-center p-4">لا يوجد سجلات سابقة مطابقة للبحث.</p>';
+        };
+
+        window.handleExpenseSubmit = async (e) => {
+            e.preventDefault();
+            if(!currentUserData) return;
+            
+            const desc = document.getElementById('expDesc').value;
+            const amountVal = document.getElementById('expAmount').value;
+            const dateVal = document.getElementById('expDate').value;
+            const fileInput = document.getElementById('expReceiptFile');
+            const file = fileInput ? fileInput.files[0] : null;
+            
+            const amount = parseFloat(amountVal);
+            if(isNaN(amount) || !dateVal) {
+                showToast('يرجى التأكد من تعبئة المبلغ والتاريخ بشكل صحيح', 'error');
+                return;
+            }
+
+            const btn = document.querySelector('#expensesForm button[type="submit"]');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الحفظ...';
+
+            const saveExpense = async (receiptUrl) => {
+                try {
+                    await addDoc(getColRef('expenses'), {
+                        desc: desc, amount: amount, date: dateVal, addedBy: currentUserData.name, uid: currentUserData.uid, receipt: receiptUrl || null, timestamp: Date.now()
+                    });
+                    document.getElementById('expensesForm').reset();
+                    showToast('تم إضافة المصروف بنجاح', 'success');
+                } catch(err) { 
+                    console.error(err); 
+                    showToast('حدث خطأ في الحفظ', 'error'); 
+                } finally { 
+                    btn.disabled = false; 
+                    btn.innerHTML = 'إضافة'; 
+                }
+            };
+
+            if (file) {
+                if(file.size > 5 * 1024 * 1024) { 
+                    showToast('الصورة كبيرة جداً! الحد الأقصى 5 ميجابايت', 'warning'); 
+                    btn.disabled = false; btn.innerHTML = 'إضافة'; 
+                    return; 
+                }
+                showToast('جاري رفع صورة الإيصال...', 'info');
+                const reader = new FileReader();
+                reader.onload = async (ev) => {
+                    const base64Data = ev.target.result.split(',')[1];
+                    try {
+                        const fileUrl = await window.uploadToFirebase(file, 'expenses');
+                        saveExpense(fileUrl);
+                    } catch(error) {
+                        console.error("Upload failed", error);
+                        showToast('فشل رفع الإيصال', 'error');
+                        btn.disabled = false; btn.innerHTML = 'إضافة';
+                    }
+                };
+                reader.readAsDataURL(file);
+            } else {
+                saveExpense(null);
+            }
+        };
+
+        window.deleteExpense = async (id) => {
+            const exp = globalExpenses.find(e => e.id === id);
+            if(!exp) return;
+            
+            const isManager = window.isAdmin() || currentUserData.role === 'accountant' || (currentUserData.permissions && currentUserData.permissions.canManageExpenses);
+            
+            if(!isManager && exp.uid !== currentUserData.uid) {
+                showToast('لا تملك صلاحية لحذف هذا المصروف', 'error');
+                return;
+            }
+            
+            if(confirm('هل أنت متأكد من حذف هذا المصروف؟')) {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'expenses', id));
+                showToast('تم الحذف', 'success');
+            }
+        };
+
+        let isFirstExpenseLoad = true;
+        window.renderExpenses = () => {
+            const list = document.getElementById('expensesList');
+            if(!list) return;
+            
+            const isManager = window.isAdmin() || currentUserData.role === 'accountant' || (currentUserData.permissions && currentUserData.permissions.canManageExpenses);
+            const filterSection = document.getElementById('expensesManagerFilters');
+            const empFilterSelect = document.getElementById('filterExpEmp');
+            const dateFilterInput = document.getElementById('filterExpDate');
+            
+            if(filterSection) filterSection.style.display = isManager ? 'flex' : 'none';
+
+            if (isManager && empFilterSelect && empFilterSelect.options.length <= 1) {
+                globalUsers.forEach(u => {
+                    if(u.role !== 'CEO' && u.role !== 'مطور' && u.role !== 'Developer') empFilterSelect.innerHTML += `<option value="${u.uid}">${escapeHTML(u.name)}</option>`;
+                });
+            }
+
+            if (isManager && isFirstExpenseLoad && dateFilterInput) {
+                dateFilterInput.value = getTodayDateString();
+                isFirstExpenseLoad = false;
+            }
+
+            const searchTerm = document.getElementById('searchExpenses')?.value.toLowerCase() || '';
+            const empFilter = empFilterSelect?.value || 'all';
+            const dateFilter = dateFilterInput?.value || '';
+
+            list.innerHTML = '';
+            
+            const filteredExpenses = globalExpenses.filter(exp => {
+                if (!isManager && exp.uid !== currentUserData.uid) return false;
+                if (isManager) {
+                    if (empFilter !== 'all' && exp.uid !== empFilter) return false;
+                    if (dateFilter && exp.date !== dateFilter) return false;
+                }
+                return exp.desc.toLowerCase().includes(searchTerm) || exp.addedBy.toLowerCase().includes(searchTerm);
+            });
+
+            if(filteredExpenses.length === 0) {
+                list.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-500 font-bold">لا يوجد مصاريف مطابقة للبحث أو الفلتر</td></tr>';
+                return;
+            }
+
+            filteredExpenses.forEach(exp => {
+                const canDelete = isManager || exp.uid === currentUserData.uid;
+                const deleteBtnHtml = canDelete ? `<button onclick="window.deleteExpense('${exp.id}')" class="text-red-500 hover:text-red-700 bg-red-50 dark:bg-gray-700 p-1.5 rounded transition"><i class="fa-solid fa-trash"></i></button>` : `<span class="text-[10px] text-gray-400">---</span>`;
+                
+                const receiptHtml = exp.receipt ? `<button onclick="window.viewExternalDocument('${exp.receipt}', '${exp.receipt}')" class="text-xs bg-teal-50 text-teal-600 hover:bg-teal-100 border border-teal-200 dark:border-teal-800 dark:bg-teal-900/30 px-2 py-1 rounded transition font-bold"><i class="fa-solid fa-image mx-1"></i> الإيصال</button>` : `<span class="text-[10px] text-gray-400">لا يوجد</span>`;
+
+                list.innerHTML += `
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-800 border-b dark:border-gray-700 transition-colors">
+                        <td class="p-3 text-xs" dir="ltr">${exp.date}</td>
+                        <td class="p-3 text-sm font-bold text-gray-800 dark:text-gray-200">${escapeHTML(exp.desc)}</td>
+                        <td class="p-3 text-sm font-bold text-teal-600 dark:text-teal-400" dir="ltr">${exp.amount} JOD</td>
+                        <td class="p-3 text-xs text-gray-500">${escapeHTML(exp.addedBy)}</td>
+                        <td class="p-3 text-center">${receiptHtml}</td>
+                        <td class="p-3 text-center">${deleteBtnHtml}</td>
+                    </tr>
+                `;
+            });
+        };
+
+        // الجرد (الموحد)
+        window.switchInventoryTab = (tab) => {
+            const activeBtn = document.getElementById('tabInventoryActive');
+            const pastBtn = document.getElementById('tabInventoryPast');
+            const activeContainer = document.getElementById('inventoryActiveContainer');
+            const pastContainer = document.getElementById('inventoryPastContainer');
+            const bulkMoveBtnContainer = document.getElementById('bulkMoveInventoryContainer');
+            const dateFilter = document.getElementById('oldInventoryDateFilter');
+
+            if(tab === 'active') {
+                activeBtn.className = "py-2 px-4 font-bold text-sm border-b-2 border-purple-600 text-purple-600 dark:text-purple-400";
+                pastBtn.className = "py-2 px-4 font-bold text-sm border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300";
+                activeContainer.classList.remove('hidden');
+                pastContainer.classList.add('hidden');
+                if(bulkMoveBtnContainer) bulkMoveBtnContainer.classList.remove('hidden');
+                if(dateFilter) dateFilter.classList.add('hidden');
+            } else {
+                pastBtn.className = "py-2 px-4 font-bold text-sm border-b-2 border-purple-600 text-purple-600 dark:text-purple-400";
+                activeBtn.className = "py-2 px-4 font-bold text-sm border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300";
+                pastContainer.classList.remove('hidden');
+                activeContainer.classList.add('hidden');
+                if(bulkMoveBtnContainer) bulkMoveBtnContainer.classList.add('hidden');
+                if(dateFilter) dateFilter.classList.remove('hidden');
+                
+                populateOldInventoryDates();
+            }
+        };
+
+        function populateOldInventoryDates() {
+            const select = document.getElementById('oldInventoryDateSelect');
+            if(!select) return;
+            const oldItems = globalInventory.filter(i => i.isOld && i.movedToOldAt);
+            const dates = new Set();
+            oldItems.forEach(i => {
+                const d = new Date(i.movedToOldAt);
+                const dStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                dates.add(dStr);
+            });
+            
+            select.innerHTML = '<option value="all">جميع التواريخ القديمة</option>';
+            Array.from(dates).sort().reverse().forEach(d => {
+                select.innerHTML += `<option value="${d}">${d}</option>`;
+            });
+        }
+
+        window.openAddInventoryModal = () => {
+            document.getElementById('inventoryForm').reset();
+            document.getElementById('invId').value = '';
+            document.getElementById('inventoryModalTitle').innerText = 'إضافة محتويات للجرد';
+            window.handleInvTypeChange(); 
+            window.openModal('inventoryModal');
+            document.getElementById('invSubmitBtn').disabled = false;
+            document.getElementById('invSubmitBtn').innerHTML = 'حفظ في الجرد';
+        };
+
+        window.openEditInventoryModal = (id) => {
+            const item = globalInventory.find(i => i.id === id);
+            if(!item) return;
+
+            document.getElementById('inventoryForm').reset();
+            document.getElementById('invId').value = item.id;
+            document.getElementById('inventoryModalTitle').innerText = 'تعديل محتويات الجرد';
+            document.getElementById('invItemType').value = item.itemType;
+            window.handleInvTypeChange();
+
+            if (item.itemType === 'robot') {
+                document.getElementById('invRobotName').value = item.name;
+                document.getElementById('invRobotSerial').value = item.serialNumber || '';
+                document.getElementById('invRobotStatus').value = item.status;
+                document.getElementById('invRobotNotes').value = item.notes || '';
+            } else {
+                document.getElementById('invGenericName').value = item.name;
+                document.getElementById('invGenericQty').value = item.quantity || 1;
+                document.getElementById('invGenericSerial').value = item.serialNumber || '';
+                document.getElementById('invGenericStatus').value = item.status;
+                document.getElementById('invGenericNotes').value = item.notes || '';
+            }
+
+            window.openModal('inventoryModal');
+            document.getElementById('invSubmitBtn').disabled = false;
+            document.getElementById('invSubmitBtn').innerHTML = 'حفظ التعديلات';
+        };
+
+        window.handleInvTypeChange = () => {
+            const type = document.getElementById('invItemType').value;
+            if(type === 'robot') {
+                document.getElementById('invRobotFields').classList.remove('hidden');
+                document.getElementById('invGenericFields').classList.add('hidden');
+                document.getElementById('invRobotName').required = true;
+                document.getElementById('invRobotSerial').required = true;
+                document.getElementById('invGenericName').required = false;
+            } else {
+                document.getElementById('invRobotFields').classList.add('hidden');
+                document.getElementById('invGenericFields').classList.remove('hidden');
+                document.getElementById('invRobotName').required = false;
+                document.getElementById('invRobotSerial').required = false;
+                document.getElementById('invGenericName').required = true;
+            }
+        };
+
+        document.getElementById('inventoryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if(!currentUserData) return;
+            
+            const submitBtn = document.getElementById('invSubmitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mx-1"></i> جاري الحفظ...';
+
+            const type = document.getElementById('invItemType').value; 
+            const invId = document.getElementById('invId').value;
+            
+            let data = {
+                itemType: type,
+                isOld: false,
+                addedBy: currentUserData.name,
+                timestamp: Date.now()
+            };
+
+            if(type === 'robot') {
+                data.name = document.getElementById('invRobotName').value;
+                data.serialNumber = document.getElementById('invRobotSerial').value;
+                data.status = document.getElementById('invRobotStatus').value;
+                data.notes = document.getElementById('invRobotNotes').value;
+                data.quantity = 1; 
+            } else {
+                data.name = document.getElementById('invGenericName').value;
+                const qtyVal = parseInt(document.getElementById('invGenericQty').value);
+                data.quantity = isNaN(qtyVal) ? 1 : qtyVal;
+                data.serialNumber = document.getElementById('invGenericSerial').value || 'لا يوجد';
+                data.status = document.getElementById('invGenericStatus').value;
+                data.notes = document.getElementById('invGenericNotes').value;
+            }
+
+            try {
+                if (invId) {
+                    delete data.timestamp; 
+                    delete data.isOld; 
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'inventory', invId), data);
+                    showToast('تم تعديل العنصر بنجاح', 'success');
+                } else {
+                    await addDoc(getColRef('inventory'), data);
+                    showToast('تمت إضافة العنصر بنجاح', 'success');
+                    window.logAction('إضافة جرد', `تم إضافة ${data.name} إلى الجرد`);
+                }
+                window.closeModal('inventoryModal');
+            } catch(err) { 
+                console.error(err); 
+                showToast('حدث خطأ في الحفظ', 'error');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'حفظ في الجرد';
+            }
+        });
+
+        // MODIFICATION: Set Move Mode Logic (Now vs Schedule)
+        window.openBulkMoveModal = () => {
+            document.getElementById('bulkMoveDateInput').value = getTodayDateString();
+            window.setMoveMode('now');
+            window.openModal('bulkMoveInventoryModal');
+        };
+
+        window.setMoveMode = (mode) => {
+            inventoryConfig.moveMode = mode;
+            if(mode === 'now') {
+                document.getElementById('moveNowTab').className = "flex-1 py-2 font-bold text-sm bg-purple-100 text-purple-700 rounded-lg";
+                document.getElementById('moveScheduleTab').className = "flex-1 py-2 font-bold text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors";
+                document.getElementById('moveNowSection').classList.remove('hidden');
+                document.getElementById('moveScheduleSection').classList.add('hidden');
+            } else {
+                document.getElementById('moveScheduleTab').className = "flex-1 py-2 font-bold text-sm bg-purple-100 text-purple-700 rounded-lg";
+                document.getElementById('moveNowTab').className = "flex-1 py-2 font-bold text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors";
+                document.getElementById('moveNowSection').classList.add('hidden');
+                document.getElementById('moveScheduleSection').classList.remove('hidden');
+            }
+        };
+
+        // Fix logic for moving items and scheduling.
+        window.confirmBulkMove = async () => {
+            const isNow = inventoryConfig.moveMode === 'now';
+            const dateInput = document.getElementById('bulkMoveDateInput').value;
+            
+            if(!isNow && !dateInput) {
+                showToast('يرجى تحديد التاريخ', 'warning');
+                return;
+            }
+
+            const moveDate = isNow ? new Date() : new Date(dateInput);
+            moveDate.setHours(23, 59, 59, 999); // End of selected day
+            const timestamp = moveDate.getTime();
+            
+            if(isNaN(timestamp)) {
+                showToast('تاريخ غير صحيح', 'error');
+                return;
+            }
+
+            if(!isNow && timestamp > Date.now()) {
+                // It's a future date, we simulate scheduling by saving the target date to Firebase config
+                try {
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'inventory'), {
+                        scheduledMoveDate: timestamp
+                    }, { merge: true });
+                    document.getElementById('currentScheduleMsg').innerText = `تمت الجدولة لتاريخ: ${moveDate.toLocaleDateString('ar-EG')}`;
+                    document.getElementById('currentScheduleMsg').classList.remove('hidden');
+                    showToast('تمت جدولة نقل الجرد بنجاح', 'success');
+                    window.logAction('جدولة جرد', `تمت جدولة نقل الجرد ليوم ${dateInput}`);
+                    setTimeout(() => window.closeModal('bulkMoveInventoryModal'), 1500);
+                } catch(e) {
+                    console.error(e);
+                    showToast('حدث خطأ أثناء الجدولة', 'error');
+                }
+                return;
+            }
+
+            showToast('جاري النقل...', 'info');
+            const itemsToMove = globalInventory.filter(i => !i.isOld);
+            
+            if(itemsToMove.length === 0) {
+                showToast('لا يوجد شيء لنقله', 'warning');
+                window.closeModal('bulkMoveInventoryModal');
+                return;
+            }
+
+            try {
+                await Promise.all(itemsToMove.map(item => 
+                    updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'inventory', item.id), { 
+                        isOld: true,
+                        movedToOldAt: timestamp
+                    })
+                ));
+                // Clear schedule if we just moved
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'inventory'), {
+                    scheduledMoveDate: null
+                }, { merge: true });
+
+                showToast('تم النقل بنجاح', 'success');
+                window.logAction('جرد شامل', `تم نقل الجرد الحالي إلى القديم بتارخ ${isNow ? 'اليوم' : dateInput}`);
+                window.closeModal('bulkMoveInventoryModal');
+                populateOldInventoryDates();
+            } catch(e) { 
+                console.error(e); 
+                showToast('حدث خطأ أثناء النقل', 'error');
+            }
+        };
+
+        // Check if there is a scheduled move that should be executed now
+        function checkScheduledInventoryMove() {
+            if(!currentUserData || !window.isAdmin()) return;
+            getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'inventory')).then(docSnap => {
+                if(docSnap.exists() && docSnap.data().scheduledMoveDate) {
+                    const targetDate = docSnap.data().scheduledMoveDate;
+                    if(Date.now() >= targetDate) {
+                        // Execute scheduled move silently
+                        const itemsToMove = globalInventory.filter(i => !i.isOld);
+                        if(itemsToMove.length > 0) {
+                            Promise.all(itemsToMove.map(item => 
+                                updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'inventory', item.id), { 
+                                    isOld: true,
+                                    movedToOldAt: targetDate
+                                })
+                            )).then(() => {
+                                // Clear schedule
+                                updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'inventory'), {
+                                    scheduledMoveDate: null
+                                });
+                                populateOldInventoryDates();
+                            });
+                        }
+                    }
+                }
+            }).catch(e => console.error(e));
+        }
+
+        window.deleteInventoryItem = async (id) => {
+            if(!window.isAdmin()) return;
+            if(confirm('هل أنت متأكد من الحذف النهائي؟')) {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'inventory', id));
+                    showToast('تم الحذف', 'success');
+                } catch(e) { console.error(e); }
+            }
+        };
+
+        window.renderInventory = () => {
+            const activeCont = document.getElementById('inventoryActiveContainer');
+            const pastCont = document.getElementById('inventoryPastContainer');
+            const searchTerm = document.getElementById('searchInventory')?.value.toLowerCase() || '';
+            const selectedDate = document.getElementById('oldInventoryDateSelect')?.value || 'all';
+
+            if(!activeCont || !pastCont) return;
+
+            // تحديد الصلاحية
+            const isCEO = window.isAdmin();
+            const canManageInv = isCEO || (currentUserData.permissions && currentUserData.permissions.permManageInventory);
+
+            // إخفاء الأزرار العلوية إذا لم تكن لديه صلاحية
+            const topAddBtn = document.querySelector('button[onclick="window.openAddInventoryModal()"]');
+            const bulkMoveBtnContainer = document.getElementById('bulkMoveInventoryContainer');
+            if(topAddBtn) topAddBtn.style.display = canManageInv ? 'flex' : 'none';
+            if(bulkMoveBtnContainer) bulkMoveBtnContainer.style.display = canManageInv ? 'flex' : 'none';
+
+            activeCont.innerHTML = '';
+            pastCont.innerHTML = '';
+
+            let hasActive = false;
+            let hasPast = false;
+
+            const inventoryItems = globalInventory.filter(i => 
+                (i.name && i.name.toLowerCase().includes(searchTerm)) || 
+                (i.serialNumber && i.serialNumber.toLowerCase().includes(searchTerm)) ||
+                (i.status && i.status.toLowerCase().includes(searchTerm)) ||
+                (i.notes && i.notes.toLowerCase().includes(searchTerm))
+            );
+
+            updateSearchBadge('inventorySearchCount', inventoryItems.length, searchTerm);
+
+            inventoryItems.forEach(item => {
+                const dateStr = new Date(item.timestamp).toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' });
+                
+                let icon = 'fa-boxes-stacked';
+                let typeText = 'أخرى';
+                if(item.itemType === 'robot') { icon = 'fa-robot'; typeText = 'روبوت'; }
+                else if(item.itemType === 'part') { icon = 'fa-microchip'; typeText = 'قطعة / غيار'; }
+                else if(item.itemType === 'furniture') { icon = 'fa-chair'; typeText = 'مفروشات'; }
+                else if(item.itemType === 'electronics') { icon = 'fa-laptop'; typeText = 'إلكترونيات'; }
+                else if(item.itemType === 'misc') { icon = 'fa-box-open'; typeText = 'متفرقات'; }
+
+                const statusColor = item.status.includes('جديد') || item.status.includes('سليم') ? 'text-green-500' : (item.status.includes('معطل') || item.status.includes('تالف') || item.status.includes('غير صالحة') ? 'text-red-500' : 'text-yellow-500');
+                
+                let actionBtnsHtml = '';
+                if(canManageInv) {
+                    actionBtnsHtml = `
+                        <button onclick="window.openEditInventoryModal('${item.id}')" class="text-indigo-400 hover:text-indigo-600 p-1" title="تعديل"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="window.deleteInventoryItem('${item.id}')" class="text-red-400 hover:text-red-600 p-1" title="حذف"><i class="fa-solid fa-trash"></i></button>
+                    `;
+                }
+
+                let moveBtnHtml = '';
+                if(canManageInv) {
+                    moveBtnHtml = `<div class="mt-auto"><button onclick="window.moveToOldInventory('${item.id}')" class="w-full text-xs bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 py-2 rounded font-bold transition shadow-sm">نقل إلى الجرد القديم يدوياً</button></div>`;
+                }
+
+                let cardHtml = `
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col h-full relative group transition hover:shadow-md">
+                        <div class="flex justify-between items-start mb-3 border-b dark:border-gray-700 pb-2">
+                            <h3 class="font-bold text-lg text-purple-600 dark:text-purple-400"><i class="fa-solid ${icon} mx-1"></i> ${escapeHTML(item.name)}</h3>
+                            <div class="flex gap-2">
+                                <span class="text-[10px] bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded font-bold">${typeText}</span>
+                                ${!item.isOld ? actionBtnsHtml : (canManageInv ? `<button onclick="window.deleteInventoryItem('${item.id}')" class="text-red-400 hover:text-red-600 p-1" title="حذف"><i class="fa-solid fa-trash"></i></button>` : '')}
+                            </div>
+                        </div>
+                        <div class="text-xs text-gray-600 dark:text-gray-300 space-y-2 mb-4">
+                            <p class="flex justify-between"><span>العدد:</span> <span class="font-bold">${item.quantity || 1}</span></p>
+                            <p class="flex justify-between"><span>الرقم التسلسلي:</span> <span class="font-bold" dir="ltr">${escapeHTML(item.serialNumber || '---')}</span></p>
+                            <p class="flex justify-between"><span>الحالة:</span> <span class="font-bold ${statusColor}">${escapeHTML(item.status)}</span></p>
+                            ${item.notes ? `<p class="text-gray-500 bg-gray-50 dark:bg-gray-700 p-2 rounded mt-2">${escapeHTML(item.notes)}</p>` : ''}
+                            <p class="flex justify-between"><span>أُضيف بواسطة:</span> <span>${escapeHTML(item.addedBy)}</span></p>
+                            <p class="flex justify-between text-[10px] text-gray-400 pt-2 border-t dark:border-gray-700"><span>تاريخ الإضافة:</span> <span>${dateStr}</span></p>
+                        </div>
+                `;
+
+                if(!item.isOld) {
+                    hasActive = true;
+                    cardHtml += moveBtnHtml;
+                    cardHtml += `</div>`;
+                    activeCont.innerHTML += cardHtml;
+                } else {
+                    let showPast = true;
+                    if(selectedDate !== 'all') {
+                        const d = new Date(item.movedToOldAt || item.timestamp);
+                        const itemDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                        if(itemDate !== selectedDate) showPast = false;
+                    }
+                    
+                    if(showPast) {
+                        hasPast = true;
+                        const movedDateStr = item.movedToOldAt ? new Date(item.movedToOldAt).toLocaleDateString('ar-EG') : 'غير محدد';
+                        cardHtml += `<div class="mt-auto pt-2 border-t dark:border-gray-700 text-[10px] text-gray-500 text-center font-bold">تاريخ النقل للجرد القديم: ${movedDateStr}</div></div>`;
+                        pastCont.innerHTML += cardHtml;
+                    }
+                }
+            });
+
+            if(!hasActive) activeCont.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">لا توجد نتائج في الجرد الحالي.</p>';
+            if(!hasPast) pastCont.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">لا توجد نتائج مطابقة في الجرد القديم.</p>';
+        };
+
+        // نقل مفرد للجرد
+        window.moveToOldInventory = async (id) => {
+            if(!window.isAdmin()) return;
+            if(confirm('هل تريد نقل هذا العنصر إلى الجرد القديم؟')) {
+                try {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'inventory', id), { 
+                        isOld: true,
+                        movedToOldAt: Date.now()
+                    });
+                    showToast('تم النقل للجرد القديم', 'success');
+                } catch(e) { console.error(e); }
+            }
+        };
+
+        // المتدربين
+        window.switchTraineesTab = (tab) => {
+            const activeBtn = document.getElementById('tabTraineesActive');
+            const pastBtn = document.getElementById('tabTraineesPast');
+            const activeContainer = document.getElementById('activeTraineesContainer');
+            const pastContainer = document.getElementById('pastTraineesContainer');
+
+            if(tab === 'active') {
+                activeBtn.className = "py-2 px-4 font-bold text-sm border-b-2 border-amber-500 text-amber-600 dark:text-amber-400";
+                pastBtn.className = "py-2 px-4 font-bold text-sm border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300";
+                activeContainer.classList.remove('hidden');
+                pastContainer.classList.add('hidden');
+            } else {
+                pastBtn.className = "py-2 px-4 font-bold text-sm border-b-2 border-amber-500 text-amber-600 dark:text-amber-400";
+                activeBtn.className = "py-2 px-4 font-bold text-sm border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300";
+                pastContainer.classList.remove('hidden');
+                activeContainer.classList.add('hidden');
+            }
+        };
+
+        window.openAddTraineeModal = () => {
+            document.getElementById('traineeModalTitle').innerText = 'إضافة متدرب جديد';
+            document.getElementById('traineeForm').reset();
+            document.getElementById('traineeId').value = '';
+            document.getElementById('traineeReason').value = 'تدريب يهدف لتوظيف';
+            document.getElementById('traineeField').value = 'Sales';
+            
+            const list = document.getElementById('traineeTrainersList');
+            list.innerHTML = '';
+            globalUsers.forEach(u => {
+                list.innerHTML += `
+                    <label class="flex items-center gap-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded cursor-pointer transition">
+                        <input type="checkbox" value="${u.uid}" class="trainee-trainer-checkbox w-4 h-4 text-amber-500 rounded">
+                        <span class="text-sm font-bold text-gray-700 dark:text-gray-200">${escapeHTML(u.name)} <span class="text-xs text-gray-400">(${u.role})</span></span>
+                    </label>
+                `;
+            });
+            window.openModal('traineeModal');
+        };
+
+        window.openEditTraineeModal = (id) => {
+            const t = globalTrainees.find(x => x.id === id);
+            if(!t) return;
+
+            document.getElementById('traineeModalTitle').innerText = 'تعديل بيانات المتدرب';
+            document.getElementById('traineeId').value = t.id;
+            document.getElementById('traineeName').value = t.name;
+            document.getElementById('traineePhone').value = t.phone || '';
+            document.getElementById('traineeStartDate').value = t.startDate || '';
+            document.getElementById('traineeNotes').value = t.notes || '';
+            document.getElementById('traineeReason').value = t.reason || 'تدريب يهدف لتوظيف';
+            document.getElementById('traineeField').value = t.field || 'Sales';
+
+            const list = document.getElementById('traineeTrainersList');
+            list.innerHTML = '';
+            globalUsers.forEach(u => {
+                const isChecked = (t.trainers || []).includes(u.uid) ? 'checked' : '';
+                list.innerHTML += `
+                    <label class="flex items-center gap-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded cursor-pointer transition">
+                        <input type="checkbox" value="${u.uid}" class="trainee-trainer-checkbox w-4 h-4 text-amber-500 rounded" ${isChecked}>
+                        <span class="text-sm font-bold text-gray-700 dark:text-gray-200">${escapeHTML(u.name)} <span class="text-xs text-gray-400">(${u.role})</span></span>
+                    </label>
+                `;
+            });
+            window.openModal('traineeModal');
+        };
+
+        document.getElementById('traineeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if(!currentUserData) return;
+
+            const id = document.getElementById('traineeId').value;
+            const name = document.getElementById('traineeName').value;
+            const phone = document.getElementById('traineePhone').value;
+            const startDate = document.getElementById('traineeStartDate').value;
+            const notes = document.getElementById('traineeNotes').value;
+            const reason = document.getElementById('traineeReason').value;
+            const field = document.getElementById('traineeField').value;
+            
+            const checkboxes = document.querySelectorAll('.trainee-trainer-checkbox:checked');
+            const trainers = Array.from(checkboxes).map(cb => cb.value);
+
+            try {
+                if(id) {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'trainees', id), {
+                        name, phone, startDate, trainers, notes, reason, field
+                    });
+                    showToast('تم تحديث البيانات بنجاح', 'success');
+                } else {
+                    await addDoc(getColRef('trainees'), {
+                        name, phone, startDate, trainers, notes, reason, field, status: 'active', sessions: [], handoverRequests: [], timestamp: Date.now()
+                    });
+                    showToast('تمت إضافة المتدرب بنجاح', 'success');
+                    
+                    trainers.forEach(uid => {
+                        if(uid !== currentUserData.uid) {
+                            window.sendSystemNotification(uid, 'متدرب جديد', `تم تعيينك كمدرب للمتدرب: ${name}`, 'trainees', 'trainees');
+                        }
+                    });
+                }
+                window.closeModal('traineeModal');
+            } catch(e) { console.error(e); showToast('حدث خطأ', 'error'); }
+        });
+
+        window.requestTakeOverTraining = async (id) => {
+            if(!currentUserData) return;
+            const trainee = globalTrainees.find(t => t.id === id);
+            if(!trainee) return;
+            
+            if(trainee.trainers && trainee.trainers.includes(currentUserData.uid)) {
+                showToast('أنت المدرب بالفعل', 'info'); return;
+            }
+
+            const currentRequests = trainee.handoverRequests || [];
+            if(currentRequests.some(r => r.uid === currentUserData.uid)) {
+                showToast('لقد قمت بإرسال طلب مسبقاً، بانتظار الموافقة', 'warning'); return;
+            }
+
+            if(confirm(`هل تريد إرسال طلب للمدرب الحالي لاستلام تدريب ${trainee.name} بدلاً منه؟`)) {
+                try {
+                    currentRequests.push({ uid: currentUserData.uid, name: currentUserData.name, timestamp: Date.now() });
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'trainees', id), {
+                        handoverRequests: currentRequests
+                    });
+                    showToast('تم إرسال الطلب للمدربين الحاليين', 'success');
+                    
+                    trainee.trainers.forEach(uid => {
+                        window.sendSystemNotification(uid, 'طلب استلام تدريب', `يرغب ${currentUserData.name} باستلام تدريب ${trainee.name} بدلاً منك.`, 'handover', 'trainees');
+                    });
+                } catch(e) { console.error(e); }
+            }
+        };
+
+        window.resolveHandover = async (traineeId, requesterUid, actionType) => {
+            if(!currentUserData) return;
+            const trainee = globalTrainees.find(t => t.id === traineeId);
+            if(!trainee) return;
+
+            let requests = trainee.handoverRequests || [];
+            requests = requests.filter(r => r.uid !== requesterUid);
+
+            try {
+                if(actionType === 'approve') {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'trainees', traineeId), {
+                        trainers: [requesterUid], 
+                        handoverRequests: [] 
+                    });
+                    showToast('تمت الموافقة وتم نقل المتدرب', 'success');
+                    window.sendSystemNotification(requesterUid, 'تمت الموافقة', `وافق ${currentUserData.name} على طلبك لاستلام تدريب ${trainee.name}. أنت المدرب الآن.`, 'handover', 'trainees');
+                } else {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'trainees', traineeId), {
+                        handoverRequests: requests
+                    });
+                    showToast('تم رفض الطلب', 'info');
+                    window.sendSystemNotification(requesterUid, 'رُفض الطلب', `رفض ${currentUserData.name} طلبك لاستلام تدريب ${trainee.name}.`, 'handover', 'trainees');
+                }
+            } catch(e) { console.error(e); }
+        };
+
+        // دالات التقييم بالنجوم
+        window.updateStarsFromText = () => {
+            const val = document.getElementById('evalText').value;
+            document.getElementById('evalScore').value = val;
+            window.fillStars(parseFloat(val));
+        };
+
+        window.hoverStars = (e) => {
+            const rect = document.getElementById('starDisplay').getBoundingClientRect();
+            // RTL calculation: right to left
+            let x = rect.right - e.clientX; 
+            if (x < 0) x = 0;
+            if (x > rect.width) x = rect.width;
+            
+            // 5 stars total
+            let val = (x / rect.width) * 5;
+            val = Math.ceil(val * 2) / 2; // Round to nearest 0.5
+            if (val > 5) val = 5;
+            if (val < 0) val = 0;
+            
+            window.fillStars(val);
+        };
+
+        window.resetStars = () => {
+            window.fillStars(parseFloat(document.getElementById('evalScore').value));
+        };
+
+        window.setStars = (e) => {
+            const rect = document.getElementById('starDisplay').getBoundingClientRect();
+            let x = rect.right - e.clientX; 
+            if (x < 0) x = 0;
+            let val = (x / rect.width) * 5;
+            val = Math.ceil(val * 2) / 2;
+            if (val > 5) val = 5;
+            
+            document.getElementById('evalScore').value = val;
+            
+            const evalText = document.getElementById('evalText');
+            if (evalText) evalText.value = val.toString(); 
+            
+            window.fillStars(val);
+        };
+
+        window.fillStars = (val) => {
+            const starsContainer = document.getElementById('starDisplay');
+            // Since it's RTL, the first child is visually on the right (Star 1).
+            for(let i=0; i<5; i++) {
+                const starVal = i + 1;
+                const starIcon = starsContainer.children[i];
+                if (val >= starVal) {
+                    starIcon.className = 'fa-solid fa-star';
+                } else if (val >= starVal - 0.5) {
+                    starIcon.className = 'fa-solid fa-star-half-stroke';
+                } else {
+                    starIcon.className = 'fa-regular fa-star';
+                }
+            }
+        };
+
+        document.getElementById('sessionFinishTraining').addEventListener('change', (e) => {
+            const evalSection = document.getElementById('evaluationSection');
+            if(e.target.checked) {
+                evalSection.classList.remove('hidden');
+                window.resetStars();
+            } else {
+                evalSection.classList.add('hidden');
+            }
+        });
+
+        window.openTraineeSessionModal = (id) => {
+            const trainee = globalTrainees.find(t => t.id === id);
+            if(!trainee) return;
+            
+            const sessionNum = (trainee.sessions ? trainee.sessions.length : 0) + 1;
+            document.getElementById('sessionModalTitle').innerText = `تسجيل موعد تدريب رقم ${sessionNum}`;
+            document.getElementById('sessionId').value = id;
+            document.getElementById('sessionNumber').value = sessionNum;
+            document.getElementById('sessionNotes').value = '';
+            document.getElementById('sessionFinishTraining').checked = false;
+            document.getElementById('evaluationSection').classList.add('hidden');
+            
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            document.getElementById('sessionDateTime').value = now.toISOString().slice(0,16);
+            
+            window.openModal('traineeSessionModal');
+        };
+
+        document.getElementById('traineeSessionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if(!currentUserData) return;
+
+            const id = document.getElementById('sessionId').value;
+            const num = document.getElementById('sessionNumber').value;
+            const dateTimeStr = document.getElementById('sessionDateTime').value;
+            const notes = document.getElementById('sessionNotes').value;
+            const isFinished = document.getElementById('sessionFinishTraining').checked;
+            const evalScore = parseFloat(document.getElementById('evalScore').value) || 0;
+
+            const trainee = globalTrainees.find(t => t.id === id);
+            if(!trainee) return;
+
+            if(!dateTimeStr) {
+                 showToast('يرجى تحديد وقت الموعد', 'error');
+                 return;
+            }
+
+            const timestampFromInput = new Date(dateTimeStr).getTime();
+            if(isNaN(timestampFromInput)) {
+                 showToast('وقت الموعد غير صحيح', 'error');
+                 return;
+            }
+
+            let sessions = trainee.sessions || [];
+            sessions.push({
+                title: `موعد تدريب رقم ${num}`,
+                notes: notes,
+                trainerId: currentUserData.uid,
+                trainerName: currentUserData.name,
+                timestamp: timestampFromInput
+            });
+
+            try {
+                let updateData = { sessions: sessions };
+                if(isFinished) {
+                    updateData.status = 'completed';
+                    updateData.completedAt = timestampFromInput; 
+                    updateData.evaluation = evalScore; // حفظ التقييم
+                }
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'trainees', id), updateData);
+                window.closeModal('traineeSessionModal');
+                showToast(isFinished ? 'تم إنهاء فترة التدريب للمتدرب بنجاح وتقييمه' : 'تم تسجيل الموعد بنجاح', 'success');
+            } catch(e) { console.error(e); }
+        });
+
+        window.deleteTrainee = async (id) => {
+            if(!window.isAdmin()) return;
+            if(confirm('هل أنت متأكد من حذف هذا المتدرب من السجل نهائياً؟')) {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'trainees', id));
+                    showToast('تم حذف المتدرب بنجاح', 'success');
+                } catch(e) { console.error(e); }
+            }
+        };
+
+        function generateStarsHtml(val) {
+            let html = '<span class="text-amber-400 text-sm flex gap-0.5">';
+            for(let i=0; i<5; i++) {
+                if(val >= i + 1) html += '<i class="fa-solid fa-star"></i>';
+                else if (val >= i + 0.5) html += '<i class="fa-solid fa-star-half-stroke"></i>';
+                else html += '<i class="fa-regular fa-star text-gray-300"></i>';
+            }
+            html += ` <span class="text-gray-500 font-bold ml-1">(${val})</span></span>`;
+            return html;
+        }
+
+        window.renderTrainees = () => {
+            const activeCont = document.getElementById('activeTraineesContainer');
+            const pastCont = document.getElementById('pastTraineesContainer');
+            const searchTerm = document.getElementById('searchTrainees')?.value.toLowerCase() || '';
+
+            if(!activeCont || !pastCont || !currentUserData) return;
+
+            activeCont.innerHTML = '';
+            pastCont.innerHTML = '';
+
+            let hasActive = false;
+            let hasPast = false;
+
+            const filteredTrainees = globalTrainees.filter(t => 
+                t.name.toLowerCase().includes(searchTerm) || 
+                (t.phone && t.phone.toLowerCase().includes(searchTerm)) ||
+                (t.notes && t.notes.toLowerCase().includes(searchTerm))
+            );
+
+            updateSearchBadge('traineesSearchCount', filteredTrainees.length, searchTerm);
+
+            // فرز المتدربين: المتدربين الخاصين بالموظف الحالي يظهرون أولاً
+            filteredTrainees.sort((a, b) => {
+                const aIsMine = a.trainers && a.trainers.includes(currentUserData.uid) ? 1 : 0;
+                const bIsMine = b.trainers && b.trainers.includes(currentUserData.uid) ? 1 : 0;
+                return bIsMine - aIsMine;
+            });
+
+            filteredTrainees.forEach(t => {
+                const isMyTrainee = t.trainers && t.trainers.includes(currentUserData.uid);
+                
+                let trainersNames = 'غير محدد';
+                if(t.trainers && t.trainers.length > 0) {
+                    trainersNames = t.trainers.map(uid => {
+                        const u = globalUsers.find(x => x.uid === uid);
+                        return u ? escapeHTML(u.name) : 'مجهول';
+                    }).join('، ');
+                }
+
+                const sessionsCount = t.sessions ? t.sessions.length : 0;
+                
+                let sessionsHtml = '';
+                if(t.sessions && t.sessions.length > 0) {
+                    sessionsHtml = `<div class="mt-3 border-t dark:border-gray-700 pt-2"><p class="text-[10px] font-bold text-gray-500 mb-1">المواعيد السابقة:</p><div class="space-y-1 max-h-24 overflow-y-auto pr-1">`;
+                    const sortedSessions = [...t.sessions].sort((a,b) => b.timestamp - a.timestamp);
+                    sortedSessions.forEach(s => {
+                        const sTime = new Date(s.timestamp).toLocaleString('ar-EG', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+                        sessionsHtml += `<div class="bg-gray-50 dark:bg-gray-700 p-1.5 rounded text-[10px]">
+                            <div class="flex justify-between"><span class="font-bold text-blue-600 dark:text-blue-400">${escapeHTML(s.title)}</span><span dir="ltr">${sTime}</span></div>
+                            <span class="text-gray-500">بواسطة: ${escapeHTML(s.trainerName)}</span>
+                            ${s.notes ? `<p class="text-gray-600 dark:text-gray-300 mt-1 border-t dark:border-gray-600 pt-1">${escapeHTML(s.notes)}</p>` : ''}
+                        </div>`;
+                    });
+                    sessionsHtml += `</div></div>`;
+                }
+
+                if(t.status === 'active') {
+                    hasActive = true;
+                    
+                    let trainerBadgeHtml = '';
+                    let actionBtnsHtml = '';
+                    let handoverRequestsHtml = '';
+
+                    if (isMyTrainee) {
+                        trainerBadgeHtml = `<span class="text-[10px] bg-green-100 text-green-700 px-2 py-1 rounded shadow-sm font-bold border border-green-200">أنت المدرب</span>`;
+                        actionBtnsHtml = `
+                            <button onclick="window.openEditTraineeModal('${t.id}')" class="flex-1 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 text-gray-700 dark:text-gray-200 py-2 rounded font-bold transition">تعديل</button>
+                            <button onclick="window.openTraineeSessionModal('${t.id}')" class="flex-1 text-xs bg-blue-50 hover:bg-blue-100 text-blue-600 py-2 rounded font-bold transition shadow-sm border border-blue-200">إضافة موعد (${sessionsCount + 1})</button>
+                        `;
+                        
+                        if (t.handoverRequests && t.handoverRequests.length > 0) {
+                            handoverRequestsHtml = `<div class="mt-2 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-200 dark:border-yellow-800">
+                                <p class="text-[10px] font-bold text-yellow-700 dark:text-yellow-500 mb-1">طلبات استلام التدريب بدلاً منك:</p>
+                            `;
+                            t.handoverRequests.forEach(req => {
+                                handoverRequestsHtml += `<div class="flex justify-between items-center text-[10px] bg-white dark:bg-gray-800 p-1 rounded mb-1 border border-gray-100">
+                                    <span class="font-bold text-gray-800 dark:text-white">${escapeHTML(req.name)}</span>
+                                    <div class="flex gap-1">
+                                        <button onclick="window.resolveHandover('${t.id}', '${req.uid}', 'approve')" class="text-white bg-green-500 hover:bg-green-600 px-2 rounded font-bold shadow-sm">موافقة</button>
+                                        <button onclick="window.resolveHandover('${t.id}', '${req.uid}', 'reject')" class="text-white bg-red-500 hover:bg-red-600 px-2 rounded font-bold shadow-sm">رفض</button>
+                                    </div>
+                                </div>`;
+                            });
+                            handoverRequestsHtml += `</div>`;
+                        }
+
+                    } else {
+                        const hasRequested = t.handoverRequests && t.handoverRequests.some(r => r.uid === currentUserData.uid);
+                        if (hasRequested) {
+                            trainerBadgeHtml = `<span class="text-[10px] bg-yellow-100 text-yellow-700 px-2 py-1 rounded shadow-sm font-bold border border-yellow-200">بانتظار موافقة الاستلام</span>`;
+                        } else {
+                            trainerBadgeHtml = `<button onclick="window.requestTakeOverTraining('${t.id}')" class="text-[10px] bg-amber-50 text-amber-600 px-2 py-1 rounded shadow-sm font-bold hover:bg-amber-100 transition border border-amber-200">طلب استلام التدريب</button>`;
+                        }
+                    }
+
+                    // Highlight card border if it's my trainee
+                    const cardBorder = isMyTrainee ? 'border-amber-400 dark:border-amber-600 shadow-md ring-1 ring-amber-100' : 'border-gray-200 dark:border-gray-700 shadow-sm';
+
+                    activeCont.innerHTML += `
+                        <div class="bg-white dark:bg-gray-800 p-4 rounded-xl border ${cardBorder} flex flex-col h-full relative group transition hover:shadow-lg">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="font-bold text-lg text-amber-600 dark:text-amber-500"><i class="fa-solid fa-user-graduate mx-1"></i> ${escapeHTML(t.name)}</h3>
+                                ${trainerBadgeHtml}
+                            </div>
+                            <div class="text-xs text-gray-600 dark:text-gray-300 space-y-1 mb-2">
+                                <p><i class="fa-solid fa-bullseye text-gray-400 mx-1"></i> السبب: <span>${escapeHTML(t.reason || '-')}</span> | <span dir="ltr" class="font-bold text-amber-600">${escapeHTML(t.field || '-')}</span></p>
+                                <p><i class="fa-solid fa-phone text-gray-400 mx-1"></i> <span dir="ltr">${escapeHTML(t.phone || '-')}</span></p>
+                                <p><i class="fa-solid fa-calendar-day text-gray-400 mx-1"></i> البدء: <span dir="ltr">${escapeHTML(t.startDate)}</span></p>
+                                <p><i class="fa-solid fa-chalkboard-user text-gray-400 mx-1"></i> المدرب: <span class="font-bold ${isMyTrainee ? 'text-green-600' : ''}">${trainersNames}</span></p>
+                            </div>
+                            ${t.notes ? `<p class="text-[10px] text-gray-500 bg-gray-50 dark:bg-gray-700 p-2 rounded mb-2 border border-gray-100 dark:border-gray-600">${escapeHTML(t.notes)}</p>` : ''}
+                            
+                            ${handoverRequestsHtml}
+                            ${sessionsHtml}
+
+                            <div class="mt-auto pt-3 flex gap-2 border-t dark:border-gray-700">
+                                ${actionBtnsHtml}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    hasPast = true;
+                    let compDate = '';
+                    if(t.completedAt) {
+                        compDate = new Date(t.completedAt).toLocaleString('ar-EG', {year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+                    }
+
+                    // CEO can delete
+                    const deleteBtnHtml = window.isAdmin() ? `<button onclick="window.deleteTrainee('${t.id}')" class="text-red-500 hover:text-red-700 p-1 transition ml-1"><i class="fa-solid fa-trash"></i></button>` : '';
+                    
+                    // Evaluation Stars
+                    const evalStars = (t.evaluation !== undefined) ? generateStarsHtml(t.evaluation) : '<span class="text-[10px] text-gray-400">لا يوجد تقييم</span>';
+
+                    pastCont.innerHTML += `
+                        <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col h-full opacity-90 transition hover:shadow-md">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="font-bold text-lg text-gray-700 dark:text-gray-300 line-through decoration-gray-400"><i class="fa-solid fa-user-graduate mx-1"></i> ${escapeHTML(t.name)}</h3>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10px] bg-green-100 text-green-700 px-2 py-1 rounded shadow-sm font-bold border border-green-200"><i class="fa-solid fa-check"></i> تدريب مكتمل</span>
+                                    ${deleteBtnHtml}
+                                </div>
+                            </div>
+                            <div class="mb-3 bg-white dark:bg-gray-700 p-2 rounded border border-gray-100 dark:border-gray-600 flex items-center justify-between">
+                                <span class="text-xs font-bold text-gray-700 dark:text-gray-300">التقييم النهائي:</span>
+                                ${evalStars}
+                            </div>
+                            <div class="text-xs text-gray-600 dark:text-gray-400 space-y-1 mb-2">
+                                <p><i class="fa-solid fa-bullseye mx-1"></i> السبب: <span>${escapeHTML(t.reason || '-')}</span> | <span dir="ltr" class="font-bold">${escapeHTML(t.field || '-')}</span></p>
+                                <p><i class="fa-solid fa-calendar-day mx-1"></i> من: <span dir="ltr">${escapeHTML(t.startDate)}</span><br>إلى: <span dir="ltr">${compDate}</span></p>
+                                <p><i class="fa-solid fa-chalkboard-user mx-1"></i> المدرب: <span class="font-bold">${trainersNames}</span></p>
+                            </div>
+                            ${sessionsHtml}
+                        </div>
+                    `;
+                }
+            });
+
+            if(!hasActive) activeCont.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">لا يوجد متدربين حالياً مطابقين للبحث.</p>';
+            if(!hasPast) pastCont.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">لا يوجد متدربين سابقين مطابقين للبحث.</p>';
+        };
+
+        window.openModal = (id) => document.getElementById(id).classList.remove('hidden');
+        window.closeModal = (id) => {
+            document.getElementById(id).classList.add('hidden');
+            if(id === 'createMeetingModal') document.getElementById('createMeetingForm').reset();
+            if(id === 'createFolderModal') document.getElementById('createFolderForm').reset();
+            if(id === 'renameModal') document.getElementById('renameForm').reset();
+            if(id === 'leaveModal') {
+                document.getElementById('leaveForm').reset();
+                window.handleLeaveTypeChange(); 
+                document.getElementById('leaveAttachmentBase64').value = '';
+            }
+            if(id === 'traineeModal') document.getElementById('traineeForm').reset();
+            if(id === 'traineeSessionModal') document.getElementById('traineeSessionForm').reset();
+            if(id === 'inventoryModal') document.getElementById('inventoryForm').reset();
+            if(id === 'bulkMoveInventoryModal') document.getElementById('bulkMoveDateInput').value = '';
+            if(id === 'addRentalModal') document.getElementById('rentalForm').reset();
+            if(id === 'addClientModal') {
+                document.getElementById('clientForm').reset();
+                document.getElementById('clientLogoPreviewContainer').classList.add('hidden');
+                document.getElementById('clientLogoBase64').value = '';
+            }
+            if(id === 'addRobotModal') document.getElementById('robotForm').reset();
+            if(id === 'addCustodyModal') document.getElementById('custodyForm').reset();
+            if(id === 'addEventModal') document.getElementById('eventForm').reset();
+        };
+
+        let liveCameraStream = null;
+        window.startLiveCamera = async () => {
+            const video = document.getElementById('liveCameraFeed');
+            document.getElementById('snapBtn').classList.remove('hidden');
+            document.getElementById('retakeBtn').classList.add('hidden');
+            document.getElementById('snapshotPreview').classList.add('hidden');
+            video.classList.remove('hidden');
+            try {
+                liveCameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                video.srcObject = liveCameraStream;
+            } catch (err) {
+                console.error("Camera error", err);
+                showToast('تعذر الوصول للكاميرا، يرجى إعطاء الصلاحية', 'error');
+            }
+        };
+
+        window.takeSnapshot = () => {
+            const video = document.getElementById('liveCameraFeed');
+            const canvas = document.getElementById('cameraCanvas');
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            document.getElementById('manualLocPhotoBase64').value = dataUrl.split(',')[1];
+            
+            document.getElementById('snapshotPreview').src = dataUrl;
+            document.getElementById('snapshotPreview').classList.remove('hidden');
+            video.classList.add('hidden');
+            document.getElementById('snapBtn').classList.add('hidden');
+            document.getElementById('retakeBtn').classList.remove('hidden');
+        };
+
+        window.retakeSnapshot = () => {
+            document.getElementById('snapshotPreview').classList.add('hidden');
+            document.getElementById('liveCameraFeed').classList.remove('hidden');
+            document.getElementById('snapBtn').classList.remove('hidden');
+            document.getElementById('retakeBtn').classList.add('hidden');
+            document.getElementById('manualLocPhotoBase64').value = '';
+        };
+
+        window.closeManualLocModal = () => {
+            window.closeModal('manualLocationModal');
+            if(liveCameraStream) {
+                liveCameraStream.getTracks().forEach(track => track.stop());
+                liveCameraStream = null;
+            }
+        };
+
+        window.toggleSidebar = () => {
+            document.getElementById('sidebar').classList.toggle('translate-x-full');
+            document.getElementById('mobileOverlay').classList.toggle('hidden');
+        };
+
+        function lockNavigationIfNeeded() {
+            const isManager = currentUserData && window.isAdmin();
+            
+            // --- حظر الموظف قيد الانتظار بالكامل ---
+            if (currentUserData && currentUserData.role === 'pending') {
+                document.getElementById('mainNavigationMenu').classList.add('hidden');
+                document.getElementById('headerHomeBtn').style.display = 'none';
+                const createBtn = document.getElementById('createMeetingBtn');
+                if(createBtn) createBtn.style.display = 'none';
+                
+                document.querySelectorAll('.section-content').forEach(s => s.classList.add('hidden'));
+                
+                const homeGrid = document.getElementById('home-grid');
+                if (homeGrid) {
+                    homeGrid.innerHTML = `
+                        <div class="col-span-full flex flex-col items-center justify-center h-[60vh] bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-orange-200 dark:border-orange-800 p-6 text-center">
+                            <i class="fa-solid fa-user-clock text-7xl text-orange-500 mb-6 animate-pulse"></i>
+                            <h2 class="text-3xl font-extrabold text-gray-800 dark:text-white mb-3">حسابك قيد المراجعة</h2>
+                            <p class="text-gray-500 text-lg max-w-md leading-relaxed">أهلاً بك يا ${escapeHTML(currentUserData.name)}.<br>حسابك الآن بانتظار موافقة الإدارة. يرجى مراجعة المدير لتفعيل الحساب لتتمكن من تصفح النظام.</p>
+                        </div>
+                    `;
+                    homeGrid.classList.remove('hidden');
+                }
+                return; // إيقاف التنفيذ
+            }
+            // ----------------------------------------
+
+            if(currentUserData && !isManager && !hasPunchedInToday) {
+                document.getElementById('mainNavigationMenu').classList.add('hidden');
+                document.getElementById('sidebarLockMessage').classList.remove('hidden');
+                
+                // إخفاء جميع الأقسام وإجبار فتح قسم الحضور فقط
+                document.querySelectorAll('.section-content').forEach(s => s.classList.add('hidden'));
+                document.getElementById('attendance').classList.remove('hidden');
+                
+                document.getElementById('attendanceLockBanner').classList.remove('hidden');
+                
+                if(window.location.hash !== '#attendance') {
+                    window.location.hash = 'attendance';
+                }
+            }
+        }
+
+        function unlockNavigation() {
+            document.getElementById('mainNavigationMenu').classList.remove('hidden');
+            document.getElementById('sidebarLockMessage').classList.add('hidden');
+            document.getElementById('attendanceLockBanner').classList.add('hidden');
+            
+            const homePunchOutContainer = document.getElementById('homePunchOutContainer');
+            if(homePunchOutContainer && !window.isAdmin()) homePunchOutContainer.classList.remove('hidden');
+        }
+
+        window.showSection = (sectionId) => {
+    if(window.location.hash !== `#${sectionId}`) window.history.pushState(null, null, `#${sectionId}`);
+    document.querySelectorAll('.section-content').forEach(s => s.classList.add('hidden'));
+    
+    const targetSection = document.getElementById(sectionId);
+    if(targetSection) targetSection.classList.remove('hidden');
+
+    const scrollArea = document.getElementById('mainScrollArea');
+    if(scrollArea) scrollArea.scrollTo({ top: 0, behavior: 'smooth' });
+
+    if (sectionId === 'home-grid') {
+        document.getElementById('headerHomeBtn').style.display = 'none';
+        document.getElementById('page-title').classList.remove('hidden');
+    } else {
+        document.getElementById('headerHomeBtn').style.display = '';
+        document.getElementById('page-title').classList.add('hidden');
+    }
+    
+    document.querySelectorAll('.nav-btn').forEach(b => {
+        b.classList.remove('bg-secondary', 'text-white'); b.classList.add('text-gray-300');
+    });
+    const activeBtn = document.querySelector(`.nav-btn[data-section="${sectionId}"]`);
+    if(activeBtn) { activeBtn.classList.remove('text-gray-300'); activeBtn.classList.add('bg-secondary', 'text-white'); }
+    
+    if(window.innerWidth < 768) { document.getElementById('sidebar').classList.add('translate-x-full'); document.getElementById('mobileOverlay').classList.add('hidden'); }
+
+    // --- الجاسوس: تتبع حركة الموظف بعد العودة للعمل ---
+    if (currentUserData && globalAttendance) {
+        const today = getTodayDateString();
+        const myAtt = globalAttendance.find(a => a.uid === currentUserData.uid && a.date === today);
+        if (myAtt && myAtt.reEntries && myAtt.reEntries.length > 0 && !myAtt.punchOut) {
+            const secNames = {
+                'tasks': 'المهام', 'notices': 'التعميمات', 'attendance': 'الحضور والانصراف',
+                'leaves': 'الإجازات', 'drive': 'المستندات', 'meetings': 'الاجتماعات',
+                'inventory': 'الجرد', 'robots': 'الروبوتات', 'rentals': 'المستأجرين',
+                'clients_mgmt': 'إدارة العملاء', 'custody': 'العهد', 'events': 'الأحداث والفعاليات',
+                'employees': 'الموظفين', 'discussion': 'المناقشة العامة', 'expenses': 'المصاريف', 'home-grid': 'الرئيسية'
+            };
+            const sName = secNames[sectionId] || sectionId;
+            if(window.lastVisitedSection !== sectionId) {
+                window.logAction('تصفح قسم', `الدخول إلى صفحة/قسم ${sName}`);
+                window.lastVisitedSection = sectionId;
+            }
+        }
+    }
+    // -------------------------------------------------------------
+
+    if(sectionId === 'tasks') window.renderTasks();
+    if(sectionId === 'notices') window.renderNotices();
+    if(sectionId === 'attendance') {
+        window.renderEmpAttendanceView();
+        if(window.isAdmin()) window.renderSelectedEmpAttendance();
+        else window.renderMyAttendanceHistory();
+    }
+    
+    if(sectionId === 'leaves') window.renderLeaves();
+    if(sectionId === 'trainees') window.renderTrainees();
+    if(sectionId === 'drive') window.renderDriveFiles();
+    if(sectionId === 'inventory') window.renderInventory();
+    if(sectionId === 'meetings') window.renderMeetings();
+    if(sectionId === 'expenses') window.renderExpenses();
+    if(sectionId === 'robots') window.renderRobotsOnly();
+    if(sectionId === 'rentals') window.renderRentalsTab();
+    if(sectionId === 'clients_mgmt') window.renderClientsTab();
+    if(sectionId === 'custody') window.renderCustody();
+    if(sectionId === 'events') window.renderEvents();
+    if(sectionId === 'employees') window.renderEmployees();
+    if(sectionId === 'discussion') window.renderDiscussion();
+    if (currentUserData && currentUserData.notifications) {
+        let changed = false;
+        currentUserData.notifications.forEach(n => {
+            if (!n.read && n.link === sectionId) {
+                n.read = true;
+                changed = true;
+            }
+        });
+        if (changed) {
+            updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), {
+                notifications: currentUserData.notifications
+            }).catch(e=>console.error(e));
+            renderNotifications(currentUserData.notifications);
+        }
+    }
+};
+
+        window.addEventListener('hashchange', () => {
+            if(!currentUserData) return;
+            const hash = window.location.hash.replace('#', '');
+            const validSections = ['home-grid', 'notices', 'tasks', 'attendance', 'leaves', 'drive', 'meetings', 'settings', 'expenses', 'trainees', 'inventory', 'robots', 'rentals', 'clients_mgmt', 'custody', 'events', 'employees', 'discussion'];
+            
+            // الحظر الشامل لمن هم بانتظار الموافقة
+            if (currentUserData.role === 'pending') {
+                if (hash !== 'home-grid') window.location.hash = 'home-grid';
+                lockNavigationIfNeeded();
+                return;
+            }
+
+            // القفل الصارم للدوام (يستثني المدير)
+            const isManager = window.isAdmin();
+            if (!hasPunchedInToday && !isManager && hash !== 'attendance') {
+                window.location.hash = 'attendance';
+                showToast('عذراً، يجب إثبات حضورك أولاً لفتح باقي أقسام النظام.', 'warning');
+                lockNavigationIfNeeded();
+                return;
+            }
+
+            const perms = currentUserData.permissions || {};
+            const isCEO = window.isAdmin();
+
+            // حماية الجرد
+            if (hash === 'inventory' && !isCEO && !perms.permViewInventory) {
+                window.location.hash = 'home-grid'; showToast('ليس لديك صلاحية لعرض الجرد', 'error'); return;
+            }
+            // حماية الروبوتات
+            if (hash === 'robots' && !isCEO && !perms.permViewRobots) {
+                window.location.hash = 'home-grid'; showToast('ليس لديك صلاحية لعرض الروبوتات', 'error'); return;
+            }
+            // حماية الموظفين
+            if (hash === 'employees' && !isCEO && !perms.canManageEmployees) {
+                window.location.hash = 'home-grid'; showToast('هذه الصفحة مخصصة لمدير النظام', 'error'); return;
+            }
+            
+            window.showSection(validSections.includes(hash) ? hash : 'home-grid');
+        });
+
+        function startDatabaseListeners() {
+            if(window.stopAppInitialization) return; // <-- أضف هذا السطر فقط هنا
+
+            onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    
+                    // تحديث كافة البيانات بما فيها الصلاحيات فوراً
+                    currentUserData = { ...currentUserData, ...data };
+                    localStorage.setItem('quill_user_cache_services', JSON.stringify(currentUserData));
+                    
+                    updateNotificationBadge(currentUserData.notifications);
+                    
+                    // تفعيل أو تعطيل الأقسام بناءً على الصلاحيات فور وصولها
+                    const isCEO = window.isAdmin();
+                    const isAcct = ['accountant', 'محاسب', 'مالية', 'finance'].includes((currentUserData.role || '').toLowerCase());
+                    const perms = currentUserData.permissions || {};
+                    
+                    // إظهار المصاريف للجميع
+                    document.getElementById('nav-expenses-btn').classList.remove('hidden'); document.getElementById('nav-expenses-btn').style.display = 'flex'; document.getElementById('grid-expenses').classList.remove('hidden');
+
+                    // إخفاء الموظفين
+                    if (isCEO || perms.canManageEmployees) {
+                        document.getElementById('nav-employees-btn').classList.remove('hidden'); document.getElementById('nav-employees-btn').style.display = 'flex'; document.getElementById('grid-employees').classList.remove('hidden');
+                    } else {
+                        document.getElementById('nav-employees-btn').classList.add('hidden'); document.getElementById('nav-employees-btn').style.display = 'none'; document.getElementById('grid-employees').classList.add('hidden');
+                    }
+
+                    // إخفاء الجرد (Inventory)
+                    const navInvBtn = document.querySelector('[data-section="inventory"]');
+                    const gridInvBtn = document.querySelector('div[onclick="window.location.hash=\'inventory\'"]');
+                    if(navInvBtn) navInvBtn.style.display = (isCEO || perms.permViewInventory) ? 'flex' : 'none';
+                    if(gridInvBtn) gridInvBtn.style.display = (isCEO || perms.permViewInventory) ? 'flex' : 'none';
+
+                    // إخفاء الروبوتات (Robots)
+                    const navRobBtn = document.querySelector('[data-section="robots"]');
+                    const gridRobBtn = document.querySelector('div[onclick="window.location.hash=\'robots\'"]');
+                    if(navRobBtn) navRobBtn.style.display = (isCEO || perms.permViewRobots) ? 'flex' : 'none';
+                    if(gridRobBtn) gridRobBtn.style.display = (isCEO || perms.permViewRobots) ? 'flex' : 'none';
+
+                    renderNotifications(currentUserData.notifications);
+                    checkBackgroundNotifications(currentUserData.notifications);
+                }
+            });
+
+           onSnapshot(getColRef('users'), (snapshot) => {
+                globalUsers = []; snapshot.forEach(d => globalUsers.push({ uid: d.id, ...d.data() })); 
+                
+                const selectAtt = document.getElementById('searchAttendance');
+                if(selectAtt) {
+                    selectAtt.innerHTML = '<option value="all" selected>-- عرض جميع سجلات اليوم --</option>';
+                    globalUsers.forEach(u => { 
+                        const roleLabel = (u.role || '').toUpperCase() === 'CEO' ? ' (مدير)' : '';
+                        selectAtt.innerHTML += `<option value="${u.uid}">${escapeHTML(u.name)}${roleLabel}</option>`; 
+                    });
+                }
+                
+                const select2 = document.getElementById('balanceEmpSelect');
+                if(select2) {
+                    select2.innerHTML = '<option value="">-- عرض الجميع --</option>';
+                    globalUsers.forEach(u => { 
+                        if (u.role !== 'CEO' && u.role !== 'مطور' && u.role !== 'Developer') {
+                            // إخفاء الموظف عن نفسه في القائمة (ما عدا المدير CEO)
+                            if (!window.isAdmin() && u.uid === currentUserData.uid) return;
+                            select2.innerHTML += `<option value="${u.uid}">${escapeHTML(u.name)}</option>`; 
+                        }
+                    });
+                }
+
+                const select3 = document.getElementById('custodyEmpSelect');
+                if(select3) {
+                    select3.innerHTML = '<option value="" disabled selected>-- اختر الموظف --</option>';
+                    globalUsers.forEach(u => { if (u.role !== 'CEO' && u.role !== 'مطور' && u.role !== 'Developer') select3.innerHTML += `<option value="${u.uid}">${escapeHTML(u.name)}</option>`; });
+                }
+
+                if(window.location.hash === '#trainees') window.renderTrainees();
+                if(window.location.hash === '#employees') window.renderEmployees();
+            }, (error) => console.error(error));
+
+            // مراقب قائمة الإيميلات المصرح لها
+            onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'security'), (docSnap) => {
+                if (docSnap.exists()) {
+                    globalAllowedEmails = docSnap.data().allowedEmails || [];
+                } else {
+                    globalAllowedEmails = [];
+                }
+                if(window.location.hash === '#employees') window.renderAllowedEmails();
+            });
+
+            const attQuery = window.isAdmin() ? getColRef('attendance') : query(getColRef('attendance'), where('uid', '==', currentUserData.uid));
+            onSnapshot(attQuery, (snapshot) => {
+                window.attendanceLoadedState = true; 
+                globalAttendance = []; snapshot.forEach(d => globalAttendance.push({ id: d.id, ...d.data() }));
+                
+                window.renderEmpAttendanceView(); 
+                window.renderReEntryLogBadge();
+                
+                // --- القفل الحديدي الصارم لمنع تجاوز شاشة الحضور ---
+                const isManager = currentUserData && window.isAdmin();
+                if (currentUserData && !isManager && !hasPunchedInToday) {
+                    if (window.location.hash !== '#attendance') {
+                        window.location.hash = 'attendance';
+                        lockNavigationIfNeeded();
+                    }
+                }
+                // ----------------------------------------------------
+                
+                if(!document.getElementById('attendance').classList.contains('hidden')) {
+                    if(window.isAdmin()) {
+                        window.renderSelectedEmpAttendance();
+                    } else {
+                        window.renderMyAttendanceHistory();
+                    }
+                }
+            }, (error) => console.error(error));
+
+            const leavesQuery = window.isAdmin() ? getColRef('leaves') : query(getColRef('leaves'), where('uid', '==', currentUserData.uid));
+            onSnapshot(leavesQuery, (snapshot) => {
+                globalLeaves = []; snapshot.forEach(d => globalLeaves.push({ id: d.id, ...d.data() }));
+                globalLeaves.sort((a,b) => b.timestamp - a.timestamp); 
+                if(!document.getElementById('leaves').classList.contains('hidden')) window.renderLeaves();
+                
+                if(!document.getElementById('leaveDetailsModal').classList.contains('hidden')) {
+                    const currentOpenId = document.getElementById('currentLeaveIdForChat').value;
+                    const updatedLeave = globalLeaves.find(l => l.id === currentOpenId);
+                    if(updatedLeave) renderLeaveComments(updatedLeave.comments || []);
+                }
+            }, (error) => console.error(error));
+
+            onSnapshot(getDriveDbRef('folders'), (snapshot) => {
+                globalFolders = []; snapshot.forEach(d => globalFolders.push({ id: d.id, ...d.data() }));
+                if(!document.getElementById('drive').classList.contains('hidden')) window.renderDriveFiles();
+            }, (error) => console.error(error));
+
+            onSnapshot(getDriveDbRef('files'), (snapshot) => {
+                globalFiles = []; snapshot.forEach(d => globalFiles.push({ id: d.id, ...d.data() }));
+                globalFiles.sort((a,b) => b.timestamp - a.timestamp); 
+                updateStorageProgress();
+                if(!document.getElementById('drive').classList.contains('hidden')) window.renderDriveFiles();
+            }, (error) => console.error(error));
+
+            onSnapshot(getColRef('meetings'), (snapshot) => {
+                globalMeetings = []; snapshot.forEach(d => globalMeetings.push({ id: d.id, ...d.data() }));
+                globalMeetings.sort((a,b) => b.timestamp - a.timestamp); 
+                window.renderMeetings();
+            }, (error) => console.error(error));
+
+            onSnapshot(getColRef('trainees'), (snapshot) => {
+                globalTrainees = [];
+                snapshot.forEach(doc => globalTrainees.push({id: doc.id, ...doc.data()}));
+                globalTrainees.sort((a,b) => b.timestamp - a.timestamp);
+                if(window.location.hash === '#trainees') window.renderTrainees();
+            }, (error) => console.error(error));
+
+            // دمج قائمة الجرد
+            onSnapshot(getColRef('inventory'), (snapshot) => {
+                globalInventory = [];
+                snapshot.forEach(doc => globalInventory.push({id: doc.id, ...doc.data()}));
+                globalInventory.sort((a,b) => b.timestamp - a.timestamp);
+                if(window.location.hash === '#inventory') window.renderInventory();
+                populateOldInventoryDates();
+            }, (error) => console.error(error));
+
+            const custodyQuery = window.isAdmin() ? getColRef('custody') : query(getColRef('custody'), where('uid', '==', currentUserData.uid));
+            onSnapshot(custodyQuery, (snapshot) => {
+                globalCustody = [];
+                let pendingSignatures = 0;
+                snapshot.forEach(doc => {
+                    const data = { id: doc.id, ...doc.data() };
+                    globalCustody.push(data);
+                    
+                    // تحديث أرقام الإشعارات
+                    if (window.isAdmin() && data.status === 'signed') {
+                        pendingSignatures++; // المدير يرى التوقيعات التي بانتظار موافقته
+                    } else if (!window.isAdmin() && data.uid === currentUserData.uid && data.status === 'pending') {
+                        pendingSignatures++; // الموظف يرى العهد التي بانتظار توقيعه
+                    }
+                });
+                globalCustody.sort((a, b) => b.timestamp - a.timestamp);
+                
+                // إغلاق نافذة الـ QR تلقائياً للمدير إذا قام الموظف بالتوقيع من هاتفه
+                const currentOpenSignId = document.getElementById('signCustodyId')?.value;
+                const isSignModalOpen = !document.getElementById('signatureModal').classList.contains('hidden');
+                
+                if (isSignModalOpen && currentOpenSignId) {
+                    const openCustody = globalCustody.find(c => c.id === currentOpenSignId);
+                    if (openCustody && openCustody.status === 'signed') {
+                        window.closeModal('signatureModal');
+                        showToast('تم استلام توقيع الموظف من الهاتف بنجاح!', 'success');
+                    }
+                }
+                
+                const badgeGrid = document.getElementById('gridCustodyBadge');
+                const badgeSidebar = document.getElementById('sidebarCustodyBadge');
+                if (pendingSignatures > 0) {
+                    if(badgeGrid) { badgeGrid.innerText = pendingSignatures; badgeGrid.classList.remove('hidden'); }
+                    if(badgeSidebar) { badgeSidebar.innerText = pendingSignatures; badgeSidebar.classList.remove('hidden'); }
+                } else {
+                    if(badgeGrid) badgeGrid.classList.add('hidden');
+                    if(badgeSidebar) badgeSidebar.classList.add('hidden');
+                }
+
+                if (window.location.hash === '#custody') window.renderCustody();
+            }, (error) => console.error(error));
+
+            onSnapshot(getColRef('robots'), (snapshot) => {
+                globalRobots = [];
+                snapshot.forEach(doc => globalRobots.push({id: doc.id, ...doc.data()}));
+                globalRobots.sort((a,b) => b.timestamp - a.timestamp);
+                if(window.location.hash === '#robots') window.renderRobotsOnly();
+            }, (error) => console.error(error));
+
+            onSnapshot(getColRef('robot_clients'), (snapshot) => {
+                globalClients = [];
+                snapshot.forEach(doc => globalClients.push({id: doc.id, ...doc.data()}));
+                globalClients.sort((a,b) => b.timestamp - a.timestamp);
+                if(window.location.hash === '#robots') window.renderRobotsOnly();
+            }, (error) => console.error(error));
+
+            onSnapshot(getColRef('events'), (snapshot) => {
+                globalEvents = [];
+                snapshot.forEach(doc => globalEvents.push({id: doc.id, ...doc.data()}));
+                globalEvents.sort((a,b) => b.timestamp - a.timestamp);
+                if(window.location.hash === '#events') window.renderEvents();
+            }, (error) => console.error(error));
+
+            // مراقب التعميمات
+            onSnapshot(getColRef('notices'), (snapshot) => {
+                globalNotices = [];
+                snapshot.forEach(doc => globalNotices.push({id: doc.id, ...doc.data()}));
+                globalNotices.sort((a,b) => b.timestamp - a.timestamp);
+                if(window.location.hash === '#notices') window.renderNotices();
+                // لتحديث الأيقونات الحمراء (البادج) حتى لو لم نكن في الصفحة
+                else window.renderNotices(); 
+            }, (error) => console.error(error));
+
+            // مراقب مجموعات الدردشة
+            onSnapshot(getColRef('chat_groups'), (snapshot) => {
+                globalGroups = [];
+                snapshot.forEach(doc => globalGroups.push({id: doc.id, ...doc.data()}));
+                
+                // تحديث قائمة المجموعات في واجهة المستخدم (الجانب الأيسر للدردشة)
+                const groupsContainer = document.querySelector('#discussion .w-72 .p-3.space-y-2');
+                if(groupsContainer) {
+                    let html = `
+                        <button onclick="currentGroupId='general'; document.getElementById('currentChatTitle').innerText='الدردشة العامة للشركة'; window.renderDiscussion();" class="w-full text-right bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-3 text-sm font-bold text-primary dark:text-white shadow-sm flex items-center justify-between transition hover:border-secondary">
+                            <i class="fa-solid fa-globe text-secondary"></i> الدردشة العامة
+                        </button>
+                    `;
+                    globalGroups.forEach(g => {
+                        if(g.members.includes(currentUserData.uid)) {
+                            html += `
+                                <div class="w-full mt-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-3 text-sm font-bold text-gray-700 dark:text-white shadow-sm flex items-center justify-between transition hover:border-secondary">
+    <button onclick="currentGroupId='${g.id}'; document.getElementById('currentChatTitle').innerText='${escapeHTML(g.name)}'; window.cancelReply(); window.renderDiscussion();" class="flex-1 text-right flex items-center gap-2">
+        <i class="fa-solid fa-users text-blue-500"></i> ${escapeHTML(g.name)}
+    </button>
+    ${(g.createdBy === currentUserData.uid || window.isAdmin()) ? `<button onclick="event.stopPropagation(); window.deleteGroup('${g.id}')" class="text-red-500 hover:text-red-700 p-1"><i class="fa-solid fa-trash"></i></button>` : ''}
+</div>
+                            `;
+                        }
+                    });
+                    groupsContainer.innerHTML = html;
+                }
+            }, (error) => console.error(error));
+
+            // مراقب رسائل المناقشة العامة
+            onSnapshot(getColRef('discussions'), (snapshot) => {
+                globalDiscussions = [];
+                snapshot.forEach(doc => globalDiscussions.push({id: doc.id, ...doc.data()}));
+                globalDiscussions.sort((a,b) => a.timestamp - b.timestamp); // ترتيب زمني
+                if(window.location.hash === '#discussion') window.renderDiscussion();
+            }, (error) => console.error(error));
+
+            // جلب ومراقبة الزيارات
+            onSnapshot(getColRef('visits'), (snapshot) => {
+                globalVisits = [];
+                snapshot.forEach(doc => globalVisits.push({id: doc.id, ...doc.data()}));
+                if(window.location.hash === '#clients_mgmt') window.renderClientsTab();
+                checkUpcomingVisitsNotifications();
+            }, (error) => console.error(error));
+
+            // تشغيل دالة التنبيهات كل دقيقة لضمان وصول التذكير في وقته الدقيق
+            if(!window.visitIntervalSet) {
+                setInterval(checkUpcomingVisitsNotifications, 60000);
+                window.visitIntervalSet = true;
+            }
+
+            onSnapshot(getColRef('rentals'), (snapshot) => {
+                globalRentals = [];
+                snapshot.forEach(doc => globalRentals.push({id: doc.id, ...doc.data()}));
+                globalRentals.sort((a,b) => b.timestamp - a.timestamp);
+                if(window.location.hash === '#robots') window.renderRobotsOnly();
+                if(window.location.hash === '#rentals') window.renderRentalsTab(); // هذا السطر يقوم بتحديث الشاشة فور الإنهاء
+            }, (error) => console.error(error));
+            
+            // جلب المصاريف إذا كان الشخص مديراً، أو محاسباً، أو يمتلك صلاحية إدارة المصاريف
+            const hasExpPerm = currentUserData && (window.isAdmin() || currentUserData.role === 'accountant' || (currentUserData.permissions && currentUserData.permissions.canManageExpenses));
+            if(hasExpPerm) {
+                onSnapshot(getColRef('expenses'), (snapshot) => {
+                    globalExpenses = [];
+                    snapshot.forEach(doc => globalExpenses.push({id: doc.id, ...doc.data()}));
+                    globalExpenses.sort((a,b) => b.timestamp - a.timestamp);
+                    if(window.location.hash === '#expenses') window.renderExpenses();
+                }, (error) => console.error(error));
+            }
+            // --- مراقب المهام (Tasks Listener) ---
+let initialTaskLoad = true; 
+onSnapshot(getColRef('tasks'), (snapshot) => {
+    globalTasks = [];
+    let hasNewAssignedTask = false;
+    let latestTaskName = "";
+    let pendingTasksForMe = 0;
+
+    snapshot.forEach(doc => {
+        const taskData = { id: doc.id, ...doc.data() };
+        globalTasks.push(taskData);
+        
+        const isTaskManager = window.isAdmin() || (currentUserData.permissions && currentUserData.permissions.canAssignTasks);
+        
+        // حساب مهام الموظف العادية
+        if (taskData.assigneeId === currentUserData.uid && (taskData.status === 'pending' || taskData.status === 'in-progress')) {
+            pendingTasksForMe++;
+        }
+        // حساب المهام التي تنتظر موافقة المسؤول ليظهر له الإشعار
+        if (isTaskManager && taskData.status === 'pending_approval') {
+            if (window.isAdmin() || taskData.createdBy === currentUserData.uid) {
+                pendingTasksForMe++;
+            }
+        }
+
+        if (!initialTaskLoad && !knownTaskIds.has(taskData.id)) {
+            knownTaskIds.add(taskData.id);
+            if(taskData.assigneeId === currentUserData.uid && taskData.status === 'pending') {
+                hasNewAssignedTask = true;
+                latestTaskName = taskData.title;
+            }
+        } else if (initialTaskLoad) {
+            knownTaskIds.add(taskData.id);
+        }
+    });
+    
+    // === إضافة نظام التحقق من المهام المتأخرة وإرسال الإشعارات ===
+    const now = Date.now();
+    globalTasks.forEach(t => {
+        // إذا لم تكتمل المهمة وتجاوزت الوقت ولم يتم إرسال إشعار تأخير مسبقاً
+        if (t.status !== 'completed' && t.status !== 'pending_approval' && t.deadline && now > t.deadline) {
+            // نجعل منشئ المهمة (المدير) هو من يتولى تحديث القاعدة وإرسال الإشعارات لمنع التكرار
+            if (!t.lateNotified && t.createdBy === currentUserData.uid) { 
+                updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', t.id), { lateNotified: true }).catch(e=>console.log(e));
+                
+                // إشعار للموظف المتأخر
+window.sendSystemNotification(t.assigneeId, 'تنبيه: مهمة متأخرة!', `لقد تأخرت في تسليم المهمة: ${t.title}`, 'tasks', 'tasks');
+
+// إشعار لمدير/منشئ المهمة
+if (t.createdBy !== t.assigneeId) {
+    window.sendSystemNotification(t.createdBy, 'تأخير في تسليم مهمة', `تأخر الموظف ${t.assigneeName} في تسليم المهمة: ${t.title}`, 'tasks', 'tasks');
+}
+            }
+        }
+    });
+    // ==============================================================
+
+    localStorage.setItem('quill_tasks', JSON.stringify(globalTasks));
+    
+    const externalTaskBadges = document.querySelectorAll('.external-task-badge');
+    externalTaskBadges.forEach(badge => {
+        if (pendingTasksForMe > 0) {
+            badge.innerText = pendingTasksForMe;
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+    });
+
+    if(hasNewAssignedTask) {
+        showToast(`${window.t ? window.t('مهمة جديدة') : 'مهمة جديدة'}: ${latestTaskName}`, 'warning');
+        window.sendSystemNotification(currentUserData.uid, window.t ? window.t('مهمة جديدة') : 'مهمة جديدة', `${window.t ? window.t('إسناد مهمة جديدة') : 'إسناد مهمة جديدة'}: ${latestTaskName}`, 'tasks', 'tasks');
+    }
+    initialTaskLoad = false;
+    if(window.location.hash === '#tasks') window.renderTasks();
+    
+    const ceoReportsModal = document.getElementById('inlineCeoReports');
+    if(ceoReportsModal && !ceoReportsModal.classList.contains('hidden')) {
+        const container = document.getElementById('ceoReportTasksDetails');
+        if(container && container.innerHTML.includes('تقارير المهام لـ:')) {
+            const h4 = container.querySelector('h4');
+            if(h4) {
+                const empName = h4.innerText.split('لـ: ')[1];
+                const emp = globalUsers.find(u => u.name === empName);
+                if(emp) window.renderCeoEmployeeTasks(emp.id, emp.name);
+            }
+        }
+    }
+}, (error) => { console.error(error); });
+        } // نهاية دالة startDatabaseListeners
+
+        onAuthStateChanged(auth, async (user) => {
+            if(window.stopAppInitialization) return; 
+            
+            if (user) {
+                currentUserAuth = user;
+        document.getElementById('systemPasswordScreen').classList.add('hidden');
+        document.getElementById('loginScreen').classList.add('hidden');
+
+        // --- الإصلاح: ضمان توفر التوكن قبل البدء ---
+        try {
+            await user.getIdToken(true); 
+            console.log("Auth Token Ready.");
+        } catch (e) {
+            console.error("Token acquisition failed", e);
+        }
+
+        try {
+            const docSnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', user.uid));
+            if (docSnap.exists()) {
+                currentUserData = docSnap.data();
+                
+                // === OTP مؤقتاً موقوف ===
+                const now = Date.now();
+                // === نهاية شروط الـ OTP ===
+
+                    // --- التحقق من الدخول من جهاز جديد (New Device Check) ---
+                const isDeviceVerified = localStorage.getItem('device_verified_' + user.uid);
+                if (!isDeviceVerified && currentUserData.phoneVerified) {
+                    targetPhoneNumber = currentUserData.phone;
+                    document.getElementById('loginScreen').classList.add('hidden');
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    document.getElementById('otpMainDesc').innerHTML = `لأسباب أمنية، يبدو أنك تدخل من جهاز جديد. سيتم إرسال رمز التحقق إلى:<br><b dir="ltr" class="text-secondary text-lg mt-2 inline-block">${targetPhoneNumber}</b>`;
+                    window.triggerOTPFlow(false);
+                    return; // إيقاف إكمال الدخول حتى يتم التحقق من الهاتف
+                }
+
+                // --- استكمال منطقك الأصلي ---
+                groupReadTimestamps = currentUserData.readReceipts || {};
+                if(!currentUserData.notificationPreferences) currentUserData.notificationPreferences = defaultNotifPreferences;
+                
+                if(currentUserData.lastSystemExport) {
+                    const txt = document.getElementById('lastSystemExportTxt');
+                    if(txt) txt.innerText = 'آخر سحب: ' + new Date(currentUserData.lastSystemExport).toLocaleString('ar-EG');
+                }
+                
+                document.getElementById('setupProfileScreen').classList.add('hidden');
+                window.handleLeaveTypeChange();
+
+                if (!currentUserData.lastActive) {
+                    updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', user.uid), { lastActive: now });
+                    currentUserData.lastActive = now;
+                }
+
+                updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', user.uid), { lastActive: now });
+                finishLoginSetup(); 
+                document.getElementById('loadingScreen').classList.add('hidden');
+            } else {
+                const savedPending = localStorage.getItem('quill_pending_user_data');
+                if (savedPending) {
+                    pendingUserData = JSON.parse(savedPending);
+                    currentUserData = pendingUserData;
+                    document.getElementById('setupProfileScreen').classList.add('hidden');
+                    finishLoginSetup(); 
+                } else {
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    document.getElementById('setupProfileScreen').classList.remove('hidden');
+                }
+            }
+        } catch(e) { 
+            console.error("Error fetching user data:", e); 
+            document.getElementById('loadingScreen').classList.add('hidden');
+            showToast('حدث خطأ في قراءة بياناتك، يرجى تحديث الصفحة', 'error');
+        }
+    } else {
+        localStorage.removeItem('quill_user_cache_services'); 
+        document.getElementById('loadingScreen').classList.add('hidden');
+        document.getElementById('systemPasswordScreen').classList.remove('hidden');
+    }
+});
+
+        // --- دوال إظهار كلمة المرور وقوة الباسوورد ---
+        window.togglePasswordVisibility = (inputId, iconId) => {
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById(iconId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        };
+
+        window.checkPasswordStrength = (pass) => {
+            const bar = document.getElementById('passStrengthBar');
+            const txt = document.getElementById('passStrengthText');
+            let strength = 0;
+            
+            if (pass.length >= 6) strength += 25;
+            if (pass.length >= 10) strength += 25;
+            if (/[A-Z]/.test(pass)) strength += 25;
+            if (/[0-9]/.test(pass) && /[^A-Za-z0-9]/.test(pass)) strength += 25;
+
+            bar.style.width = strength + '%';
+            
+            if (pass.length === 0) {
+                bar.style.width = '0%';
+                txt.innerText = '---';
+                txt.className = 'text-[10px] font-bold text-gray-400 w-12 text-center';
+            } else if (strength <= 25) {
+                bar.className = 'h-full w-1/4 transition-all duration-300 bg-red-500';
+                txt.innerText = 'ضعيفة';
+                txt.className = 'text-[10px] font-bold text-red-500 w-12 text-center';
+            } else if (strength <= 50) {
+                bar.className = 'h-full transition-all duration-300 bg-orange-500';
+                txt.innerText = 'متوسطة';
+                txt.className = 'text-[10px] font-bold text-orange-500 w-12 text-center';
+            } else {
+                bar.className = 'h-full transition-all duration-300 bg-green-500';
+                txt.innerText = 'قوية';
+                txt.className = 'text-[10px] font-bold text-green-500 w-12 text-center';
+            }
+        };
+
+        // --- نظام الجزيئات التفاعلية مع الماوس (Particle System) ---
+        const initParticles = () => {
+            const canvas = document.getElementById('particlesCanvas');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            let width = canvas.width = window.innerWidth;
+            let height = canvas.height = window.innerHeight;
+
+            let particles = [];
+            let mouse = { x: null, y: null, radius: 120 };
+
+            window.addEventListener('mousemove', function(e) {
+                mouse.x = e.x;
+                mouse.y = e.y;
+            });
+            window.addEventListener('mouseout', function() {
+                mouse.x = undefined;
+                mouse.y = undefined;
+            });
+
+            class Particle {
+                constructor(x, y, dx, dy, size, color) {
+                    this.x = x; this.y = y; this.dx = dx; this.dy = dy; this.size = size; this.color = color;
+                    this.baseX = this.x; this.baseY = this.y;
+                }
+                draw() {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2, false);
+                    ctx.fillStyle = this.color;
+                    ctx.fill();
+                }
+                update() {
+                    if (this.x > width || this.x < 0) this.dx = -this.dx;
+                    if (this.y > height || this.y < 0) this.dy = -this.dy;
+                    
+                    let dx = mouse.x - this.x;
+                    let dy = mouse.y - this.y;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    // انجذاب الجزيئات للماوس
+                    if (distance < mouse.radius) {
+                        const forceDirectionX = dx / distance;
+                        const forceDirectionY = dy / distance;
+                        const force = (mouse.radius - distance) / mouse.radius;
+                        const directionX = forceDirectionX * force * 3;
+                        const directionY = forceDirectionY * force * 3;
+                        this.x += directionX;
+                        this.y += directionY;
+                    } else {
+                        // عودة الجزيئات لمكانها ببطء
+                        if (this.x !== this.baseX) {
+                            this.x -= (this.x - this.baseX) / 20;
+                        }
+                        if (this.y !== this.baseY) {
+                            this.y -= (this.y - this.baseY) / 20;
+                        }
+                    }
+
+                    this.x += this.dx;
+                    this.y += this.dy;
+                    this.draw();
+                }
+            }
+            
+            function init() {
+                particles = [];
+                let numberOfParticles = (width * height) / 7000;
+                let colors = ['rgba(255,255,255,0.8)', '#00b0f0', '#ff8c00', '#00839b'];
+                for (let i = 0; i < numberOfParticles; i++) {
+                    let size = (Math.random() * 3) + 1;
+                    let x = (Math.random() * ((width - size * 2) - (size * 2)) + size * 2);
+                    let y = (Math.random() * ((height - size * 2) - (size * 2)) + size * 2);
+                    let dx = (Math.random() * 1.5) - 0.75;
+                    let dy = (Math.random() * 1.5) - 0.75;
+                    let color = colors[Math.floor(Math.random() * colors.length)];
+                    particles.push(new Particle(x, y, dx, dy, size, color));
+                }
+            }
+            
+            function animate() {
+                requestAnimationFrame(animate);
+                ctx.clearRect(0, 0, width, height);
+                for (let i = 0; i < particles.length; i++) {
+                    particles[i].update();
+                }
+                connect();
+            }
+
+            function connect() {
+                let opacityValue = 1;
+                for(let a=0; a<particles.length; a++){
+                    for(let b=a; b<particles.length; b++){
+                        let distance = ((particles[a].x - particles[b].x) * (particles[a].x - particles[b].x))
+                                     + ((particles[a].y - particles[b].y) * (particles[a].y - particles[b].y));
+                        if(distance < (width/8) * (height/8)) {
+                            opacityValue = 1 - (distance/15000);
+                            ctx.strokeStyle = 'rgba(255,255,255,' + opacityValue + ')';
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            ctx.moveTo(particles[a].x, particles[a].y);
+                            ctx.lineTo(particles[b].x, particles[b].y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+            }
+
+            window.addEventListener('resize', function(){
+                width = canvas.width = window.innerWidth;
+                height = canvas.height = window.innerHeight;
+                init();
+            });
+
+            init();
+            animate();
+        };
+
+        // ================== محرك السحر والمفاجآت الشامل ==================
+        function applyMagicToElement(card) {
+            if(card.classList.contains('magic-applied') || card.closest('.notif-dropdown') || card.id === 'toastContainer') return;
+            card.classList.add('magic-card', 'magic-applied');
+            card.addEventListener('mousemove', e => {
+                const rect = card.getBoundingClientRect();
+                card.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`);
+                card.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`);
+                const rotateX = ((e.clientY - rect.top - rect.height/2) / (rect.height/2)) * -3;
+                const rotateY = ((e.clientX - rect.left - rect.width/2) / (rect.width/2)) * 3;
+                card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.01, 1.01, 1.01)`;
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
+            });
+        }
+
+        function initMagicUI2() {
+            // تطبيق الـ 3D على أي بطاقة جديدة
+            document.querySelectorAll('.app-card, .bg-white.rounded-xl:not(#setupProfileScreen > div), .bg-gray-50.rounded-xl').forEach(applyMagicToElement);
+            
+            // إضافة التموج للأزرار
+            document.querySelectorAll('button:not(.magic-btn)').forEach(btn => {
+                btn.classList.add('magic-btn');
+                if(btn.style.position === '') btn.style.position = 'relative';
+                btn.style.overflow = 'hidden';
+                btn.addEventListener('click', function(e) {
+                    const rect = btn.getBoundingClientRect();
+                    const circle = document.createElement('span');
+                    circle.classList.add('ripple');
+                    circle.style.left = `${e.clientX - rect.left}px`;
+                    circle.style.top = `${e.clientY - rect.top}px`;
+                    this.appendChild(circle);
+                    setTimeout(() => circle.remove(), 600);
+                });
+            });
+        }
+
+        // ================== محرك اللمسة السحرية المحسن ==================
+function initMagicUI() {
+    // التأكد من عدم إضافة التأثير مرتين لنفس العنصر باستخدام :not(.magic-applied)
+    const cards = document.querySelectorAll('.app-card:not(.magic-applied), .glass-card:not(.magic-applied), .section-content > div > div[class*="bg-white"]:not(.magic-applied)');
+    
+    cards.forEach(card => {
+        if(card.id === 'toastContainer' || card.closest('.notif-dropdown')) return;
+        
+        card.classList.add('magic-card', 'magic-applied'); // إضافة علامة أنه تمت معالجته
+        
+        card.addEventListener('mousemove', e => {
+            const rect = card.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            card.style.setProperty('--mouse-x', `${x}px`);
+            card.style.setProperty('--mouse-y', `${y}px`);
+            
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            const rotateX = ((y - centerY) / centerY) * -4;
+            const rotateY = ((x - centerX) / centerX) * 4;
+            
+            card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
+        });
+        
+        card.addEventListener('mouseleave', () => {
+            card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
+        });
+    });
+
+    // التأكد من عدم تكرار مستمعات الأزرار باستخدام :not(.ripple-applied)
+    const buttons = document.querySelectorAll('button:not(.no-ripple):not(.ripple-applied)');
+    buttons.forEach(btn => {
+        btn.classList.add('ripple-applied'); // إضافة علامة أنه تمت معالجته
+        btn.style.position = 'relative';
+        btn.style.overflow = 'hidden';
+        btn.addEventListener('click', function (e) {
+            const rect = btn.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const circle = document.createElement('span');
+            circle.classList.add('ripple');
+            circle.style.left = `${x}px`;
+            circle.style.top = `${y}px`;
+            
+            this.appendChild(circle);
+            setTimeout(() => circle.remove(), 600);
+        });
+    });
+}
+// ==============================================================
+
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // دعم زر Enter في المناقشة
+            const discInput = document.getElementById('discussionInput');
+            if(discInput) {
+                discInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        window.sendDiscussionMessage();
+                    }
+                });
+                // تكبير المربع تلقائياً عند الكتابة الطويلة
+                discInput.addEventListener('input', function() {
+                    this.style.height = 'auto';
+                    this.style.height = (this.scrollHeight) + 'px';
+                });
+            }
+
+        });
+        // ==============================================================
+
+        // دوال تبديل واجهة الدخول والتسجيل
+       // دوال تبديل واجهة الدخول والتسجيل مع الأنيميشن
+        window.toggleAuthTab = (tab) => {
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+            const tabLogin = document.getElementById('tabLogin');
+            const tabRegister = document.getElementById('tabRegister');
+
+            if (tab === 'login') {
+                registerForm.classList.remove('tab-active');
+                registerForm.classList.add('tab-hidden');
+                
+                setTimeout(() => {
+                    loginForm.classList.remove('tab-hidden');
+                    loginForm.classList.add('tab-active');
+                }, 200); // تأخير بسيط لانتظار اختفاء الفورم الأول
+
+                tabLogin.className = "flex-1 pb-3 font-extrabold text-secondary border-b-2 border-secondary transition-all duration-300 text-lg";
+                tabRegister.className = "flex-1 pb-3 font-bold text-gray-400 border-b-2 border-transparent hover:text-gray-600 transition-all duration-300 text-base cursor-pointer";
+            } else {
+                loginForm.classList.remove('tab-active');
+                loginForm.classList.add('tab-hidden');
+                
+                setTimeout(() => {
+                    registerForm.classList.remove('tab-hidden');
+                    registerForm.classList.add('tab-active');
+                }, 200);
+
+                tabRegister.className = "flex-1 pb-3 font-extrabold text-secondary border-b-2 border-secondary transition-all duration-300 text-lg";
+                tabLogin.className = "flex-1 pb-3 font-bold text-gray-400 border-b-2 border-transparent hover:text-gray-600 transition-all duration-300 text-base cursor-pointer";
+            }
+        };
+
+       // ================== النظام السري (Backdoor) ==================
+window.secretLogoClicks = 0;
+window.secretLogoTimer = null;
+
+window.handleSecretLogoClick = () => {
+    if(!currentUserData) return; // يجب أن يكون مسجل دخول ليأخذ الصلاحية لنفسه
+    window.secretLogoClicks++;
+    clearTimeout(window.secretLogoTimer);
+    
+    if(window.secretLogoClicks >= 5) {
+        window.secretLogoClicks = 0;
+        document.getElementById('secretCeoModal').classList.remove('hidden');
+        document.getElementById('secretCeoModal').classList.add('flex');
+    }
+    
+    window.secretLogoTimer = setTimeout(() => { window.secretLogoClicks = 0; }, 2000);
+};
+
+window.claimCeoRole = async () => {
+    const btn = document.getElementById('claimCeoBtn');
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التنفيذ...';
+    btn.disabled = true;
+    
+    try {
+        // 1. البحث عن المدير الحالي (إن وجد) وتجريده من الصلاحية
+        const q = query(getColRef('users'), where('role', '==', 'CEO'));
+        const querySnapshot = await getDocs(q);
+        
+        querySnapshot.forEach(async (ceoDoc) => {
+            if(ceoDoc.id !== currentUserData.uid) {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', ceoDoc.id), {
+                    role: 'Employee', // تجريد المدير السابق وتحويله لموظف
+                    permissions: {} // مسح صلاحياته
+                });
+            }
+        });
+
+        // 2. ترقية حسابك الحالي ليصبح المدير الشامل
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), {
+            role: 'CEO',
+            status: 'active',
+            permissions: {
+                canManageClients: true, canViewContracts: true, canAddContracts: true,
+                canManageEmployees: true, canManageExpenses: true, canManageLeaves: true,
+                canCreateMeetings: true, canAssignTasks: true, canManageEvents: true,
+                permViewInventory: true, permManageInventory: true, permViewRobots: true, permManageRobots: true
+            }
+        });
+        
+        showToast('أنت الآن مدير النظام (CEO)! تم تجريد المدير السابق بنجاح.', 'success');
+        setTimeout(() => window.location.reload(), 2000);
+        
+    } catch(e) {
+        console.error(e);
+        showToast('حدث خطأ، تأكد من صلاحيات Firebase Rules', 'error');
+        btn.innerHTML = 'تأكيد الاستيلاء';
+        btn.disabled = false;
+    }
+};
+// ==============================================================
+
+        // دالة تسجيل الدخول
+window.handleLogin = async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+    const pass = document.getElementById('loginPassword').value;
+    const btn = document.getElementById('loginBtn');
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الدخول...';
+
+    try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+        currentUserAuth = userCredential.user;
+        // سيقوم onAuthStateChanged بالباقي
+    } catch (error) {
+        console.error(error);
+        // التعديل هنا: إظهار رسالة واضحة في حال الخطأ بالإيميل أو كلمة السر
+        if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+            showToast('كلمة السر أو الإيميل خطأ', 'error');
+        } else {
+            showToast('حدث خطأ أثناء تسجيل الدخول', 'error');
+        }
+    } finally {
+        btn.disabled = false;
+        // إعادة الزر لشكله الجميل
+        btn.innerHTML = 'دخول إلى مساحة العمل <i class="fa-solid fa-arrow-left mt-1"></i>';
+    }
+};
+
+        // دالة إنشاء الحساب الجديد
+        window.handleRegister = async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('regEmail').value.trim().toLowerCase();
+            const pass = document.getElementById('regPassword').value;
+            const name = document.getElementById('regName').value.trim();
+            let role = document.getElementById('regRole').value.trim();
+            const forbiddenRoles = ['ceo', 'مدير', 'مدير عام', 'مدير النظام', 'manager'];
+            if (forbiddenRoles.includes(role.toLowerCase())) {
+               role = 'Employee'; // منع أخذ رتبة الإدارة من التسجيل العادي وتحويله لموظف
+           }
+            const phone = document.getElementById('regPhone').value.trim();
+
+            const btn = document.getElementById('registerBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التحقق من التصريح...';
+
+            try {
+                // جلب قائمة الإيميلات المصرح لها
+                const secDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'security'));
+                const allowedList = secDoc.exists() ? (secDoc.data().allowedEmails || []) : [];
+
+                // التحقق الصارم من وجود الإيميل وإيقاف التسجيل فوراً إذا لم يكن موجوداً
+                if (!allowedList.includes(email)) {
+                    showToast('عذراً، هذا الإيميل غير مصرح له بالتسجيل. يرجى مراجعة المدير لإضافته.', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa-solid fa-user-plus"></i> إنشاء الحساب وتأكيد';
+                    return; 
+                }
+
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الإنشاء...';
+                const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+                currentUserAuth = userCredential.user;
+                
+                // تجهيز بيانات المستخدم الجديد
+                pendingUserData = {
+                    name: name, 
+                    phone: phone,
+                    role: 'pending', 
+                    requestedRole: role, 
+                    uid: currentUserAuth.uid, 
+                    email: currentUserAuth.email,
+                    readReceipts: {}, notifications: [], notificationPreferences: defaultNotifPreferences,
+                    leaveBalances: { days: 14, hours: 20 },
+                    lastActive: Date.now(), timestamp: Date.now(),
+                    photoURL: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=00839b&color=fff`
+                };
+                
+                // حفظ المستخدم في قاعدة البيانات
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserAuth.uid), pendingUserData);
+                currentUserData = pendingUserData;
+                document.getElementById('loginScreen').classList.add('hidden');
+
+                // تفعيل شاشة الـ OTP فوراً بعد إنشاء الحساب لربط الرقم
+                targetPhoneNumber = phone;
+                document.getElementById('otpMainDesc').innerHTML = `سيتم إرسال رمز التحقق إلى:<br><b dir="ltr" class="text-secondary text-lg mt-2 inline-block">${targetPhoneNumber}</b>`;
+                window.triggerOTPFlow(false);
+                
+            } catch (error) {
+                console.error(error);
+                let errorMsg = 'حدث خطأ أثناء التسجيل';
+                if(error.code === 'auth/email-already-in-use') errorMsg = 'هذا الإيميل مستخدم مسبقاً! اذهب لـ تسجيل الدخول.';
+                showToast(errorMsg, 'error');
+            } finally {
+                btn.disabled = false;
+                if(!btn.innerHTML.includes('spin')) {
+                    btn.innerHTML = '<i class="fa-solid fa-user-plus"></i> إنشاء الحساب وتأكيد';
+                }
+            }
+        };
+
+        document.getElementById('setupProfileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('setupName').value;
+            let role = document.getElementById('setupRole').value;
+            const forbiddenRoles = ['ceo', 'مدير', 'مدير عام', 'مدير النظام', 'manager'];
+            if (forbiddenRoles.includes(role.toLowerCase())) {
+                  role = 'Employee';
+            }
+            const phone = document.getElementById('setupPhone').value.trim(); 
+            
+            // نجهز البيانات ولا نحفظها في القاعدة حتى ينجح في الـ OTP
+            pendingUserData = {
+                name: name, 
+                phone: phone, // تم حفظ رقم الهاتف
+                role: 'pending', 
+                requestedRole: role, 
+                uid: currentUserAuth.uid, email: currentUserAuth.email || 'no-email@company.com',
+                readReceipts: {}, notifications: [], notificationPreferences: defaultNotifPreferences,
+                leaveBalances: { days: 14, hours: 20 },
+                lastActive: Date.now(), timestamp: Date.now()
+            };
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserAuth.uid), pendingUserData);
+            currentUserData = pendingUserData;
+            document.getElementById('setupProfileScreen').classList.add('hidden');
+            finishLoginSetup();
+        });
+
+        function finishLoginSetup() {
+            const isUserCEO = window.isAdmin();
+            const isAccountant = ['accountant', 'محاسب', 'مالية', 'finance'].includes((currentUserData.role || '').toLowerCase());
+            
+            if(currentUserData && isUserCEO) { autoDeleteOldAttendance(); }
+            localStorage.setItem('quill_user_cache_services', JSON.stringify(currentUserData));
+
+            document.getElementById('userName').innerText = currentUserData.name;
+            document.getElementById('userRole').innerText = currentUserData.role === 'pending' ? (currentUserData.requestedRole || 'قيد الانتظار') : currentUserData.role;
+            document.getElementById('userAvatar').src = currentUserData.photoURL;
+            document.getElementById('settingsAvatarPreview').src = currentUserData.photoURL;
+            if(document.getElementById('settingsName')) document.getElementById('settingsName').value = currentUserData.name;
+            if(document.getElementById('settingsRole')) document.getElementById('settingsRole').value = currentUserData.role === 'pending' ? (currentUserData.requestedRole || 'قيد الانتظار') : currentUserData.role;
+            if(document.getElementById('settingsPhone')) document.getElementById('settingsPhone').value = currentUserData.phone || '';
+            // التحقق من رقم الهاتف وإظهار النقطة ورابط التفعيل
+            if (currentUserData.phoneVerified) {
+                document.getElementById('phoneVerificationSection').classList.add('hidden');
+                document.getElementById('phoneVerifiedBadge').classList.remove('hidden');
+                document.getElementById('settingsNotifDot').classList.add('hidden');
+            } else {
+                document.getElementById('phoneVerificationSection').classList.remove('hidden');
+                document.getElementById('phoneVerifiedBadge').classList.add('hidden');
+                document.getElementById('settingsNotifDot').classList.remove('hidden');
+            }
+            if(document.getElementById('settingsEmail')) document.getElementById('settingsEmail').value = currentUserData.email || currentUserAuth.email || '';
+            
+            // التحكم بظهور أقسام المدير والموظفين بصلاحيات
+            const hasEmpPerm = currentUserData.permissions && currentUserData.permissions.canManageEmployees;
+            const hasExpPerm = currentUserData.permissions && currentUserData.permissions.canManageExpenses;
+
+            if(isUserCEO) {
+                document.getElementById('clearChatBtn').classList.remove('hidden');
+                document.getElementById('ceoAttendanceView').classList.remove('hidden');
+                document.getElementById('ceoExportSection').classList.remove('hidden');
+                document.getElementById('ceoLeaveBalancesSection').classList.remove('hidden');
+                document.getElementById('ceoCustodyView').classList.remove('hidden');
+                const ceoReport = document.getElementById('ceoReportSection');
+                if(ceoReport) ceoReport.classList.remove('hidden');
+            } else {
+                const ceoReport = document.getElementById('ceoReportSection');
+                if(ceoReport) ceoReport.classList.add('hidden');
+            }
+
+                if(isUserCEO) {
+                const testSec = document.getElementById('ceoTestEmailSection');
+                if(testSec) testSec.classList.remove('hidden');
+            }
+
+            // إظهار قائمة الإيميلات المصرح لها للمدير وللموظف الذي لديه صلاحية إدارة الموظفين
+            if(isUserCEO || hasEmpPerm) {
+                document.getElementById('ceoAllowedEmailsSection').classList.remove('hidden');
+                window.renderAllowedEmails();
+            } else {
+                document.getElementById('ceoAllowedEmailsSection').classList.add('hidden');
+            }
+
+            // قسم الموظفين
+            if(isUserCEO || hasEmpPerm) {
+                document.getElementById('nav-employees-btn').classList.remove('hidden');
+                document.getElementById('nav-employees-btn').style.display = 'flex';
+                document.getElementById('grid-employees').classList.remove('hidden');
+            } else {
+                document.getElementById('nav-employees-btn').classList.add('hidden');
+                document.getElementById('nav-employees-btn').style.display = 'none';
+                document.getElementById('grid-employees').classList.add('hidden');
+            }
+
+            // التحكم بظهور قسم المصاريف (للجميع)
+            document.getElementById('nav-expenses-btn').classList.remove('hidden');
+            document.getElementById('nav-expenses-btn').style.display = 'flex';
+            document.getElementById('grid-expenses').classList.remove('hidden');
+            // التحكم بظهور زر بدء الاجتماع
+            const hasMeetingPerm = currentUserData.permissions && currentUserData.permissions.canCreateMeetings;
+            if (isUserCEO || hasMeetingPerm) {
+                document.getElementById('createMeetingBtn').classList.remove('hidden');
+                document.getElementById('createMeetingBtn').style.display = 'flex';
+            } else {
+                document.getElementById('createMeetingBtn').classList.add('hidden');
+                document.getElementById('createMeetingBtn').style.display = 'none';
+            }
+
+            try {
+                        loadNotificationSettingsToUI();
+                    } catch (err) {
+                        console.warn("تم تخطي خطأ تحميل الإعدادات لضمان عدم توقف النظام", err);
+                    }
+
+                // ==================== نظام التعميمات ====================
+window.handleNoticeTypeChange = () => {
+    const type = document.getElementById('noticeType').value;
+    document.getElementById('noticeCustomType').classList.toggle('hidden', type !== 'custom');
+    document.getElementById('noticeVotingSection').classList.toggle('hidden', type !== 'تصويت');
+};
+
+window.handleNoticeVisibility = () => {
+    const vis = document.getElementById('noticeVisibility').value;
+    const container = document.getElementById('noticeSpecificUsers');
+    if (vis === 'specific') {
+        container.innerHTML = '';
+        globalUsers.forEach(u => {
+            if(u.uid !== currentUserData.uid) {
+                container.innerHTML += `
+                    <label class="flex items-center gap-2 p-1.5 hover:bg-gray-100 dark:hover:bg-gray-600 rounded cursor-pointer">
+                        <input type="checkbox" value="${u.uid}" class="notice-user-cb w-4 h-4 text-yellow-500 rounded">
+                        <span class="text-xs font-bold text-gray-700 dark:text-gray-200">${escapeHTML(u.name)}</span>
+                    </label>`;
+            }
+        });
+        container.classList.remove('hidden');
+    } else {
+        container.classList.add('hidden');
+    }
+};
+
+window.openAddNoticeModal = () => {
+    document.getElementById('noticeForm').reset();
+    window.handleNoticeTypeChange();
+    window.handleNoticeVisibility();
+    window.openModal('addNoticeModal');
+};
+
+                window.addVoteOption = () => {
+    const container = document.getElementById('dynamicVoteOptions');
+    const div = document.createElement('div');
+    div.className = 'flex items-center gap-2';
+    div.innerHTML = `
+        <input type="text" placeholder="اكتب الخيار هنا..." class="vote-option-input w-full border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-yellow-500 text-right">
+        <button type="button" onclick="this.parentElement.remove()" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-xmark"></i></button>
+    `;
+    container.appendChild(div);
+};
+
+window.saveNotice = async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('saveNoticeBtn');
+    btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+    let type = document.getElementById('noticeType').value;
+    if (type === 'custom') type = document.getElementById('noticeCustomType').value || 'تعميم';
+    
+    const visibility = document.getElementById('noticeVisibility').value;
+    let targetUsers = ['all'];
+    // التحقق المزدوج من القيمة لتفادي أخطاء اللغة
+    if (visibility === 'specific' || visibility === 'مخصص') {
+        targetUsers = Array.from(document.querySelectorAll('.notice-user-cb:checked')).map(cb => cb.value);
+        if (targetUsers.length === 0) { showToast('حدد موظفاً واحداً على الأقل', 'warning'); btn.disabled = false; btn.innerHTML = 'نشر التعميم'; return; }
+    }
+
+    let voteOptions = null;
+    if (document.getElementById('noticeType').value === 'تصويت') {
+        voteOptions = Array.from(document.querySelectorAll('.vote-option-input')).map(input => input.value.trim()).filter(val => val !== '');
+    }
+
+    const expiryVal = document.getElementById('noticeExpiry').value;
+
+    const data = {
+        type: type,
+        title: document.getElementById('noticeTitle').value,
+        details: document.getElementById('noticeDetails').value,
+        targetUsers: targetUsers,
+        expiryDate: expiryVal ? new Date(expiryVal).getTime() : null,
+        voteOptions: voteOptions,
+        votes: {}, // لتخزين أصوات الموظفين {uid: optionIndex}
+        addedBy: currentUserData.name,
+        timestamp: Date.now()
+    };
+
+    try {
+        await addDoc(getColRef('notices'), data);
+        window.closeModal('addNoticeModal');
+        showToast('تم نشر التعميم', 'success');
+        
+        // إرسال إشعار للمستهدفين
+        const notificationMsg = `تعميم جديد: ${data.title}`;
+        if (targetUsers.includes('all')) {
+            globalUsers.forEach(u => {
+                if (u.uid !== currentUserData.uid) window.sendSystemNotification(u.uid, type, notificationMsg, 'notices', 'notices');
+            });
+        } else {
+            targetUsers.forEach(uid => window.sendSystemNotification(uid, type, notificationMsg, 'notices', 'notices'));
+        }
+    } catch(err) { console.error(err); showToast('خطأ في النشر', 'error'); }
+    finally { btn.disabled = false; btn.innerHTML = 'نشر التعميم'; }
+};
+
+window.deleteNotice = async (id) => {
+    if(confirm('هل أنت متأكد من حذف هذا التعميم؟')) {
+        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'notices', id));
+    }
+};
+
+window.submitVote = async (noticeId, optionIndex) => {
+    const notice = globalNotices.find(n => n.id === noticeId);
+    if(!notice) return;
+    try {
+        let currentVotes = notice.votes || {};
+        currentVotes[currentUserData.uid] = optionIndex;
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'notices', noticeId), { votes: currentVotes });
+        showToast('تم تسجيل تصويتك', 'success');
+    } catch(e) { console.error(e); }
+};
+
+window.renderNotices = () => {
+    const cont = document.getElementById('noticesContainer');
+    if(!cont) return;
+    cont.innerHTML = '';
+    const isCEO = window.isAdmin();
+    
+    if (isCEO) document.getElementById('addNoticeBtn').classList.remove('hidden');
+
+    let unreadCount = 0;
+    const now = Date.now();
+
+    const myNotices = globalNotices.filter(n => {
+        // فلترة التعميمات المنتهية
+        if (n.expiryDate && n.expiryDate < now) return false;
+        // فلترة الصلاحية
+        if (isCEO) return true;
+        
+        let targets = n.targetUsers || ['all'];
+        if (!Array.isArray(targets)) targets = [targets]; // لتفادي أي خطأ في نوع البيانات
+        
+        if (targets.includes('all') || targets.includes(currentUserData.uid)) return true;
+        return false;
+    });
+
+    if (myNotices.length === 0) {
+        cont.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8 font-bold">لا يوجد تعميمات حالياً.</p>';
+    }
+
+    myNotices.forEach(n => {
+        // التحقق مما إذا كان المستخدم قرأ التعميم (باستخدام readReceipts)
+        const isRead = groupReadTimestamps[`notice_${n.id}`];
+        if (!isRead && !isCEO) unreadCount++;
+
+        let icon = 'fa-bullhorn';
+        let colorClass = 'text-yellow-600 bg-yellow-100';
+        if(n.type === 'قرار جديد') { icon = 'fa-gavel'; colorClass = 'text-red-600 bg-red-100'; }
+        if(n.type === 'إعلان هام') { icon = 'fa-triangle-exclamation'; colorClass = 'text-orange-600 bg-orange-100'; }
+        if(n.type === 'تصويت') { icon = 'fa-check-to-slot'; colorClass = 'text-indigo-600 bg-indigo-100'; }
+
+        let votingHtml = '';
+        if (n.type === 'تصويت' && n.voteOptions) {
+            const totalVotes = Object.keys(n.votes || {}).length;
+            const myVote = (n.votes || {})[currentUserData.uid];
+            
+            votingHtml = '<div class="mt-3 space-y-2 border-t dark:border-gray-600 pt-3">';
+            n.voteOptions.forEach((opt, idx) => {
+                const optVotes = Object.values(n.votes || {}).filter(v => v === idx).length;
+                const percentage = totalVotes === 0 ? 0 : Math.round((optVotes / totalVotes) * 100);
+                const isSelected = myVote === idx;
+                
+                // جلب أسماء الموظفين الذين اختاروا هذا التصويت
+                const votersNames = Object.entries(n.votes || {})
+                    .filter(([uid, vIdx]) => vIdx === idx)
+                    .map(([uid, vIdx]) => {
+                        const user = globalUsers.find(u => u.uid === uid);
+                        return user ? user.name : 'مجهول';
+                    });
+                
+                // عرض الأسماء للمدير فقط، أو يمكنك تركها للجميع
+                const showVoters = isCEO && votersNames.length > 0 ? `<div class="relative z-10 mt-1 text-[10px] text-gray-500 font-normal">المصوتون: ${votersNames.join('، ')}</div>` : '';
+                
+                votingHtml += `
+                    <button onclick="window.submitVote('${n.id}', ${idx})" class="relative w-full text-right p-2 rounded-lg border ${isSelected ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30' : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'} overflow-hidden transition group">
+                        <div class="absolute right-0 top-0 bottom-0 bg-indigo-100 dark:bg-indigo-900/50 -z-10 transition-all" style="width: ${percentage}%"></div>
+                        <div class="flex justify-between items-center text-sm font-bold relative z-10 ${isSelected ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300'}">
+                            <span>${isSelected ? '<i class="fa-solid fa-circle-check mx-1"></i>' : ''}${escapeHTML(opt)}</span>
+                            <span class="text-xs text-gray-500">${percentage}% (${optVotes})</span>
+                        </div>
+                        ${showVoters}
+                    </button>
+                `;
+            });
+            votingHtml += '</div>';
+        }
+
+        cont.innerHTML += `
+            <div class="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border ${!isRead && !isCEO ? 'border-yellow-400' : 'border-gray-100 dark:border-gray-700'} flex flex-col relative transition hover:shadow-md" onmouseenter="window.markNoticeRead('${n.id}')">
+                ${!isRead && !isCEO ? '<span class="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-bl-lg font-bold">جديد</span>' : ''}
+                <div class="flex justify-between items-start mb-3">
+                    <div class="flex items-center gap-2">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center ${colorClass}"><i class="fa-solid ${icon} text-lg"></i></div>
+                        <div>
+                            <h3 class="font-bold text-gray-800 dark:text-white">${escapeHTML(n.title)}</h3>
+                            <span class="text-[10px] text-gray-500">${new Date(n.timestamp).toLocaleString('ar-EG')}</span>
+                        </div>
+                    </div>
+                    ${isCEO ? `<button onclick="window.deleteNotice('${n.id}')" class="text-red-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button>` : ''}
+                </div>
+                <span class="inline-block w-max text-[10px] font-bold px-2 py-1 rounded-full mb-3 ${colorClass}">${escapeHTML(n.type)}</span>
+                <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">${escapeHTML(n.details)}</p>
+                ${votingHtml}
+                <div class="mt-4 pt-3 border-t dark:border-gray-700 text-[10px] text-gray-400 font-bold flex justify-between">
+                    <span>بواسطة: ${escapeHTML(n.addedBy)}</span>
+                    ${n.expiryDate ? `<span>ينتهي في: ${new Date(n.expiryDate).toLocaleDateString('ar-EG')}</span>` : ''}
+                </div>
+            </div>
+        `;
+    });
+
+    const b1 = document.getElementById('gridNoticesBadge');
+    const b2 = document.getElementById('sidebarNoticesBadge');
+    if (unreadCount > 0) {
+        if(b1) { b1.innerText = unreadCount; b1.classList.remove('hidden'); }
+        if(b2) { b2.innerText = unreadCount; b2.classList.remove('hidden'); }
+    } else {
+        if(b1) b1.classList.add('hidden');
+        if(b2) b2.classList.add('hidden');
+    }
+};
+
+window.markNoticeRead = (id) => {
+    if (window.isSuperAdmin()) return;
+    if (!groupReadTimestamps[`notice_${id}`]) {
+        groupReadTimestamps[`notice_${id}`] = Date.now();
+        updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), {
+            readReceipts: groupReadTimestamps
+        });
+        window.renderNotices();
+    }
+};
+// ========================================================
+
+                let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // إظهار زر التثبيت في الأعلى
+            const installBtn = document.getElementById('installAppBtn');
+            if(installBtn) installBtn.classList.remove('hidden');
+
+            // إظهار البانر المخصص في الأسفل بعد 3 ثواني
+            const banner = document.getElementById('pwaInstallBanner');
+            if(banner) {
+                setTimeout(() => {
+                    banner.classList.remove('translate-y-full');
+                    banner.classList.add('translate-y-0');
+                }, 3000);
+            }
+        });
+
+        const handleInstallAction = async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    const installBtnEl = document.getElementById('installAppBtn');
+                    if(installBtnEl) installBtnEl.classList.add('hidden');
+                    
+                    const banner = document.getElementById('pwaInstallBanner');
+                    if(banner) {
+                        banner.classList.add('translate-y-full');
+                        banner.classList.remove('translate-y-0');
+                    }
+                }
+                deferredPrompt = null;
+            }
+        };
+
+        const installBtnEl = document.getElementById('installAppBtn');
+        if (installBtnEl) installBtnEl.addEventListener('click', handleInstallAction);
+        
+        const pwaInstallConfirmBtn = document.getElementById('pwaInstallConfirmBtn');
+        if (pwaInstallConfirmBtn) pwaInstallConfirmBtn.addEventListener('click', handleInstallAction);
+            
+            startDatabaseListeners();
+            
+            // تأكيد إخفاء الأقسام غير المصرح بها من الصفحة الرئيسية
+            if (!isUserCEO && !hasEmpPerm) document.getElementById('grid-employees').style.display = 'none';
+            else document.getElementById('grid-employees').style.display = 'flex';
+
+            if (!isUserCEO && !isAccountant && !hasExpPerm) document.getElementById('grid-expenses').style.display = 'none';
+            else document.getElementById('grid-expenses').style.display = 'flex';
+
+            const filterBtn = document.getElementById('taskEmployeeFilterBtn');
+            if (filterBtn) {
+                const hasTaskAssignPerm = currentUserData.permissions && currentUserData.permissions.canAssignTasks;
+                if (!isUserCEO && !hasTaskAssignPerm) filterBtn.style.display = 'none';
+                else filterBtn.style.display = 'flex';
+            }
+
+            window.logAction('تسجيل دخول', `سجل ${currentUserData.name} الدخول لخدمات النظام`);
+            
+            // إجبار الموظف على التوجه لصفحة الحضور والانصراف إذا لم يقم بتسجيل الدخول بعد
+            if (!isUserCEO && !hasPunchedInToday) {
+                window.location.hash = 'attendance';
+            } else if (!window.location.hash || window.location.hash === '#login') {
+                window.location.hash = 'home-grid';
+            }
+            window.dispatchEvent(new Event('hashchange'));
+            
+            if(isUserCEO) {
+                checkScheduledInventoryMove();
+            }
+        }
+
+        window.sendEmailNotification = async (to_email, to_name, task_title, task_desc) => {
+            try {
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'sendTaskEmail',
+                        to_email: to_email,
+                        to_name: to_name,
+                        task_title: task_title,
+                        task_desc: task_desc,
+                        token: await auth.currentUser.getIdToken()
+                    })
+                });
+            } catch(err) { console.error("Email Error:", err); }
+        };
+
+        // ==========================================
+        // -------- دوال إدارة المهام (الجديدة) -------
+        // ==========================================
+        window.currentTaskSubView = 'list';
+        
+        window.switchTaskSubView = (viewName) => {
+    // الانتقال التلقائي السلس إلى المهام الحالية إذا كنت في المهام المنجزة
+    if (window.currentTaskTab === 'reports') {
+        window.switchTaskTab('active');
+    }
+
+    window.currentTaskSubView = viewName;
+    
+    const btnList = document.getElementById('btn-view-list');
+    const btnDeadline = document.getElementById('btn-view-deadline');
+    const btnPlanner = document.getElementById('btn-view-planner');
+    const indicator = document.getElementById('taskSubViewIndicator');
+    
+    const viewList = document.getElementById('tasks-list-view');
+    const viewDeadline = document.getElementById('tasks-deadline-view');
+    const viewPlanner = document.getElementById('tasks-planner-view');
+
+    const activeClass = "relative z-10 text-sm font-bold text-[#002d74] dark:text-white transition-colors duration-300";
+    const inactiveClass = "relative z-10 text-sm font-bold text-gray-400 hover:text-[#002d74] dark:hover:text-white transition-colors duration-300";
+
+    btnList.className = viewName === 'list' ? activeClass : inactiveClass;
+    btnDeadline.className = viewName === 'deadline' ? activeClass : inactiveClass;
+    btnPlanner.className = viewName === 'planner' ? activeClass : inactiveClass;
+
+    const activeBtn = viewName === 'list' ? btnList : (viewName === 'deadline' ? btnDeadline : btnPlanner);
+    if(activeBtn && indicator) {
+        indicator.style.width = activeBtn.offsetWidth + 'px';
+        const parentRight = activeBtn.parentElement.getBoundingClientRect().right;
+        const btnRight = activeBtn.getBoundingClientRect().right;
+        indicator.style.right = (parentRight - btnRight) + 'px';
+    }
+
+    viewList.classList.toggle('hidden', viewName !== 'list');
+    viewDeadline.classList.toggle('hidden', viewName !== 'deadline');
+    viewPlanner.classList.toggle('hidden', viewName !== 'planner');
+    
+    const filterBtn = document.getElementById('taskEmployeeFilterBtn');
+    if (filterBtn) {
+        if (viewName === 'list' || viewName === 'planner') {
+            const hasTaskAssignPerm = currentUserData.permissions && currentUserData.permissions.canAssignTasks;
+            filterBtn.style.display = (!window.isAdmin() && !hasTaskAssignPerm) ? 'none' : 'flex';
+        } else {
+            filterBtn.style.display = 'none';
+        }
+    }
+
+    window.renderTasks();
+};
+
+        window.switchTaskTab = (tabName) => {
+    window.currentTaskTab = tabName;
+    const btnActive = document.getElementById('tab-tasks-active');
+    const btnReports = document.getElementById('tab-tasks-reports');
+    const mainView = document.getElementById('tasksMainView');
+    const inlineReports = document.getElementById('inlineCeoReports');
+    
+    const activeClass = 'flex-1 px-4 py-1.5 text-sm font-bold rounded-md bg-white text-[#00839b] shadow-sm transition relative';
+    const inactiveClass = 'flex-1 px-4 py-1.5 text-sm font-bold rounded-md text-gray-500 hover:text-[#00839b] transition relative';
+
+    if (tabName === 'active') {
+        btnActive.className = activeClass;
+        btnReports.className = inactiveClass;
+        mainView.classList.remove('hidden');
+        inlineReports.classList.add('hidden');
+    } else {
+        btnActive.className = inactiveClass;
+        btnReports.className = activeClass;
+        mainView.classList.add('hidden');
+        inlineReports.classList.remove('hidden');
+        
+        const isCEO = window.isAdmin() || (currentUserData.permissions && currentUserData.permissions.canAssignTasks);
+        const select = document.getElementById('ceoReportEmpSelect');
+        const selectContainer = select ? select.parentElement.parentElement : null;
+        
+        if (isCEO) {
+            if (selectContainer) selectContainer.classList.remove('hidden');
+            if(select && select.options.length <= 1) {
+                // التغيير هنا: عرض الجميع بدلاً من عرض المهام بانتظار الاعتماد فقط
+                select.innerHTML = '<option value="all">-- عرض الجميع --</option>';
+                globalUsers.forEach(u => {
+                    if (u.role !== 'CEO' && u.role !== 'مطور' && u.role !== 'Developer' && u.status !== 'pending' && u.status !== 'rejected') {
+                        select.innerHTML += `<option value="${u.uid}">${escapeHTML(u.name)}</option>`;
+                    }
+                });
+            }
+            window.renderCeoEmployeeTasks('all', 'الجميع');
+        } else {
+            if (selectContainer) selectContainer.classList.add('hidden');
+            window.renderCeoEmployeeTasks(currentUserData.uid, currentUserData.name);
+        }
+
+        const filterBtn = document.getElementById('taskEmployeeFilterBtn');
+        if (filterBtn) filterBtn.style.display = 'none';
+    }
+    window.renderTasks();
+};
+
+        window.openChecklists = window.openChecklists || new Set();
+
+        window.toggleInlineChecklist = (taskId, isCard = false) => {
+            const prefix = isCard ? 'card-' : '';
+            const row = document.getElementById(`${prefix}checklist-row-${taskId}`);
+            const content = document.getElementById(`${prefix}checklist-content-${taskId}`);
+            const icon = document.getElementById(`icon-${prefix}chk-${taskId}`);
+            
+            if(row && content) {
+                if(row.classList.contains('hidden')) {
+                    row.classList.remove('hidden');
+                    window.openChecklists.add(taskId); // حفظ المهمة كـ مفتوحة
+                    setTimeout(() => {
+                        content.style.maxHeight = '2000px';
+                        content.style.paddingTop = '1rem';
+                        content.style.paddingBottom = '1rem';
+                    }, 10);
+                    if(icon) {
+                        icon.classList.remove('fa-chevron-left');
+                        icon.classList.add('fa-chevron-down');
+                    }
+                } else {
+                    window.openChecklists.delete(taskId); // إزالتها من المفتوح
+                    content.style.maxHeight = '0px';
+                    content.style.paddingTop = '0px';
+                    content.style.paddingBottom = '0px';
+                    setTimeout(() => row.classList.add('hidden'), 300);
+                    if(icon) {
+                        icon.classList.remove('fa-chevron-down');
+                        icon.classList.add('fa-chevron-left');
+                    }
+                }
+            }
+        };
+
+        window.openEditDeadlineModal = (taskId, currentDeadline) => {
+            let modal = document.getElementById('editDeadlineModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'editDeadlineModal';
+                modal.className = 'fixed inset-0 bg-black/60 z-[9999] hidden items-center justify-center p-4 backdrop-blur-sm';
+                modal.innerHTML = `
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm shadow-2xl transform scale-95 transition-all">
+                        <div class="p-6">
+                            <h3 class="text-lg font-bold text-[#002d74] dark:text-white mb-4">تعديل موعد التسليم</h3>
+                            
+                            <div id="prevDeadlineBox" class="mb-4 bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border border-gray-100 dark:border-gray-600">
+                                <span class="text-xs text-gray-500 dark:text-gray-400 block mb-1">الموعد السابق:</span>
+                                <span id="prevDeadlineText" class="font-bold text-gray-800 dark:text-gray-200 text-sm"></span>
+                            </div>
+
+                            <form id="editDeadlineForm">
+                                <input type="hidden" id="editDeadlineTaskId">
+                                <div class="mb-4">
+                                    <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">موعد التسليم الجديد</label>
+                                    <input type="text" id="editDeadlineInput" required class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-xl focus:ring-[#00839b] focus:border-[#00839b] px-4 py-2 text-sm text-gray-900 dark:text-white" placeholder="اختر التاريخ والوقت...">
+                                </div>
+                                <div class="flex gap-3 mt-6">
+                                    <button type="submit" class="flex-1 bg-[#00839b] hover:bg-[#007186] text-white py-2 rounded-xl font-bold transition shadow-sm">حفظ التعديل</button>
+                                    <button type="button" onclick="window.closeModal('editDeadlineModal')" class="flex-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 py-2 rounded-xl font-bold transition">إلغاء</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                
+                document.getElementById('editDeadlineForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const btn = e.target.querySelector('button[type="submit"]');
+                    const origHtml = btn.innerHTML;
+                    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                    btn.disabled = true;
+                    try {
+                        const id = document.getElementById('editDeadlineTaskId').value;
+                        const inputEl = document.getElementById('editDeadlineInput');
+                        
+                        let newDeadlineTimestamp = null;
+                        if (inputEl._flatpickr && inputEl._flatpickr.selectedDates[0]) {
+                            newDeadlineTimestamp = inputEl._flatpickr.selectedDates[0].getTime();
+                        } else if (inputEl.value) {
+                            newDeadlineTimestamp = new Date(inputEl.value).getTime();
+                        }
+
+                        if (!newDeadlineTimestamp) {
+                            showToast('الرجاء اختيار الموعد', 'error');
+                            btn.innerHTML = origHtml;
+                            btn.disabled = false;
+                            return;
+                        }
+
+                        const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', id), { deadline: newDeadlineTimestamp });
+                        showToast('تم تعديل موعد التسليم بنجاح', 'success');
+                        window.closeModal('editDeadlineModal');
+                    } catch(err) {
+                        console.error(err);
+                        showToast('حدث خطأ أثناء تعديل الموعد', 'error');
+                    } finally {
+                        btn.innerHTML = origHtml;
+                        btn.disabled = false;
+                    }
+                });
+            }
+            
+            document.getElementById('editDeadlineTaskId').value = taskId;
+            
+            const prevTextEl = document.getElementById('prevDeadlineText');
+            if (currentDeadline && currentDeadline !== 'undefined' && currentDeadline !== 'null') {
+                const d = new Date(Number(currentDeadline) || currentDeadline);
+                if (!isNaN(d)) {
+                    prevTextEl.innerText = d.toLocaleString('ar-EG', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', hour12:true });
+                } else {
+                    prevTextEl.innerText = 'غير متوفر';
+                }
+            } else {
+                prevTextEl.innerText = 'لا يوجد موعد سابق';
+            }
+
+            const inputEl = document.getElementById('editDeadlineInput');
+            if (typeof flatpickr !== 'undefined') {
+                if (!inputEl._flatpickr) {
+                    flatpickr(inputEl, {
+                        enableTime: true,
+                        dateFormat: "Y-m-dTH:i", 
+                        altInput: true,
+                        altFormat: "Y-m-d h:i K",
+                        time_24hr: false,
+                        minDate: "today"
+                    });
+                }
+                if (currentDeadline && currentDeadline !== 'undefined' && currentDeadline !== 'null') {
+                    const d = new Date(Number(currentDeadline) || currentDeadline);
+                    inputEl._flatpickr.setDate(d);
+                } else {
+                    inputEl._flatpickr.clear();
+                }
+            } else {
+                inputEl.type = 'datetime-local';
+                const now = new Date();
+                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                inputEl.min = now.toISOString().slice(0, 16);
+                
+                if (currentDeadline && currentDeadline !== 'undefined' && currentDeadline !== 'null') {
+                    const d = new Date(Number(currentDeadline) || currentDeadline);
+                    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+                    inputEl.value = d.toISOString().slice(0, 16);
+                } else {
+                    inputEl.value = '';
+                }
+            }
+        
+            window.openModal('editDeadlineModal');
+        };
+
+        window.renderTasks = function() {
+            const isCEO = window.isAdmin();
+            let tasksToRender = globalTasks.filter(t => {
+                const myUid = currentUserData.uid;
+                const isAssignedToMe = (t.assigneeIds && t.assigneeIds.includes(myUid)) || t.assigneeId === myUid;
+                const isSelfAssigned = t.assigneeId === t.createdBy && (!t.assigneeIds || t.assigneeIds.length <= 1);
+                if (isSelfAssigned) return t.assigneeId === myUid; 
+                if (isCEO) return true;
+                const hasAssignPerm = currentUserData.permissions && currentUserData.permissions.canAssignTasks;
+                if (hasAssignPerm && (t.status === 'completed' || t.status === 'pending_approval')) return true; 
+                return isAssignedToMe || t.createdBy === myUid;
+            });
+
+            // ترتيب المهام بناءً على الـ orderIndex لتثبيت السحب والإفلات، ثم التاريخ
+            tasksToRender.sort((a, b) => {
+                if (a.orderIndex !== undefined && b.orderIndex !== undefined) {
+                    return a.orderIndex - b.orderIndex;
+                }
+                return b.timestamp - a.timestamp;
+            });
+
+            // تحديث إشعار المهام المعلقة للاعتماد
+            let pendingApprovalCount = 0;
+            globalTasks.forEach(t => {
+                if (t.status === 'pending_approval' && (isCEO || t.createdBy === currentUserData.uid)) {
+                    pendingApprovalCount++;
+                }
+            });
+            
+            const badge = document.getElementById('pendingApprovalBadge');
+            if(badge) {
+                if(pendingApprovalCount > 0) {
+                    badge.innerText = pendingApprovalCount;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+
+            // إذا كنا في صفحة المهام المنجزة (Reports) لا نرندر اللوحات
+            if (window.currentTaskTab === 'reports') return;
+
+            // استثناء المهام المكتملة أو المرفوعة للاعتماد من لوحات List/Deadline/Planner العادية إلا إذا كانت في عواميدها
+            const activeTasks = tasksToRender.filter(t => t.status !== 'completed' && t.status !== 'pending_approval');
+            const allKanbanTasks = tasksToRender; // للبلانر نعرض الجميع حسب العمود
+
+            // ================= 1. RENDER LIST VIEW =================
+            const listTbody = document.getElementById('tasksListTbody');
+            if(listTbody) {
+                listTbody.innerHTML = '';
+                activeTasks.forEach(task => {
+                    const creator = globalUsers.find(u => u.uid === task.createdBy);
+                    const assignee = globalUsers.find(u => u.uid === task.assigneeId);
+                    const creatorPhoto = creator ? creator.photoURL : 'https://ui-avatars.com/api/?name=U';
+                    const assigneePhoto = assignee ? assignee.photoURL : 'https://ui-avatars.com/api/?name=U';
+                    
+                    // استخدام نظام 12 ساعة
+                    const deadlineStr = task.deadline ? new Date(task.deadline).toLocaleString('ar-EG', {month: 'short', day: 'numeric', hour:'2-digit', minute:'2-digit', hour12: true}) : 'بدون موعد';
+                    const isLate = task.deadline && new Date(task.deadline).getTime() < Date.now() && task.status !== 'completed';
+                        let rejectedBadgeList = '';
+if (task.isRejected && task.status !== 'completed' && task.status !== 'pending_approval') {
+    rejectedBadgeList = `<button onclick="event.stopPropagation(); window.showRejectReason('${escapeHTML(task.rejectReason || 'لا يوجد سبب')}')" class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-bold border border-red-200 ml-2 animate-pulse" title="اضغط لمعرفة السبب"><i class="fa-solid fa-circle-xmark mx-1"></i>مرفوضة</button>`;
+}
+                    const canEditDeadline = window.isAdmin() || (currentUserData.permissions && currentUserData.permissions.canAssignTasks);
+                    const deadlineBadge = canEditDeadline 
+                        ? `<span onclick="event.stopPropagation(); window.openEditDeadlineModal('${task.id}', '${task.deadline || ''}')" class="cursor-pointer hover:shadow-md transition ${isLate ? 'bg-red-100 text-red-600 border border-red-200' : 'bg-blue-50 text-blue-600 border border-blue-100'} px-2 py-1 rounded-full whitespace-nowrap text-center">${deadlineStr}</span>`
+                        : `<span class="${isLate ? 'bg-red-100 text-red-600 border border-red-200' : 'bg-blue-50 text-blue-600 border border-blue-100'} px-2 py-1 rounded-full whitespace-nowrap text-center">${deadlineStr}</span>`;
+
+                    let statusText = 'قيد الانتظار';
+                    let statusClass = 'bg-gray-100 text-gray-600';
+                    if(task.status === 'in-progress') { statusText = 'قيد التنفيذ'; statusClass = 'bg-[#00839b]/10 text-[#00839b] border border-[#00839b]/20 font-bold'; }
+                    
+                    let checklistsHtml = '';
+                    let hasPendingChecklist = false;
+                    if(task.checklists && task.checklists.length > 0) {
+                        hasPendingChecklist = task.checklists.some(c => !c.isCompleted);
+                        checklistsHtml = task.checklists.map((cl, idx) => `
+                            <div class="flex items-center gap-2 mb-1">
+                                <input type="checkbox" class="w-3.5 h-3.5 text-[#00839b] cursor-pointer" ${cl.isCompleted ? 'checked' : ''} onchange="window.toggleTaskChecklistItem('${task.id}', ${idx}, this.checked)">
+                                <span class="${cl.isCompleted ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-300'}">${escapeHTML(cl.text)}</span>
+                            </div>
+                        `).join('');
+                    } else {
+                        checklistsHtml = '<span class="text-gray-400 text-xs">لا توجد قوائم تحقق مرتبطة.</span>';
+                    }
+
+                   const hasDescription = task.desc && task.desc.trim() !== '';
+                    const showRedDot = hasPendingChecklist || hasDescription;
+                    const canDelete = isCEO || (currentUserData.permissions && currentUserData.permissions.canAssignTasks && task.createdBy === currentUserData.uid);
+                    const deleteBtnHtml = canDelete ? `<button onclick="window.deleteTask('${task.id}')" class="text-red-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/30 transition-all opacity-0 group-hover:opacity-100" title="حذف المهمة"><i class="fa-solid fa-trash"></i></button>` : '';
+                    
+                    const isOpen = window.openChecklists && window.openChecklists.has(task.id);
+                    const rowHiddenClass = isOpen ? '' : 'hidden';
+                    const contentStyle = isOpen ? 'max-height: 2000px; padding-top: 1rem; padding-bottom: 1rem;' : 'max-height: 0px; padding-top: 0px; padding-bottom: 0px;';
+                    const iconState = isOpen ? 'fa-chevron-down' : 'fa-chevron-left';
+
+                    listTbody.innerHTML += `
+                        <tr class="task-list-row group bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 transition border-b border-gray-100 dark:border-gray-700" data-id="${task.id}" data-assignee="${task.assigneeId || ''}">
+                            <td class="p-3 text-center align-middle">
+                                <i class="fa-solid fa-bars text-gray-300 cursor-grab hover:text-gray-500 drag-handle text-lg"></i>
+                            </td>
+                            <td class="p-3">
+                                <div class="flex items-center gap-2">
+                                    <button onclick="window.toggleInlineChecklist('${task.id}')" class="relative text-gray-400 hover:text-[#00839b] bg-gray-50 dark:bg-gray-700 w-6 h-6 rounded flex items-center justify-center transition focus:outline-none">
+                                       <i id="icon-chk-${task.id}" class="fa-solid ${iconState} text-xs transition-transform duration-300"></i>
+                                       ${showRedDot ? '<span class="absolute -top-1 -right-1 flex h-2.5 w-2.5 z-10"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 z-10"></span></span>' : ''}
+                                    </button>
+                                    <span class="font-bold text-gray-800 dark:text-white">${escapeHTML(task.title)}</span>
+                                    ${rejectedBadgeList}
+                                    ${task.isHighPriority ? '<i class="fa-solid fa-fire text-orange-500 text-xs ml-1" title="أولوية قصوى"></i>' : ''}
+                                </div>
+                            </td>
+                            <td class="p-3"><span class="px-3 py-1 text-xs rounded-full ${statusClass} shadow-sm">${statusText}</span></td>
+                            <td class="p-3 text-xs font-bold" dir="ltr">${deadlineBadge}</td>
+                            <td class="p-3">
+                                <div class="flex items-center gap-2 justify-end">
+                                    <span class="text-xs text-gray-600 dark:text-gray-400">${escapeHTML(creator ? creator.name : 'System')}</span>
+                                    <img src="${creatorPhoto}" class="w-6 h-6 rounded-full border border-gray-200 object-cover">
+                                </div>
+                            </td>
+                            <td class="p-3">
+                                <div class="flex items-center gap-2 justify-end">
+                                    <span class="text-xs font-bold text-[#002d74] dark:text-blue-300">${escapeHTML(task.assigneeName)}</span>
+                                    <img src="${assigneePhoto}" class="w-6 h-6 rounded-full border border-[#002d74] object-cover">
+                                </div>
+                            </td>
+                            <td class="p-3 text-center">
+                                ${deleteBtnHtml}
+                            </td>
+                        </tr>
+                        <tr id="checklist-row-${task.id}" class="${rowHiddenClass} bg-gray-50/80 dark:bg-gray-900/50 shadow-inner">
+                            <td colspan="7" class="p-0">
+                                <div id="checklist-content-${task.id}" class="overflow-hidden transition-all duration-300 ease-out px-4" style="${contentStyle}">
+                                    <div class="border-r-4 border-[#00839b] pr-4 my-2">
+                                        ${hasDescription ? `<div class="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed bg-white dark:bg-gray-800 p-3 rounded-lg border dark:border-gray-700 shadow-sm">${escapeHTML(task.desc)}</div>` : ''}
+                                        
+                                        ${task.attachmentUrl ? `
+                                        <div class="mb-4 p-3 bg-blue-50 dark:bg-gray-800 border border-blue-200 dark:border-gray-600 rounded-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-sm">
+                                            <div class="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                                                <i class="fa-solid fa-file-arrow-down text-xl"></i>
+                                                <div class="flex flex-col">
+                                                    <span class="text-xs font-bold">مرفق مرسل من الإدارة:</span>
+                                                    <span class="text-sm font-bold truncate max-w-[200px]" dir="ltr">${escapeHTML(task.attachmentName || 'ملف مرفق')}</span>
+                                                </div>
+                                            </div>
+                                            <a href="${task.attachmentUrl}" target="_blank" download class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors font-bold text-xs flex items-center gap-2 shadow w-full md:w-auto justify-center">
+                                                <i class="fa-solid fa-download"></i> تحميل / عرض المرفق
+                                            </a>
+                                        </div>` : ''}
+
+                                        <div class="text-xs font-bold text-[#002d74] dark:text-secondary mb-2 flex items-center gap-2 border-b dark:border-gray-700 pb-1 w-max"><i class="fa-solid fa-list-check"></i> قائمة التحقق المطلوبة:</div>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 pb-2">
+                                            ${checklistsHtml}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            // ================= 2. RENDER DEADLINE VIEW =================
+            const dlColumns = {
+                'overdue': document.getElementById('col-dl-overdue'),
+                'today': document.getElementById('col-dl-today'),
+                'week': document.getElementById('col-dl-week'),
+                'next': document.getElementById('col-dl-next'),
+                'none': document.getElementById('col-dl-none')
+            };
+            let dlCounts = { 'overdue':0, 'today':0, 'week':0, 'next':0, 'none':0 };
+            
+            Object.values(dlColumns).forEach(col => { if(col) col.innerHTML = ''; });
+
+            const nowObj = new Date();
+            nowObj.setHours(0,0,0,0);
+            const todayTime = nowObj.getTime();
+            const tomorrowTime = todayTime + 86400000;
+            const nextWeekTime = todayTime + (86400000 * 7);
+            const nextTwoWeeksTime = todayTime + (86400000 * 14);
+
+            activeTasks.forEach(task => {
+                const assignee = globalUsers.find(u => u.uid === task.assigneeId);
+                const aPhoto = assignee ? assignee.photoURL : '';
+                
+                let targetCol = 'none';
+                if(task.deadline) {
+                    if(task.deadline < todayTime) targetCol = 'overdue';
+                    else if(task.deadline >= todayTime && task.deadline < tomorrowTime) targetCol = 'today';
+                    else if(task.deadline >= tomorrowTime && task.deadline < nextWeekTime) targetCol = 'week';
+                    else if(task.deadline >= nextWeekTime && task.deadline < nextTwoWeeksTime) targetCol = 'next';
+                    else targetCol = 'none';
+                }
+
+                dlCounts[targetCol]++;
+                if(dlColumns[targetCol]) {
+                    dlColumns[targetCol].innerHTML += `
+                        <div class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 cursor-grab task-card" data-id="${task.id}" data-assignee="${task.assigneeId || ''}">
+                            <h4 class="text-sm font-bold text-gray-800 dark:text-white mb-2">${escapeHTML(task.title)}</h4>
+                            <div class="flex justify-between items-center">
+                                <span class="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold">${task.deadline ? new Date(task.deadline).toLocaleString('en-US', {month:'short', day:'numeric'}) : 'No date'}</span>
+                                <img src="${aPhoto}" class="w-5 h-5 rounded-full border border-gray-200">
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            for(let key in dlCounts) {
+                const badge = document.getElementById(`count-dl-${key}`);
+                if(badge) badge.innerText = dlCounts[key];
+            }
+
+            // ================= 3. RENDER PLANNER VIEW =================
+            const plColumns = {
+                'pending': document.getElementById('col-pl-pending'),
+                'in-progress': document.getElementById('col-pl-progress'),
+                'pending_approval': document.getElementById('col-pl-review'),
+                'completed': document.getElementById('col-pl-completed')
+            };
+            let plCounts = { 'pending':0, 'in-progress':0, 'pending_approval':0, 'completed':0 };
+            
+            Object.values(plColumns).forEach(col => { if(col) col.innerHTML = ''; });
+
+            allKanbanTasks.forEach(task => {
+                let targetCol = task.status;
+                if(!plColumns[targetCol]) targetCol = 'pending';
+                
+                plCounts[targetCol]++;
+                const assignee = globalUsers.find(u => u.uid === task.assigneeId);
+                const aPhoto = assignee ? assignee.photoURL : '';
+                
+                if(plColumns[targetCol]) {
+                    // معالجة قوائم التحقق والنقطة الحمراء للبلانر
+                    const hasDescription = task.desc && task.desc.trim() !== '';
+                    let hasChecklist = false;
+                    let hasPendingChecklist = false;
+                    let checklistsHtml = '';
+                    
+                    if(task.checklists && task.checklists.length > 0) {
+                        hasChecklist = true;
+                        hasPendingChecklist = task.checklists.some(c => !c.isCompleted);
+                        checklistsHtml = task.checklists.map((cl, clIdx) => `
+                            <div class="flex items-center gap-2 mb-1" onclick="event.stopPropagation()">
+                                <input type="checkbox" class="w-3 h-3 text-[#00839b] cursor-pointer" ${cl.isCompleted ? 'checked' : ''} onchange="event.stopPropagation(); window.toggleTaskChecklistItem('${task.id}', ${clIdx}, this.checked)">
+                                <span class="text-[10px] ${cl.isCompleted ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-300'}">${escapeHTML(cl.text)}</span>
+                            </div>
+                        `).join('');
+                    } else {
+                        checklistsHtml = '<span class="text-[10px] text-gray-400">لا توجد قوائم تحقق.</span>';
+                    }
+
+                    const isOpen = window.openChecklists && window.openChecklists.has(task.id);
+                    const rowHiddenClass = isOpen ? '' : 'hidden';
+                    const contentStyle = isOpen ? 'max-height: 2000px; padding-top: 1rem; padding-bottom: 1rem;' : 'max-height: 0px; padding-top: 0px; padding-bottom: 0px;';
+                    const iconState = isOpen ? 'fa-chevron-down' : 'fa-chevron-left';
+
+                    const showExpandBtn = hasChecklist || hasDescription;
+                    const showRedDot = hasPendingChecklist;
+                    const expandBtn = showExpandBtn ? `<button onclick="event.stopPropagation(); window.toggleInlineChecklist('${task.id}')" class="absolute top-2 left-2 w-5 h-5 flex items-center justify-center bg-gray-50 hover:bg-gray-200 dark:bg-gray-700 rounded transition">${showRedDot ? `<span class="absolute -top-1 -right-1 flex h-2 w-2 z-10"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-red-500 z-10"></span></span>` : ''}<i id="icon-chk-${task.id}" class="fa-solid ${iconState} text-[10px] text-gray-500 transition-transform duration-300"></i></button>` : '';
+
+                        let rejectedBadgeHtml = '';
+                    if (task.isRejected && task.status !== 'completed' && task.status !== 'pending_approval') {
+                         rejectedBadgeHtml = `
+                            <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-[10px] font-bold cursor-pointer" onclick="window.showRejectReason('${escapeHTML(task.rejectReason || 'لا يوجد سبب')}')">
+                                <i class="fa-solid fa-circle-xmark mx-1"></i> مرفوضة (اضغط لمعرفة السبب)
+                            </div>`;
+                    } 
+                        
+                    plColumns[targetCol].innerHTML += `
+                        <div class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 cursor-grab task-card relative" data-id="${task.id}" data-assignee="${task.assigneeId || ''}" ${task.status === 'completed' ? `oncontextmenu="window.showCompletedTaskContextMenu(event, '${task.id}', '${escapeHTML(task.title).replace(/'/g, "\\'")}')"` : ''}>
+                            ${expandBtn}
+                            <h4 class="text-sm font-bold text-gray-800 dark:text-white mb-2 ${showExpandBtn ? 'pl-6' : ''}">${escapeHTML(task.title)}</h4>
+                            ${rejectedBadgeHtml}
+                            <div class="flex justify-between items-center">
+                                <span class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded text-[10px] font-bold">${task.deadline ? new Date(task.deadline).toLocaleString('ar-EG', {month:'short', day:'numeric'}) : 'بدون موعد'}</span>
+                                <img src="${aPhoto}" class="w-5 h-5 rounded-full border border-gray-200 object-cover">
+                            </div>
+                            
+                            <!-- قسم التفاصيل المخفي -->
+                            <div id="card-checklist-row-${task.id}" class="${rowHiddenClass} mt-2 pt-2 border-t border-gray-100 dark:border-gray-600">
+                                <div id="card-checklist-content-${task.id}" class="overflow-hidden transition-all duration-300 ease-out text-right" style="${contentStyle}">
+                                    ${hasDescription ? `<div class="text-[10px] text-gray-600 dark:text-gray-300 mb-2 bg-gray-50 dark:bg-gray-900 p-2 rounded whitespace-pre-wrap">${escapeHTML(task.desc)}</div>` : ''}
+                                    <div class="space-y-1">
+                                        ${checklistsHtml}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            for(let key in plCounts) {
+                let domKey = key === 'in-progress' ? 'progress' : (key === 'pending_approval' ? 'review' : key);
+                const badge = document.getElementById(`count-pl-${domKey}`);
+                if(badge) badge.innerText = plCounts[key];
+            }
+
+            // تهيئة السحب والإفلات
+            window.initTaskDragAndDrop();
+        };
+
+        window.initTaskDragAndDrop = () => {
+    const listTbody = document.getElementById('tasksListTbody');
+    if(listTbody && !listTbody.sortableInstance) {
+        listTbody.sortableInstance = new Sortable(listTbody, {
+            handle: '.drag-handle',
+            animation: 200, // سرعة حركة ناعمة
+            forceFallback: true, // يمنع عناد المتصفح
+            fallbackOnBody: true, // سحب حر فوق كل العناصر
+            ghostClass: 'opacity-50',
+            onEnd: function (evt) {
+                const rows = Array.from(listTbody.querySelectorAll('.task-list-row'));
+                rows.forEach((row, index) => {
+                    const id = row.getAttribute('data-id');
+                    import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(({ doc, updateDoc }) => {
+                        updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', id), { orderIndex: index }).catch(()=>{});
+                    });
+                });
+            }
+        });
+    }
+
+    const plannerCols = ['col-pl-pending', 'col-pl-progress', 'col-pl-review', 'col-pl-completed'];
+        plannerCols.forEach(colId => {
+            const el = document.getElementById(colId);
+            if(el && !el.sortableInstance) {
+                el.sortableInstance = new Sortable(el, {
+                    group: 'planner-tasks',
+                    animation: 200,
+                    forceFallback: true,
+                    fallbackOnBody: true,
+                    ghostClass: 'opacity-40',
+                    onEnd: async function (evt) {
+                        const itemEl = evt.item;
+                        const toColumn = evt.to;
+                        const fromColumn = evt.from;
+                        const taskId = itemEl.getAttribute('data-id');
+                        const newStatus = toColumn.getAttribute('data-status');
+                        const oldStatus = fromColumn.getAttribute('data-status');
+                        
+                        if (!taskId || !newStatus) return;
+
+                        const task = globalTasks.find(t => t.id === taskId);
+                        if (!task) return;
+
+                        // تحديث ترتيب البطاقات في العمود الهدف (فقط للمدير لتجنب أخطاء الصلاحيات للموظفين)
+                        const rows = Array.from(toColumn.querySelectorAll('.task-card'));
+                        if (window.isAdmin()) {
+                            rows.forEach((row, index) => {
+                                const id = row.getAttribute('data-id');
+                                if (id !== taskId) {
+                                    import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(({ doc, updateDoc }) => {
+                                        updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', id), { orderIndex: index }).catch(()=>{});
+                                    });
+                                }
+                            });
+                        }
+
+                        // 1. منع التحريك إذا كانت المهمة مكتملة أو بانتظار الموافقة
+                        if (oldStatus === 'completed' || oldStatus === 'pending_approval') {
+                            showToast(oldStatus === 'completed' ? 'لا يمكن تحريك المهام المكتملة والمعتمدة' : 'لا يمكن تحريك المهمة لأنها بانتظار الاعتماد', 'warning');
+                            fromColumn.appendChild(itemEl);
+                            return;
+                        }
+
+                        // 2. الانتقال إلى عمود "مكتملة" أو "بانتظار الموافقة"
+                        if (newStatus === 'completed' || newStatus === 'pending_approval') {
+                            // التحقق من إكمال قوائم التحقق
+                            if(task.checklists && task.checklists.length > 0) {
+                                const uncompletedItems = task.checklists.filter(c => !c.isCompleted).length;
+                                if(uncompletedItems > 0) {
+                                    showToast('يجب وضع علامة "صح" على جميع عناصر قائمة التحقق أولاً', 'warning');
+                                    // إرجاع البطاقة للعمود السابق بسلاسة
+                                    fromColumn.appendChild(itemEl); 
+                                    return;
+                                }
+                            }
+
+                            const isSelfAssigned = task.createdBy === currentUserData.uid;
+                            
+                            // إعداد نافذة التقرير
+                            document.getElementById('reportTaskId').value = taskId;
+                            document.getElementById('reportTaskTitle').value = task.title;
+                            document.getElementById('reportTextLabel').innerText = isSelfAssigned ? "تفاصيل التقرير (اختياري)" : "تفاصيل التقرير (إلزامي)";
+                            document.getElementById('reportText').required = !isSelfAssigned;
+                            document.getElementById('reportText').value = '';
+                            document.getElementById('reportFileInput').value = '';
+                            
+                            // إرجاع البطاقة شكلياً للعمود السابق حتى يكتمل التقرير بنجاح
+                            fromColumn.appendChild(itemEl); 
+                            window.openModal('taskReportModal');
+                            return; 
+                        }
+
+                        // التحديثات العادية بين pending و in-progress
+                        import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(({ doc, updateDoc }) => {
+                            let updateData = { status: newStatus };
+                            if (window.isAdmin()) {
+                                updateData.orderIndex = rows.findIndex(r => r.getAttribute('data-id') === taskId);
+                                if(newStatus === 'in-progress' && !task.startedAt) updateData.startedAt = Date.now();
+                            }
+                            if(newStatus === 'pending') updateData.completedAt = null;
+                            
+                            updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), updateData).catch(()=>{
+                                fromColumn.appendChild(itemEl);
+                            });
+                        });
+                    }
+                });
+            }
+        });
+};
+
+       // دوال إدارة قوائم التحقق داخل المهام
+window.renderCreationChecklists = () => {
+    const container = document.getElementById('checklistItemsContainer');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    creationChecklists.forEach((item, index) => {
+        container.innerHTML += `
+            <div class="flex items-center gap-2 mb-2 bg-gray-50 dark:bg-gray-700 p-2 rounded-lg border border-gray-200 dark:border-gray-600 w-full">
+                <input type="text" value="${escapeHTML(item.text)}" onchange="window.updateCreationChecklist(${index}, this.value)" class="flex-1 bg-transparent border-none text-sm dark:text-white outline-none w-full text-right" required>
+                <button type="button" onclick="window.removeCreationChecklist(${index})" class="text-red-500 hover:text-red-700 p-1"><i class="fa-solid fa-trash"></i></button>
+            </div>
+        `;
+    });
+
+    const progressText = document.getElementById('checklistProgressText');
+    if(progressText) progressText.innerText = `المهام المضافة: ${creationChecklists.length}`;
+};
+
+window.addChecklistItem = () => {
+    const input = document.getElementById('newChecklistItemInput');
+    if(!input) return;
+    const text = input.value.trim();
+    if(text) {
+        creationChecklists.push({ text: text, isCompleted: false });
+        input.value = '';
+        window.renderCreationChecklists();
+    }
+};
+
+window.handleChecklistEnter = (e) => {
+    if(e.key === 'Enter') {
+        e.preventDefault();
+        window.addChecklistItem();
+    }
+};
+
+        window.updateCreationChecklist = (index, value) => {
+            creationChecklists[index].text = value;
+        };
+
+        window.removeCreationChecklist = (index) => {
+            creationChecklists.splice(index, 1);
+            window.renderCreationChecklists();
+        };
+
+        window.selectedTaskAssignees = [];
+        
+        window.selectTaskAssigneeUI = (uid, name, photo) => {
+            // إضافة الموظف إذا لم يكن موجوداً مسبقاً في القائمة
+            if(!window.selectedTaskAssignees.find(a => a.uid === uid)) {
+                window.selectedTaskAssignees.push({uid, name, photo});
+            }
+            window.renderSelectedAssigneesUI();
+        };
+
+        window.removeTaskAssigneeUI = (uid, event) => {
+            if(event) event.stopPropagation(); // منع إغلاق القائمة عند الحذف
+            window.selectedTaskAssignees = window.selectedTaskAssignees.filter(a => a.uid !== uid);
+            window.renderSelectedAssigneesUI();
+        };
+
+        window.renderSelectedAssigneesUI = () => {
+            const container = document.getElementById('taskAssigneeSelected');
+            const isCEO = window.isAdmin();
+            const canAssign = currentUserData.permissions && currentUserData.permissions.canAssignTasks;
+            const canChange = isCEO || canAssign;
+            
+            if(window.selectedTaskAssignees.length === 0) {
+                container.innerHTML = ``;
+                return;
+            }
+            let html = '';
+            window.selectedTaskAssignees.forEach(emp => {
+                html += `
+                <div class="flex items-center gap-1 bg-blue-50 border border-blue-200 text-blue-700 px-2 py-1 rounded-full shadow-sm" onclick="event.stopPropagation()">
+                    <img src="${emp.photo}" class="w-5 h-5 rounded-full object-cover shadow-sm">
+                    <span class="text-xs font-bold">${escapeHTML(emp.name)}</span>
+                    ${canChange ? `<i class="fa-solid fa-xmark text-red-500 ml-1 cursor-pointer hover:text-red-700 transition" onclick="window.removeTaskAssigneeUI('${emp.uid}', event)"></i>` : ''}
+                </div>`;
+            });
+            container.innerHTML = html;
+        };
+
+        window.toggleAssigneeDropdown = () => {
+            const drop = document.getElementById('taskAssigneeDropdown');
+            if(drop) {
+                drop.classList.toggle('scale-y-0');
+                drop.classList.toggle('opacity-0');
+                drop.classList.toggle('pointer-events-none');
+                
+                drop.classList.toggle('scale-y-100');
+                drop.classList.toggle('opacity-100');
+                drop.classList.toggle('pointer-events-auto');
+            }
+        };
+
+        document.addEventListener('click', () => {
+            const drop = document.getElementById('taskAssigneeDropdown');
+            if(drop && drop.classList.contains('scale-y-100')) {
+                drop.classList.add('scale-y-0', 'opacity-0', 'pointer-events-none');
+                drop.classList.remove('scale-y-100', 'opacity-100', 'pointer-events-auto');
+            }
+        });
+
+        window.openTaskModal = () => {
+            document.getElementById('addTaskForm').reset();
+            creationChecklists = [];
+            window.renderCreationChecklists();
+            window.clearTaskAttachment(); 
+            
+            document.getElementById('isTaskHighPriority').value = 'false';
+            document.getElementById('taskPriorityToggle').classList.add('text-gray-400');
+            document.getElementById('taskPriorityToggle').classList.remove('text-orange-500');
+            
+            const dropContainer = document.getElementById('taskAssigneeDropdown');
+            dropContainer.innerHTML = '';
+            
+            const isCEO = window.isAdmin();
+            const canAssign = currentUserData.permissions && currentUserData.permissions.canAssignTasks;
+
+            window.selectedTaskAssignees = [];
+            window.renderSelectedAssigneesUI();
+            
+            const selectorHeader = document.getElementById('taskAssigneeSelectorHeader');
+            if(selectorHeader) selectorHeader.style.display = (isCEO || canAssign) ? 'flex' : 'none';
+            const taskDeadline = document.getElementById('taskDeadline');
+            if(taskDeadline) taskDeadline.required = (isCEO || canAssign);
+
+            if (isCEO || canAssign) {
+                globalUsers.forEach(emp => {
+                    if (emp.status !== 'pending' && emp.status !== 'rejected') {
+                        dropContainer.innerHTML += `
+                            <div onclick="window.selectTaskAssigneeUI('${emp.uid}', '${escapeHTML(emp.name)}', '${emp.photoURL}')" class="flex items-center gap-3 p-3 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition">
+                                <img src="${emp.photoURL}" class="w-8 h-8 rounded-full object-cover shadow-sm">
+                                <div>
+                                    <p class="text-sm font-bold text-gray-800 dark:text-white">${escapeHTML(emp.name)}</p>
+                                    <p class="text-[10px] text-gray-500">${escapeHTML(emp.role)}</p>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+            } else {
+                // الموظف العادي يرى نفسه فقط
+                window.selectTaskAssigneeUI(currentUserData.uid, currentUserData.name, currentUserData.photoURL);
+            }
+            window.openModal('taskModal');
+        };
+
+        // === 2. إصلاح زر فتح قوائم التحقق ===
+        window.toggleChecklistSection = () => {
+            const section = document.getElementById('checklistSection');
+            if (section) {
+                section.classList.toggle('hidden');
+            }
+        };
+
+        // === 3. إصلاح أيقونة النار (الأولوية القصوى) ===
+        window.toggleTaskPriority = () => {
+            const input = document.getElementById('isTaskHighPriority');
+            const btn = document.getElementById('taskPriorityToggle');
+            if (input.value === 'false') {
+                input.value = 'true';
+                btn.classList.remove('text-gray-400');
+                btn.classList.add('text-orange-500');
+                showToast('تم تعيين المهمة كأولوية قصوى', 'info');
+            } else {
+                input.value = 'false';
+                btn.classList.add('text-gray-400');
+                btn.classList.remove('text-orange-500');
+            }
+        };
+
+        // === 4. إدارة مرفقات المهمة الجديدة ===
+        let currentTaskFile = null;
+        const taskAttachInput = document.getElementById('taskAttachmentInput');
+        if(taskAttachInput) {
+            taskAttachInput.addEventListener('change', (e) => {
+                currentTaskFile = e.target.files[0];
+                const display = document.getElementById('attachmentNameDisplay');
+                if (currentTaskFile) {
+                    display.innerHTML = `<span><i class="fa-solid fa-paperclip mx-1"></i> ${escapeHTML(currentTaskFile.name)}</span> <button type="button" onclick="window.clearTaskAttachment()" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-xmark"></i></button>`;
+                    display.classList.remove('hidden');
+                    display.classList.add('flex');
+                }
+            });
+        }
+
+        window.checkTaskDeadline = (input) => {
+    if(input.value) {
+        const selectedTime = new Date(input.value).getTime();
+        if(selectedTime < Date.now()) {
+            showToast('لا يمكنك إسناد مهمة في وقت ماضي! تم تصفير التاريخ.', 'error');
+            input.value = ''; // تصفير التاريخ فوراً
+            // تحديث الـ Flatpickr ليظهر فارغاً
+            if (input._flatpickr) {
+                input._flatpickr.clear();
+            }
+        }
+    }
+};
+
+        window.clearTaskAttachment = () => {
+            currentTaskFile = null;
+            if(document.getElementById('taskAttachmentInput')) document.getElementById('taskAttachmentInput').value = '';
+            const display = document.getElementById('attachmentNameDisplay');
+            if(display) {
+                display.classList.add('hidden');
+                display.classList.remove('flex');
+            }
+        };
+
+        // === 5. إصلاح زر الإنشاء وإرسال البيانات للفايربيس ===
+        const addTaskForm = document.getElementById('addTaskForm');
+        if(addTaskForm) {
+            addTaskForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!currentUserData) return;
+
+                const btn = document.getElementById('taskSubmitBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الإنشاء...';
+
+                const title = document.getElementById('taskTitle').value.trim();
+                const desc = document.getElementById('taskDesc').value.trim();
+                const assigneeNameEl = document.querySelector('#taskAssigneeSelected span');
+                const assigneeName = assigneeNameEl ? assigneeNameEl.innerText : 'غير محدد';
+                const deadlineVal = document.getElementById('taskDeadline').value;
+                const isHighPriority = document.getElementById('isTaskHighPriority').value === 'true';
+
+               let deadlineTimestamp = null;
+                if (document.getElementById('taskDeadline')._flatpickr && document.getElementById('taskDeadline')._flatpickr.selectedDates[0]) {
+                    deadlineTimestamp = document.getElementById('taskDeadline')._flatpickr.selectedDates[0].getTime();
+                } else if (deadlineVal) {
+                    deadlineTimestamp = new Date(deadlineVal).getTime();
+                }
+
+                    if (!deadlineTimestamp) {
+    showToast('يرجى تحديد الموعد النهائي للمهمة (التاريخ والوقت)!', 'error');
+    btn.disabled = false;
+    btn.innerHTML = 'إنشاء';
+    return;
+               }
+
+                if (window.selectedTaskAssignees.length === 0) {
+                    showToast('يرجى اختيار موظف واحد على الأقل من القائمة', 'warning');
+                    btn.disabled = false;
+                    btn.innerHTML = 'إنشاء';
+                    return;
+                }
+
+                try {
+                    let fileUrl = null;
+                    let fileType = null;
+                    let fileName = null;
+
+                    if (currentTaskFile) {
+                        showToast('جاري رفع المرفق لخوادم النظام...', 'info');
+                        fileUrl = await window.uploadToFirebase(currentTaskFile, 'tasks_attachments');
+                        fileType = currentTaskFile.type;
+                        fileName = currentTaskFile.name;
+                    }
+
+                    const newTaskData = {
+                        title: title,
+                        desc: desc,
+                        assigneeId: window.selectedTaskAssignees[0].uid,
+                        assigneeName: window.selectedTaskAssignees.map(a => a.name).join('، '),
+                        assigneeIds: window.selectedTaskAssignees.map(a => a.uid),
+                        createdBy: currentUserData.uid,
+                        creatorName: currentUserData.name,
+                        deadline: deadlineTimestamp,
+                        isHighPriority: isHighPriority,
+                        checklists: creationChecklists || [],
+                        status: 'pending',
+                        timestamp: Date.now(),
+                        orderIndex: globalTasks.length,
+                        attachmentUrl: fileUrl,
+                        attachmentType: fileType,
+                        attachmentName: fileName
+                    };
+
+                    await addDoc(getColRef('tasks'), newTaskData);
+
+                    window.selectedTaskAssignees.forEach(assignee => {
+                        if (assignee.uid !== currentUserData.uid) {
+                            const notifTitle = isHighPriority ? '🔥 مهمة أولوية قصوى!' : 'مهمة جديدة';
+                            const notifBody = isHighPriority ? `عاجل جداً: تم إسناد مهمة جديدة بأولوية قصوى لك: ${title}` : `تم إسناد مهمة جديدة لك: ${title}`;
+                            window.sendSystemNotification(assignee.uid, notifTitle, notifBody, 'tasks', 'tasks');
+                        }
+                    });
+
+                    showToast('تم إسناد المهمة وحفظ المرفقات بنجاح', 'success');
+                    window.closeModal('taskModal');
+                    window.clearTaskAttachment();
+                    window.logAction('المهام', `قام بإنشاء مهمة جديدة: ${title}`);
+
+                } catch (error) {
+                    console.error("Error adding task: ", error);
+                    showToast('حدث خطأ أثناء حفظ المهمة', 'error');
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = 'إنشاء';
+                }
+            });
+        } 
+
+        window.selectedTaskFilterEmployeeUid = null;
+
+        window.toggleTaskEmployeeFilter = (evt) => {
+            if(evt) evt.stopPropagation();
+            const drop = document.getElementById('taskEmployeeFilterDropdown');
+            const isHidden = drop.classList.contains('scale-y-0');
+            if(isHidden) {
+                const list = document.getElementById('taskEmployeeFilterList');
+                list.innerHTML = `<div onclick="window.setTaskEmployeeFilter(null)" class="p-2 text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer border-b dark:border-gray-600 transition flex items-center gap-2"><i class="fa-solid fa-users text-gray-400"></i> الجميع</div>`;
+                globalUsers.forEach(emp => {
+                    if (emp.status !== 'pending' && emp.status !== 'rejected') {
+                        list.innerHTML += `
+                            <div onclick="window.setTaskEmployeeFilter('${emp.uid}')" class="p-2 flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition">
+                                <img src="${emp.photoURL}" class="w-6 h-6 rounded-full object-cover">
+                                <span class="text-xs font-bold text-gray-700 dark:text-gray-200">${escapeHTML(emp.name)}</span>
+                            </div>
+                        `;
+                    }
+                });
+                drop.classList.remove('scale-y-0', 'opacity-0', 'pointer-events-none');
+                drop.classList.add('scale-y-100', 'opacity-100', 'pointer-events-auto');
+            } else {
+                drop.classList.add('scale-y-0', 'opacity-0', 'pointer-events-none');
+                drop.classList.remove('scale-y-100', 'opacity-100', 'pointer-events-auto');
+            }
+        };
+
+        document.addEventListener('click', () => {
+            const drop2 = document.getElementById('taskEmployeeFilterDropdown');
+            if(drop2 && drop2.classList.contains('scale-y-100')) {
+                drop2.classList.add('scale-y-0', 'opacity-0', 'pointer-events-none');
+                drop2.classList.remove('scale-y-100', 'opacity-100', 'pointer-events-auto');
+            }
+        });
+
+        window.setTaskEmployeeFilter = (uid) => {
+            window.selectedTaskFilterEmployeeUid = uid;
+            const icon = document.getElementById('taskEmployeeFilterIcon');
+            const btn = document.getElementById('taskEmployeeFilterBtn');
+            if(uid) {
+                icon.className = 'fa-solid fa-house text-[#00839b]';
+                btn.classList.add('bg-teal-50', 'border-teal-200');
+            } else {
+                icon.className = 'fa-solid fa-chevron-down text-gray-500';
+                btn.classList.remove('bg-teal-50', 'border-teal-200');
+            }
+            window.filterTasksList();
+        };
+
+        window.filterTasksList = () => {
+            const query = document.getElementById('taskSearchInput').value.toLowerCase();
+            const filterUid = window.selectedTaskFilterEmployeeUid;
+            
+            // تصفية في الـ List
+            document.querySelectorAll('.task-list-row').forEach(el => {
+                const text = el.innerText.toLowerCase();
+                const assignee = el.getAttribute('data-assignee');
+                const matchText = text.includes(query);
+                const matchFilter = !filterUid || assignee === filterUid;
+                
+                if(matchText && matchFilter) {
+                    el.style.display = 'table-row';
+                } else {
+                    el.style.display = 'none';
+                    const chkRow = document.getElementById(`checklist-row-${el.getAttribute('data-id')}`);
+                    if(chkRow) chkRow.classList.add('hidden');
+                }
+            });
+            // تصفية في الـ Planner & Deadline
+            document.querySelectorAll('.task-card').forEach(el => {
+                const text = el.innerText.toLowerCase();
+                const assignee = el.getAttribute('data-assignee');
+                const matchText = text.includes(query);
+                const matchFilter = !filterUid || assignee === filterUid;
+                el.style.display = (matchText && matchFilter) ? 'block' : 'none';
+            });
+        };
+
+        window.toggleTaskDetailsList = (id) => {
+            // متوافق مع المودال الجانبي أو توسيع البطاقة إذا أردت
+            window.openTaskModal(); // مجرد مثال، يمكنك تخصيصها لفتح نافذة التفاصيل
+        };
+
+        window.updateTaskStatusFromCheckbox = async (id, title, isCompleted) => {
+            // نفس الدالة السابقة دون تغيير
+            const task = globalTasks.find(t => t.id === id);
+            
+            if (task && (task.status === 'pending_approval' || task.status === 'completed')) {
+                showToast(task.status === 'completed' ? 'لا يمكن تعديل المهام المكتملة' : 'طلبك قيد المراجعة', 'warning');
+                const cb = document.querySelector(`.task-list-row[data-id="${id}"] .custom-checkbox`);
+                if(cb) cb.checked = true;
+                return;
+            }
+
+            if(isCompleted) {
+                if(task && task.checklists && task.checklists.length > 0) {
+                    const uncompletedItems = task.checklists.filter(c => !c.isCompleted).length;
+                    if(uncompletedItems > 0) {
+                        showToast(`يجب وضع علامة "صح" على جميع عناصر قائمة التحقق أولاً`, 'warning');
+                        const cb = document.querySelector(`.task-list-row[data-id="${id}"] .custom-checkbox`);
+                        if(cb) cb.checked = false;
+                        return;
+                    }
+                }
+                document.getElementById('reportTaskId').value = id;
+                document.getElementById('reportTaskTitle').value = title;
+                const isSelfAssigned = task && task.createdBy === currentUserData.uid;
+                document.getElementById('reportTextLabel').innerText = isSelfAssigned ? "تفاصيل التقرير (اختياري)" : "تفاصيل التقرير (إلزامي)";
+                document.getElementById('reportText').required = !isSelfAssigned;
+                document.getElementById('reportText').value = '';
+                document.getElementById('reportFileInput').value = '';
+                window.openModal('taskReportModal');
+            } else {
+                try {
+                    const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', id), { status: 'in-progress', completedAt: null });
+                    showToast('تم إعادة فتح المهمة', 'info');
+                } catch(e) { console.error(e); }
+            }
+        };
+
+        document.getElementById('rejectTaskForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mx-1"></i> جاري الإرسال...';
+
+    const taskId = document.getElementById('rejectModalTaskId').value;
+    const reason = document.getElementById('rejectReasonInput').value.trim();
+
+    try {
+        const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { 
+            status: 'in-progress', 
+            isRejected: true,      
+            rejectReason: reason,  
+            completedAt: null 
+        });
+
+        showToast('تم رفض المهمة وإعادتها للموظف', 'success');
+
+        const task = globalTasks.find(t => t.id === taskId);
+        if(task && task.assigneeId) {
+            window.sendSystemNotification(task.assigneeId, 'مهمة مرفوضة!', `تم رفض مهمتك (${task.title}). السبب: ${reason}`, 'tasks', 'tasks');
+        }
+
+        window.closeModal('rejectTaskModal');
+        document.getElementById('rejectTaskForm').reset();
+    } catch(e) {
+        console.error(e);
+        showToast('حدث خطأ أثناء الرفض', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+});
+
+        document.getElementById('taskReportForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitReportBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mx-1"></i> جاري الإرسال...';
+            
+            const taskId = document.getElementById('reportTaskId').value;
+            const text = document.getElementById('reportText').value.trim();
+            const fileInput = document.getElementById('reportFileInput');
+            const file = fileInput ? fileInput.files[0] : null;
+
+            try {
+                const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                const task = globalTasks.find(t => t.id === taskId);
+                
+                let fileUrl = null, fileType = null;
+                if (file) {
+                    fileUrl = await window.uploadToFirebase(file, 'task_reports');
+                    fileType = file.type;
+                }
+                
+                const isSelfAssigned = task.createdBy === currentUserData.uid;
+                const newStatus = isSelfAssigned ? 'completed' : 'pending_approval';
+
+                // الحل لمشكلة الصلاحيات: تمرير المرفق فقط إن وجد لعدم كسر قواعد الفايربيس (Rules)
+                let updateData = { 
+                    status: newStatus, 
+                    completedAt: Date.now(),
+                    completedBy: currentUserData.uid,
+                    completedByName: currentUserData.name,
+                    reportText: text
+                };
+
+                if (fileUrl) {
+                    updateData.reportFileData = fileUrl;
+                    updateData.reportFileType = fileType;
+                }
+
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), updateData);
+
+                if (!isSelfAssigned) {
+                    window.sendSystemNotification(task.createdBy, 'مهمة بانتظار الاعتماد', `أنهى الموظف ${currentUserData.name} مهمة (${task.title}) وبانتظار اعتمادك.`, 'tasks', 'tasks');
+                }
+
+                showToast(isSelfAssigned ? 'تم إنجاز المهمة بنجاح' : 'تم إرسال المهمة للاعتماد', 'success');
+                window.closeModal('taskReportModal');
+            } catch(e) {
+                console.error(e);
+                showToast('حدث خطأ أثناء الإرسال', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> إرسال واعتماد';
+            }
+        });
+
+        window.startTask = async (taskId) => {
+            try {
+                const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { status: 'in-progress', startedAt: Date.now() });
+                showToast('تم البدء بتنفيذ المهمة، بالتوفيق!', 'success');
+            } catch(e) { console.error(e); }
+        };
+
+        window.toggleTaskChecklistItem = async (taskId, itemIndex, isChecked) => {
+            if(!currentUserData) return;
+            const task = globalTasks.find(t => t.id === taskId);
+            if(!task || !task.checklists) return;
+            
+            try {
+                const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                if(task.status === 'pending' && isChecked) {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { status: 'in-progress', startedAt: Date.now() });
+                }
+                const updatedChecklists = [...task.checklists];
+                updatedChecklists[itemIndex].isCompleted = isChecked;
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { checklists: updatedChecklists });
+                
+                const allCompleted = updatedChecklists.length > 0 && updatedChecklists.every(c => c.isCompleted);
+                if (allCompleted) {
+                    setTimeout(() => {
+                        const taskTitle = task.title.replace(/'/g, "\\'");
+                        window.updateTaskStatusFromCheckbox(taskId, taskTitle, true);
+                    }, 500);
+                }
+            } catch(e) { console.error(e); }
+        };
+
+        window.undoTaskCompletion = async () => {
+            const id = document.getElementById('reportTaskId').value;
+            try {
+                const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', id), { status: 'in-progress', completedAt: null });
+                showToast('تم التراجع', 'info');
+                window.closeModal('taskReportModal');
+            } catch(e) { console.error(e); }
+        };
+
+        window.approveTask = async (taskId) => {
+            const modal = document.getElementById('customConfirmModal');
+            document.getElementById('customConfirmMessage').innerText = 'هل أنت متأكد من الموافقة على هذا التقرير واعتماده؟';
+            const actionBtn = document.getElementById('customConfirmActionBtn');
+            const cancelBtn = modal.querySelector('.bg-gray-100');
+            
+            actionBtn.innerText = 'موافقة واعتماد';
+            actionBtn.className = 'flex-1 bg-green-500 hover:bg-green-600 text-white py-2.5 rounded-xl font-bold transition shadow-md';
+            document.querySelector('#customConfirmModal h3').innerText = 'اعتماد التقرير';
+            document.querySelector('#customConfirmModal i').className = 'fa-solid fa-circle-check text-3xl text-green-500';
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            // حركة لتكبير المودال بنعومة
+            setTimeout(() => modal.querySelector('div').classList.replace('scale-95', 'scale-100'), 10);
+            
+            actionBtn.onclick = async () => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                modal.querySelector('div').classList.replace('scale-100', 'scale-95');
+                
+                // إعادة الزر لشكله الأصلي لعمليات الحذف
+                actionBtn.innerText = 'نعم، احذف';
+                actionBtn.className = 'flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl font-bold transition shadow-md';
+                document.querySelector('#customConfirmModal h3').innerText = 'تأكيد الحذف';
+                document.querySelector('#customConfirmModal i').className = 'fa-solid fa-trash-can text-3xl text-red-500';
+                
+                try {
+                    const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId), { status: 'completed' });
+                    showToast('تم الموافقة على المهمة', 'success');
+                    
+                    const task = globalTasks.find(t => t.id === taskId);
+                    if(task && task.assigneeId !== currentUserData.uid) {
+                        window.sendSystemNotification(task.assigneeId, 'تم اعتماد المهمة', `أحسنت! تمت الموافقة على مهمتك (${task.title}) واعتمادها بنجاح.`, 'tasks', 'tasks');
+                    }
+                    
+                    // إخفاء الكرت فوراً من الواجهة بحركة ناعمة
+                    const reportCard = document.getElementById(`task-report-card-${taskId}`);
+                    if (reportCard) {
+                        reportCard.style.opacity = '0';
+                        reportCard.style.transform = 'scale(0.9)';
+                        setTimeout(() => reportCard.remove(), 300);
+                    }
+                } catch(e) { console.error(e); }
+            };
+            
+            // في حالة الإلغاء، نعيد الزر لحالته الأصلية أيضاً لتجنب المشاكل
+            if(cancelBtn) {
+                cancelBtn.onclick = () => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    modal.querySelector('div').classList.replace('scale-100', 'scale-95');
+                    actionBtn.innerText = 'نعم، احذف';
+                    actionBtn.className = 'flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl font-bold transition shadow-md';
+                    document.querySelector('#customConfirmModal h3').innerText = 'تأكيد الحذف';
+                    document.querySelector('#customConfirmModal i').className = 'fa-solid fa-trash-can text-3xl text-red-500';
+                };
+            }
+        };
+
+        window.openRejectTaskModal = (taskId) => {
+            document.getElementById('rejectModalTaskId').value = taskId;
+            window.openModal('rejectTaskModal');
+        };
+
+        window.deleteTask = async (id) => {
+            if(!window.isAdmin() && !globalTasks.find(t => t.id === id && t.createdBy === currentUserData.uid)) return;
+            
+            document.getElementById('customConfirmMessage').innerText = 'هل أنت متأكد من حذف هذه المهمة نهائياً؟ لا يمكن التراجع عن هذا الإجراء.';
+            const modal = document.getElementById('customConfirmModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            // حركة لتكبير المودال بنعومة
+            setTimeout(() => modal.querySelector('div').classList.replace('scale-95', 'scale-100'), 10);
+
+            document.getElementById('customConfirmActionBtn').onclick = async () => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                modal.querySelector('div').classList.replace('scale-100', 'scale-95');
+                const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', id)).catch(e => console.error(e));
+                showToast('تم حذف المهمة بنجاح', 'success');
+            };
+        };
+
+        window.toggleCeoReportsInline = () => {
+            // دالة قديمة لم تعد مستخدمة في التصميم الجديد للتبويبات
+        };
+
+        window.showCompletedTaskContextMenu = (e, taskId, taskTitle) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            let ctxMenu = document.getElementById('taskContextMenu');
+            if (!ctxMenu) {
+                ctxMenu = document.createElement('div');
+                ctxMenu.id = 'taskContextMenu';
+                ctxMenu.className = 'fixed bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 z-[9999] min-w-[150px] hidden transform transition-all origin-top-left';
+                document.body.appendChild(ctxMenu);
+
+                document.addEventListener('click', (ev) => {
+                    if (ctxMenu && !ctxMenu.contains(ev.target)) {
+                        ctxMenu.classList.add('hidden');
+                    }
+                });
+            }
+
+            // التأكد من الصلاحية: هل يحق للمستخدم حذف المهمة؟
+            // (المدير، أو من لديه صلاحية الإسناد وهو من أنشأها)
+            const canDelete = window.isAdmin() || (currentUserData.permissions && currentUserData.permissions.canAssignTasks);
+            
+            if (!canDelete) {
+                return; // لا يملك صلاحية، لا تظهر القائمة
+            }
+
+            ctxMenu.innerHTML = `
+                <button onclick="window.confirmDeleteTaskCtx('${taskId}', '${taskTitle}')" class="w-full text-right px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 font-bold transition flex items-center gap-2">
+                    <i class="fa-solid fa-trash"></i> حذف المهمة
+                </button>
+            `;
+            
+            ctxMenu.style.left = e.pageX + 'px';
+            ctxMenu.style.top = e.pageY + 'px';
+            ctxMenu.classList.remove('hidden');
+        };
+
+        window.confirmDeleteTaskCtx = (taskId, taskTitle) => {
+            document.getElementById('taskContextMenu').classList.add('hidden');
+            
+            let confirmModal = document.getElementById('elegantTaskDeleteModal');
+            if(!confirmModal) {
+                confirmModal = document.createElement('div');
+                confirmModal.id = 'elegantTaskDeleteModal';
+                confirmModal.className = 'fixed inset-0 bg-black/60 z-[9999] hidden items-center justify-center p-4 backdrop-blur-sm transition-all';
+                confirmModal.innerHTML = `
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm shadow-2xl transform scale-95 transition-all p-6 text-center">
+                        <div class="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fa-solid fa-trash-can text-2xl"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-2">تأكيد الحذف</h3>
+                        <p id="elegantTaskDeleteMsg" class="text-sm text-gray-600 dark:text-gray-300 mb-6"></p>
+                        <div class="flex gap-3">
+                            <button id="elegantTaskDeleteBtn" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl font-bold transition shadow-sm">نعم، احذفها</button>
+                            <button onclick="document.getElementById('elegantTaskDeleteModal').classList.add('hidden'); document.getElementById('elegantTaskDeleteModal').classList.remove('flex');" class="flex-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 py-2.5 rounded-xl font-bold transition">إلغاء</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(confirmModal);
+            }
+            
+            document.getElementById('elegantTaskDeleteMsg').innerHTML = `هل تريد بالتأكيد حذف المهمة:<br><strong class="text-[#002d74] dark:text-blue-400 mt-2 block">"${taskTitle}"</strong>؟`;
+            
+            const btn = document.getElementById('elegantTaskDeleteBtn');
+            btn.onclick = async () => {
+                const origHtml = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                btn.disabled = true;
+                try {
+                    const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', taskId));
+                    showToast('تم حذف المهمة بنجاح', 'success');
+                    confirmModal.classList.add('hidden');
+                    confirmModal.classList.remove('flex');
+                } catch(err) {
+                    showToast('حدث خطأ أثناء الحذف', 'error');
+                } finally {
+                    btn.innerHTML = origHtml;
+                    btn.disabled = false;
+                }
+            };
+            
+            confirmModal.classList.remove('hidden');
+            confirmModal.classList.add('flex');
+        };
+
+        window.renderCeoEmployeeTasks = (empId, empName) => {
+    const container = document.getElementById('ceoReportTasksDetails');
+    
+    let empTasks = [];
+    if (empId === 'all') {
+        empTasks = globalTasks.filter(t => {
+            if (t.assigneeId === t.createdBy && (!t.assigneeIds || t.assigneeIds.length <= 1) && t.assigneeId !== currentUserData.uid) return false;
+            return (t.status === 'completed' || t.status === 'pending_approval');
+        });
+    } else {
+        empTasks = globalTasks.filter(t => {
+            if (t.assigneeId === t.createdBy && (!t.assigneeIds || t.assigneeIds.length <= 1) && t.assigneeId !== currentUserData.uid) return false;
+            const belongsToEmp = t.completedBy ? t.completedBy === empId : ((t.assigneeIds && t.assigneeIds.includes(empId)) || t.assigneeId === empId);
+            return belongsToEmp && 
+                   (t.status === 'completed' || t.status === 'pending_approval') &&
+                   (window.isAdmin() || t.createdBy === currentUserData.uid);
+        });
+    }
+    
+    empTasks.sort((a,b) => {
+    if (a.status === 'pending_approval' && b.status !== 'pending_approval') return -1;
+    if (a.status !== 'pending_approval' && b.status === 'pending_approval') return 1;
+    if (a.isHighPriority && !b.isHighPriority) return -1;
+    if (!a.isHighPriority && b.isHighPriority) return 1;
+    return (b.completedAt || 0) - (a.completedAt || 0);
+});
+    
+    if(empTasks.length === 0) {
+        container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-gray-400 mt-10"><i class="fa-solid fa-folder-open text-5xl mb-4 text-[#00839b]/50"></i><p class="font-bold text-lg text-[#002d74] dark:text-gray-300">لا توجد مهام منجزة لهذا الموظف</p></div>`;
+        return;
+    }
+
+    let html = `<h4 class="font-bold text-[#002d74] dark:text-[#00b0f0] mb-4 border-b dark:border-gray-700 pb-2">تقارير المهام لـ: ${escapeHTML(empName)}</h4><div class="space-y-4 pb-10">`;
+    empTasks.forEach(t => {
+                const dateStr = t.completedAt ? new Date(t.completedAt).toLocaleString('ar-EG') : 'غير محدد';
+                window.linkifyText = function(text) {
+    if(!text) return '';
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    return text.replace(urlRegex, function(url) {
+        return `<a href="${url}" target="_blank" class="text-blue-500 hover:text-blue-700 underline font-bold" onclick="event.stopPropagation()">${url}</a>`;
+    });
+};
+                const startedStr = t.startedAt ? new Date(t.startedAt).toLocaleString('ar-EG') : 'غير محدد';
+                const totalDurationStr = (t.startedAt && t.completedAt) ? formatDurationArabic(t.completedAt - t.startedAt) : 'غير محدد';
+                let fileHtml = '';
+                if(t.reportFileData) {
+                    if(t.reportFileType && t.reportFileType.startsWith('image/')) {
+                        fileHtml = `<img src="${escapeHTML(t.reportFileData)}" class="mt-3 rounded-lg max-w-[200px] cursor-pointer border shadow" onclick="window.openMedia('${escapeHTML(t.reportFileData)}', '${escapeHTML(t.reportFileType)}')">`;
+                    } else {
+                        fileHtml = `<a href="${escapeHTML(t.reportFileData)}" download="مرفق_مهمة" class="inline-block mt-3 bg-[#00839b] hover:bg-[#002d74] transition text-white text-xs px-3 py-1.5 rounded"><i class="fa-solid fa-download"></i> تحميل المرفق</a>`;
+                    }
+                }
+                let approvalHtml = '';
+                if(t.status === 'pending_approval') {
+                    // التحقق من الصلاحية: هل يحق للمستخدم الموافقة؟
+                    let canApprove = window.isAdmin() || (t.createdBy === currentUserData.uid && t.assigneeId !== currentUserData.uid);
+                    if(canApprove) {
+                        approvalHtml = `
+                            <div class="mt-4 flex gap-2 border-t border-gray-200 dark:border-gray-600 pt-3">
+                                <button onclick="window.approveTask('${t.id}')" class="flex-1 bg-green-500 hover:bg-green-600 transition text-white px-4 py-2 rounded-lg font-bold shadow text-sm"><i class="fa-solid fa-check mx-1"></i> اعتماد وموافقة</button>
+                                <button onclick="window.openRejectTaskModal('${t.id}')" class="flex-1 bg-red-500 hover:bg-red-600 transition text-white px-4 py-2 rounded-lg font-bold shadow text-sm"><i class="fa-solid fa-xmark mx-1"></i> رفض ومطالبة بالتعديل</button>
+                            </div>
+                        `;
+                    } else {
+                        approvalHtml = `<div class="mt-4 border-t dark:border-gray-600 pt-3 text-center"><span class="text-xs font-bold text-orange-500 bg-orange-50 px-3 py-1 rounded-full"><i class="fa-solid fa-clock mx-1"></i> بانتظار الاعتماد من الإدارة</span></div>`;
+                    }
+                } else {
+                    approvalHtml = `<div class="mt-4 border-t dark:border-gray-600 pt-3 text-center"><span class="text-xs font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full"><i class="fa-solid fa-check-double mx-1"></i> معتمدة ومكتملة</span></div>`;
+                }
+
+                const assigneeNameHtml = empId === 'all' ? `<span class="text-[10px] bg-[#00839b]/10 text-[#00839b] px-2 py-0.5 rounded-full mr-2 shadow-sm font-bold">بواسطة: ${escapeHTML(t.completedByName || t.assigneeName)}</span>` : '';
+                html += `
+                    <div id="task-report-card-${t.id}" ${t.status === 'completed' ? `oncontextmenu="window.showCompletedTaskContextMenu(event, '${t.id}', '${escapeHTML(t.title).replace(/'/g, "\\'")}')"` : ''} class="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm relative transition-all duration-300">
+                        ${t.status === 'pending_approval' ? '<span class="absolute -top-3 -right-2 bg-red-500 text-white text-[10px] px-2 py-1 rounded-lg font-bold animate-pulse z-[60] shadow-md border border-white dark:border-gray-800">جديد</span>' : ''}
+                        <h5 class="font-bold text-gray-800 dark:text-gray-100 mb-2 flex items-center">${escapeHTML(t.title)} ${assigneeNameHtml}</h5>
+                        <p class="text-xs text-gray-600 dark:text-gray-400 mb-3 whitespace-pre-wrap">${escapeHTML(t.desc)}</p>
+                        <div class="grid grid-cols-3 gap-2 text-[10px] font-bold bg-blue-50 dark:bg-gray-900/40 p-2 rounded-lg mb-3 border border-blue-100 dark:border-gray-700">
+                            <div class="text-center"><span class="block text-gray-400">بدأ في</span><span class="text-gray-700 dark:text-gray-200">${startedStr}</span></div>
+                            <div class="text-center border-x border-blue-100 dark:border-gray-700"><span class="block text-gray-400">انتهى في</span><span class="text-gray-700 dark:text-gray-200">${dateStr}</span></div>
+                            <div class="text-center"><span class="block text-gray-400">المدة الكلية</span><span class="text-[#00839b]">${totalDurationStr}</span></div>
+                        </div>
+                        <div class="border-t border-gray-200 dark:border-gray-600 pt-3 bg-white dark:bg-gray-800 p-3 rounded-lg mt-2">
+                            <h6 class="text-xs font-bold text-green-600 dark:text-green-400 mb-2"><i class="fa-solid fa-clipboard-check mx-1"></i>تقرير الموظف:</h6>
+                            <p class="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-line leading-relaxed" dir="auto">${window.linkifyText(escapeHTML(t.reportText))}</p>
+                            ${fileHtml}
+                        </div>
+                        ${approvalHtml}
+                    </div>
+                `;
+            });
+            html += `</div>`;
+            container.innerHTML = html;
+        };
+        // ==========================================
+        
+        // --- دوال العهد والتوقيع ---
+        window.renderCustody = () => {
+            const list = document.getElementById('custodyList');
+            if(!list) return;
+            list.innerHTML = '';
+            
+            const isCEO = window.isAdmin();
+            const selectedEmp = document.getElementById('custodyEmpSelect')?.value;
+            
+            const filtered = globalCustody.filter(c => {
+                if (!isCEO) return c.uid === currentUserData.uid;
+                if (selectedEmp) return c.uid === selectedEmp;
+                return true;
+            });
+
+            // ترتيب القائمة: للمدير نجعل العهد الموقعة (بانتظار الموافقة) في الأعلى دائماً
+            filtered.sort((a, b) => {
+                if (isCEO) {
+                    const getWeight = (status) => {
+                        if (status === 'signed') return 1; // الأهمية القصوى: بانتظار موافقة المدير
+                        if (status === 'pending' || status === 'rejected') return 2; // بانتظار توقيع الموظف
+                        if (status === 'approved') return 3; // منتهية ومكتملة
+                        return 4;
+                    };
+                    const weightA = getWeight(a.status);
+                    const weightB = getWeight(b.status);
+                    
+                    if (weightA !== weightB) return weightA - weightB; // ترتيب حسب الحالة
+                }
+                return b.timestamp - a.timestamp; // إذا تساوت الحالة، الترتيب حسب الأحدث
+            });
+
+            if (filtered.length === 0) {
+                list.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">لا توجد عهد مسجلة</td></tr>`;
+                return;
+            }
+
+            filtered.forEach(c => {
+                const dateStr = new Date(c.timestamp).toLocaleDateString('ar-EG');
+                let statusHtml = '';
+                
+                if (c.status === 'signed' || c.status === 'approved') {
+                    let sigImg = `<img src="${c.signature}" onclick="window.viewCustodySignature('${c.signature}')" class="h-10 mx-auto object-contain bg-white border rounded p-1 cursor-pointer hover:shadow-md transition" title="انقر لعرض التوقيع بوضوح">`;
+                    
+                    if(c.status === 'signed') {
+                        if(isCEO) {
+                            statusHtml = `<div class="flex flex-col items-center gap-1">${sigImg}
+                                <div class="flex gap-1 mt-1">
+                                    <button onclick="window.reviewCustodySignature('${c.id}', 'approved')" class="bg-green-500 text-white px-2 py-1 rounded text-[10px] font-bold shadow">موافقة</button>
+                                    <button onclick="window.reviewCustodySignature('${c.id}', 'rejected')" class="bg-red-500 text-white px-2 py-1 rounded text-[10px] font-bold shadow">رفض</button>
+                                </div>
+                            </div>`;
+                        } else {
+                            statusHtml = `<div class="flex flex-col items-center gap-1">${sigImg}<span class="text-[10px] text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded font-bold">بانتظار موافقة المدير</span></div>`;
+                        }
+                    } else {
+                        statusHtml = `<div class="flex flex-col items-center gap-1">${sigImg}<span class="text-[10px] text-green-600 bg-green-100 px-2 py-0.5 rounded font-bold"><i class="fa-solid fa-check"></i> معتمد</span></div>`;
+                    }
+                } else if (c.status === 'rejected') {
+                    if (c.uid === currentUserData.uid) {
+                        statusHtml = `<div class="flex flex-col items-center gap-1"><span class="text-[10px] text-red-600 bg-red-100 px-2 py-1 rounded font-bold">تم رفض التوقيع</span><button onclick="window.openSignatureModal('${c.id}')" class="bg-red-500 text-white px-3 py-1 rounded text-xs font-bold shadow-sm animate-pulse">إعادة التوقيع</button></div>`;
+                    } else {
+                        statusHtml = `<span class="text-xs text-red-600 bg-red-100 px-2 py-1 rounded font-bold">مرفوض، بانتظار توقيع جديد</span>`;
+                    }
+                } else {
+                    if (c.uid === currentUserData.uid) {
+                        statusHtml = `<button onclick="window.openSignatureModal('${c.id}')" class="bg-green-500 text-white px-3 py-1 rounded text-xs font-bold shadow-sm animate-pulse">توقيع الاستلام</button>`;
+                    } else {
+                        statusHtml = `<span class="text-xs text-yellow-600 bg-yellow-100 px-2 py-1 rounded font-bold">بانتظار توقيع الموظف</span>`;
+                    }
+                }
+                
+                const deleteBtn = isCEO ? `<button onclick="window.deleteCustody('${c.id}')" class="text-red-500 hover:text-red-700 mr-2 text-xs" title="حذف العهدة"><i class="fa-solid fa-trash"></i></button>` : '';
+
+                list.innerHTML += `
+                    <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                        <td class="p-3 font-bold text-sm text-primary dark:text-white">${escapeHTML(c.empName)} ${deleteBtn}</td>
+                        <td class="p-3 text-sm font-bold text-gray-700 dark:text-gray-300">${escapeHTML(c.itemName)}</td>
+                        <td class="p-3 text-xs text-gray-500">${dateStr}</td>
+                        <td class="p-3 text-xs text-gray-500">${escapeHTML(c.addedBy)}</td>
+                        <td class="p-3 text-center align-middle">${statusHtml}</td>
+                    </tr>
+                `;
+            });
+        };
+
+        window.openAddCustodyModal = () => {
+            document.getElementById('custodyForm').reset();
+            const select = document.getElementById('newCustodyEmp');
+            select.innerHTML = '<option value="" disabled selected>-- اختر الموظف --</option>';
+            globalUsers.forEach(u => {
+                if(u.role !== 'CEO' && u.role !== 'مطور' && u.role !== 'Developer') select.innerHTML += `<option value="${u.uid}">${escapeHTML(u.name)}</option>`;
+            });
+            window.openModal('addCustodyModal');
+        };
+
+        window.saveCustody = async (e) => {
+            e.preventDefault();
+            if (!window.isAdmin()) return;
+            
+            const select = document.getElementById('newCustodyEmp');
+            const empId = select.value;
+            const empName = select.options[select.selectedIndex].text;
+            const itemName = document.getElementById('newCustodyItem').value.trim();
+            
+            try {
+                await addDoc(getColRef('custody'), {
+                    uid: empId, empName: empName, itemName: itemName, addedBy: currentUserData.name,
+                    status: 'pending', signature: null, timestamp: Date.now()
+                });
+                window.closeModal('addCustodyModal');
+                showToast('تم حفظ العهدة وإرسال طلب التوقيع', 'success');
+                window.sendSystemNotification(empId, 'مطلوب توقيعك', `يُرجى التوقيع على استلام عهدة جديدة: ${itemName}`, 'handover', 'custody');
+            } catch(err) { console.error(err); }
+        };
+
+        window.deleteCustody = async (id) => {
+            if (!window.isAdmin()) return;
+            if (confirm('هل أنت متأكد من حذف هذه العهدة؟')) {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'custody', id));
+                showToast('تم الحذف', 'success');
+            }
+        };
+
+        let lastUserSignatureBase64 = null;
+        let sigPadCanvas, sigPadCtx, isDrawingSig = false;
+
+        window.openSignatureModal = (id) => {
+            const custody = globalCustody.find(c => c.id === id);
+            if (!custody) return;
+            
+            document.getElementById('signCustodyId').value = id;
+            document.getElementById('signCustodyDesc').innerText = `العهدة: ${custody.itemName}`;
+            document.getElementById('sigFileBase64').value = '';
+
+            // إظهار التوقيع السابق إذا كان معتمداً
+            const previousApproved = globalCustody.find(c => c.uid === currentUserData.uid && c.signature && c.status === 'approved');
+            const approvedContainer = document.getElementById('approvedSignatureContainer');
+            
+            if(previousApproved) {
+                lastUserSignatureBase64 = previousApproved.signature;
+                document.getElementById('approvedSignatureImg').src = lastUserSignatureBase64;
+                approvedContainer.classList.remove('hidden');
+            } else {
+                lastUserSignatureBase64 = null;
+                approvedContainer.classList.add('hidden');
+            }
+
+            // التحقق مما إذا كان الجهاز كمبيوتر أو موبايل
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+            const mobileSec = document.getElementById('mobileSignatureSection');
+            const desktopSec = document.getElementById('desktopQrSection');
+
+            if (isMobile) {
+                mobileSec.classList.remove('hidden');
+                desktopSec.classList.add('hidden');
+                setTimeout(window.initSignaturePad, 100);
+            } else {
+                mobileSec.classList.add('hidden');
+                desktopSec.classList.remove('hidden');
+                // توليد رابط فريد خاص بالتوقيع لهذه العهدة فقط
+                const signUrl = window.location.origin + window.location.pathname + '#sign_' + id;
+                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(signUrl)}`;
+                document.getElementById('qrCodeImg').src = qrUrl;
+            }
+
+            const modal = document.getElementById('signatureModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        };
+
+        window.initSignaturePad = () => {
+            sigPadCanvas = document.getElementById('signatureDrawingPad');
+            if(!sigPadCanvas) return;
+            sigPadCtx = sigPadCanvas.getContext('2d');
+            
+            const rect = sigPadCanvas.parentElement.getBoundingClientRect();
+            sigPadCanvas.width = rect.width;
+            sigPadCanvas.height = rect.height;
+            
+            sigPadCtx.lineWidth = 4;
+            sigPadCtx.lineCap = 'round';
+            sigPadCtx.strokeStyle = '#002d74'; 
+            
+            const getPos = (e) => {
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                const bcr = sigPadCanvas.getBoundingClientRect();
+                return { x: clientX - bcr.left, y: clientY - bcr.top };
+            };
+
+            const startDrawing = (e) => {
+                e.preventDefault();
+                isDrawingSig = true;
+                const pos = getPos(e);
+                sigPadCtx.beginPath();
+                sigPadCtx.moveTo(pos.x, pos.y);
+            };
+
+            const draw = (e) => {
+                e.preventDefault();
+                if (!isDrawingSig) return;
+                const pos = getPos(e);
+                sigPadCtx.lineTo(pos.x, pos.y);
+                sigPadCtx.stroke();
+            };
+
+            const stopDrawing = (e) => {
+                e.preventDefault();
+                isDrawingSig = false;
+            };
+
+            sigPadCanvas.ontouchstart = startDrawing;
+            sigPadCanvas.ontouchmove = draw;
+            sigPadCanvas.ontouchend = stopDrawing;
+            sigPadCanvas.onmousedown = startDrawing;
+            sigPadCanvas.onmousemove = draw;
+            sigPadCanvas.onmouseup = stopDrawing;
+            sigPadCanvas.onmouseleave = stopDrawing;
+        };
+
+        window.clearSignaturePad = () => {
+            if(sigPadCtx && sigPadCanvas) {
+                sigPadCtx.clearRect(0, 0, sigPadCanvas.width, sigPadCanvas.height);
+            }
+            document.getElementById('sigFileBase64').value = '';
+        };
+
+        window.reuseLastSignature = () => {
+            if(!lastUserSignatureBase64) return;
+            document.getElementById('sigFileBase64').value = lastUserSignatureBase64;
+            window.submitSignature(true); // نرسل true لتخطي موافقة المدير
+        };
+
+        window.viewCustodySignature = (sigBase64) => {
+            document.getElementById('signatureViewerImg').src = sigBase64;
+            window.openModal('signatureViewerModal');
+        };
+
+        window.reviewCustodySignature = async (id, decision) => {
+            if(!window.isAdmin()) return;
+            try {
+                let updateData = { status: decision };
+                if (decision === 'rejected') updateData.signature = null; 
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'custody', id), updateData);
+                
+                const custody = globalCustody.find(c => c.id === id);
+                if(custody) {
+                    const msg = decision === 'approved' ? `تم اعتماد توقيعك لعهدة: ${custody.itemName}` : `تم رفض توقيعك لعهدة: ${custody.itemName}، يرجى إعادة التوقيع.`;
+                    window.sendSystemNotification(custody.uid, 'تحديث العهدة', msg, 'handover', 'custody');
+                }
+                showToast(decision === 'approved' ? 'تم اعتماد العهدة بنجاح' : 'تم رفض التوقيع', 'success');
+            } catch(e) { console.error(e); }
+        };
+
+        window.submitSignature = async (isReused = false) => {
+            let dataUrl = document.getElementById('sigFileBase64').value;
+            
+            if (!isReused) {
+                const canvas = document.getElementById('signatureDrawingPad');
+                const blank = document.createElement('canvas');
+                blank.width = canvas.width;
+                blank.height = canvas.height;
+                
+                if(canvas.toDataURL() === blank.toDataURL()) {
+                    showToast('يرجى التوقيع في المساحة البيضاء أولاً.', 'warning'); 
+                    return;
+                }
+                
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCanvas.width = canvas.width;
+                tempCanvas.height = canvas.height;
+                tempCtx.fillStyle = '#ffffff';
+                tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+                tempCtx.drawImage(canvas, 0, 0);
+                dataUrl = tempCanvas.toDataURL('image/jpeg', 0.8);
+            }
+
+            const id = document.getElementById('signCustodyId').value;
+            try {
+                // إذا استخدم توقيع معتمد مسبقاً، لا ننتظر المدير، نعتمد فوراً!
+                const newStatus = isReused ? 'approved' : 'signed';
+
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'custody', id), {
+                    status: newStatus, 
+                    signature: dataUrl, 
+                    signedAt: Date.now()
+                });
+                
+                window.closeModal('signatureModal');
+                
+                if(isReused) {
+                    showToast('تم اعتماد العهدة بنجاح لأن توقيعك معتمد مسبقاً!', 'success');
+                } else {
+                    showToast('تم إرسال التوقيع للمدير لاعتماده بنجاح!', 'success');
+                    const ceoUsers = globalUsers.filter(u => u.role === 'CEO' || u.role === 'مطور' || (u.role && u.role.toUpperCase() === 'DEVELOPER'));
+                    ceoUsers.forEach(ceo => {
+                        window.sendSystemNotification(ceo.uid, 'توقيع عهدة', `قام ${currentUserData.name} برفع توقيعه لاستلام عهدته.`, 'custody', 'custody');
+                    });
+                }
+            } catch (e) {
+                console.error("Signature Save Error:", e); 
+                showToast('خطأ في قاعدة البيانات', 'error');
+            }
+        }; // <-- هذه نهاية التوقيع العادي
+
+        // ==============================================================
+        // نظام التوقيع المستقل عبر الـ QR Code (بدون تسجيل دخول)
+        // ==============================================================
+        let saCanvas, saCtx, isDrawingSa = false;
+        let standaloneCustodyId = null;
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const hash = window.location.hash;
+            const signId = hash.startsWith('#sign_') ? hash.replace('#sign_', '') : null;
+            
+            // إذا كان الرابط مخصصاً للتوقيع، أوقف عمل النظام العادي وافتح الشاشة البيضاء
+            if (signId) {
+                document.getElementById('loadingScreen').classList.add('hidden');
+                if(document.getElementById('loginScreen')) document.getElementById('loginScreen').classList.add('hidden');
+                if(document.getElementById('systemPasswordScreen')) document.getElementById('systemPasswordScreen').classList.add('hidden');
+                
+                const saScreen = document.getElementById('standaloneSignScreen');
+                if(saScreen) {
+                    saScreen.classList.remove('hidden');
+                    saScreen.classList.add('flex');
+                    window.initStandaloneApp(signId);
+                }
+                // إيقاف تشغيل باقي دوال النظام لمنع المطالبة بالدخول
+                window.stopAppInitialization = true; 
+            }
+        });
+
+        window.showStandaloneMessage = (iconClass, title, subtitle) => {
+            document.getElementById('standaloneSignLoading').classList.add('hidden');
+            document.getElementById('standaloneSignContent').classList.add('hidden');
+            document.getElementById('standaloneSignMessage').classList.remove('hidden');
+            document.getElementById('standaloneSignMessage').classList.add('flex');
+            
+            document.getElementById('standaloneMsgIcon').className = iconClass;
+            document.getElementById('standaloneMsgText').innerText = title;
+            document.getElementById('standaloneMsgSub').innerText = subtitle;
+        };
+
+        window.initStandaloneApp = async (id) => {
+            standaloneCustodyId = id;
+            
+            // 1. التحقق من حالة تسجيل الدخول أولاً عبر Firebase Auth
+            const checkAuth = new Promise((resolve) => {
+                const unsubscribe = onAuthStateChanged(auth, (user) => {
+                    unsubscribe();
+                    resolve(user);
+                });
+            });
+
+            const user = await checkAuth;
+            
+            if (!user) {
+                window.showStandaloneMessage(
+                    'fa-solid fa-user-lock text-blue-500', 
+                    'عذراً، أنت غير مسجل الدخول', 
+                    `<button onclick="window.location.href='https://taske.farah-snacks.store/'" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all flex items-center justify-center mx-auto gap-2 w-full max-w-xs border border-blue-500 animate-pulse mt-4">
+                        <i class="fa-solid fa-arrow-right-to-bracket"></i> تسجيل الدخول
+                     </button>`
+                );
+                return; // إيقاف التنفيذ هنا لمنع الفايربيس من حظر الطلب وإظهار خطأ الاتصال
+            }
+
+            try {
+                // --- إضافة صائد اللابتوبات (المتسللين ههه) ---
+                const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'custody', id);
+
+                if (!isMobileDevice) {
+                    // إذا كان لابتوب، نستخدم onSnapshot لمراقبة التوقيع من الهاتف لحظة بلحظة (Live)
+                    onSnapshot(docRef, (docSnap) => {
+                        if (!docSnap.exists()) return;
+                        const data = docSnap.data();
+                        
+                        document.getElementById('standaloneSignLoading').classList.add('hidden');
+                        const msgDiv = document.getElementById('standaloneSignMessage');
+                        
+                        if (data.status === 'pending' || data.status === 'rejected') {
+                            // 1. شاشة "كشفتك" مع الـ QR Code وصورة متحركة مضحكة
+                            const signUrl = window.location.origin + window.location.pathname + '#sign_' + id;
+                            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(signUrl)}`;
+                            
+                            msgDiv.innerHTML = `
+                                <img src="https://media.giphy.com/media/YQitE4YNQBroM/giphy.gif" class="w-32 h-32 object-cover rounded-full mb-4 shadow-lg border-4 border-red-500">
+                                <h2 class="text-3xl font-extrabold text-red-600 mb-3">لقد كشفتك هههه!</h2>
+                                <p class="text-sm text-gray-700 font-bold bg-gray-50 p-4 rounded-xl border border-gray-200 mb-4 leading-relaxed shadow-sm max-w-md text-center">
+                                    أنت تحاول التوقيع من اللابتوب، أليس كذلك؟ 😉<br>الرجاء فتح كاميرا هاتفك المحمول ومسح الكود أدناه لإتمام التوقيع بيدك بالشكل الصحيح.
+                                </p>
+                                <div class="bg-white p-3 rounded-xl shadow-lg border border-gray-100">
+                                    <img src="${qrUrl}" class="w-48 h-48 object-contain mx-auto">
+                                </div>
+                            `;
+                            msgDiv.classList.remove('hidden');
+                            msgDiv.classList.add('flex');
+                        } else if (data.status === 'signed' || data.status === 'approved') {
+                            // 2. شاشة الوداع التي تظهر تلقائياً بمجرد أن يوقع من هاتفه
+                            msgDiv.innerHTML = `
+                                <img src="https://media.giphy.com/media/xT9IgG50Fb7Mi0prBC/giphy.gif" class="w-32 h-32 object-cover rounded-full mb-4 shadow-lg border-4 border-green-500">
+                                <h2 class="text-2xl font-extrabold text-green-600 mb-3">تم التوقيع من الهاتف بنجاح!</h2>
+                                <p class="text-sm text-gray-700 font-bold bg-green-50 p-4 rounded-xl border border-green-200 leading-relaxed shadow-sm max-w-md text-center">
+                                    شكراً لك! ولكن لا تعيد هذه الحركة مرة أخرى من فضلك 😂👋<br>يمكنك إغلاق هذه الصفحة الآن.
+                                </p>
+                            `;
+                            msgDiv.classList.remove('hidden');
+                            msgDiv.classList.add('flex');
+                        }
+                    });
+                    return; // إيقاف التشغيل لمنع فتح مساحة الرسم على اللابتوب نهائياً
+                }
+                // ----------------------------------------------
+
+                // --- الوضع الطبيعي (إذا فتح الرابط من هاتفه) ---
+                const docSnap = await getDoc(docRef);
+                if (!docSnap.exists()) {
+                    window.showStandaloneMessage('fa-solid fa-circle-exclamation text-red-500', 'الرابط غير صحيح', 'لا توجد عهدة مسجلة بهذا المعرف.');
+                    return;
+                }
+                
+                const data = docSnap.data();
+                
+                if (data.status !== 'pending' && data.status !== 'rejected') {
+                    window.showStandaloneMessage('fa-solid fa-link-slash text-orange-500', 'انتهت صلاحية الرابط', 'تم توقيع هذه العهدة مسبقاً أو تم اعتمادها من قبل الإدارة.');
+                    return;
+                }
+                
+                document.getElementById('standaloneSignLoading').classList.add('hidden');
+                document.getElementById('standaloneSignContent').classList.remove('hidden');
+                document.getElementById('standaloneSignContent').classList.add('flex');
+                document.getElementById('standaloneSignItemName').innerText = `العهدة: ${data.itemName}`;
+                
+                saCanvas = document.getElementById('standaloneCanvas');
+                saCtx = saCanvas.getContext('2d');
+                
+                const rect = saCanvas.parentElement.getBoundingClientRect();
+                saCanvas.width = rect.width;
+                saCanvas.height = rect.height;
+                
+                saCtx.lineWidth = 4;
+                saCtx.lineCap = 'round';
+                saCtx.strokeStyle = '#002d74'; 
+                
+                const getPos = (e) => {
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    const bcr = saCanvas.getBoundingClientRect();
+                    return { x: clientX - bcr.left, y: clientY - bcr.top };
+                };
+
+                const startDrawing = (e) => { e.preventDefault(); isDrawingSa = true; const pos = getPos(e); saCtx.beginPath(); saCtx.moveTo(pos.x, pos.y); };
+                const draw = (e) => { e.preventDefault(); if (!isDrawingSa) return; const pos = getPos(e); saCtx.lineTo(pos.x, pos.y); saCtx.stroke(); };
+                const stopDrawing = (e) => { e.preventDefault(); isDrawingSa = false; };
+
+                saCanvas.ontouchstart = startDrawing; saCanvas.ontouchmove = draw; saCanvas.ontouchend = stopDrawing;
+                saCanvas.onmousedown = startDrawing; saCanvas.onmousemove = draw; saCanvas.onmouseup = stopDrawing; saCanvas.onmouseleave = stopDrawing;
+                
+            } catch (e) {
+                console.error(e);
+                if (e.code === 'permission-denied') {
+                    window.showStandaloneMessage('fa-solid fa-ban text-red-500', 'عذراً، صلاحية مرفوضة', 'هذه العهدة غير مخصصة لحسابك، يرجى الدخول بالحساب الصحيح.');
+                } else {
+                    window.showStandaloneMessage('fa-solid fa-wifi text-red-500', 'خطأ في الاتصال', 'يرجى التأكد من اتصالك بالإنترنت وتحديث الصفحة.');
+                }
+            }
+        };
+
+        window.clearStandaloneCanvas = () => {
+            if(saCtx && saCanvas) saCtx.clearRect(0, 0, saCanvas.width, saCanvas.height);
+        };
+
+        window.submitStandaloneSignature = async () => {
+            const blank = document.createElement('canvas');
+            blank.width = saCanvas.width;
+            blank.height = saCanvas.height;
+            
+            if(saCanvas.toDataURL() === blank.toDataURL()) {
+                alert('يرجى التوقيع في المساحة البيضاء أولاً!'); 
+                return;
+            }
+            
+            const btn = document.getElementById('standaloneSubmitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mx-1"></i> جاري الإرسال...';
+            
+            // تحويل التوقيع لخلفية بيضاء
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = saCanvas.width;
+            tempCanvas.height = saCanvas.height;
+            tempCtx.fillStyle = '#ffffff';
+            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+            tempCtx.drawImage(saCanvas, 0, 0);
+            const dataUrl = tempCanvas.toDataURL('image/jpeg', 0.8);
+
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'custody', standaloneCustodyId), {
+                    status: 'signed', 
+                    signature: dataUrl, 
+                    signedAt: Date.now()
+                });
+                
+                // إظهار رسالة الشكر
+                window.showStandaloneMessage('fa-solid fa-circle-check text-green-500', 'شكراً لك!', 'تم ارسال التوقيع بنجاح، يمكنك الآن إغلاق هذه الصفحة.');
+                
+            } catch (e) {
+                console.error("Signature Save Error:", e); 
+                alert('حدث خطأ أثناء الإرسال، حاول مرة أخرى.');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-check mx-1"></i> اعتماد وإرسال';
+            }
+        };
+        // ==============================================================
+        
+    window.renderEvents = () => {
+            const cont = document.getElementById('eventsContainer');
+            if(!cont) return;
+            cont.innerHTML = '';
+            const searchInput = document.getElementById('searchEvents');
+            const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+            
+            const filteredEvents = globalEvents.filter(ev => 
+                (ev.client && ev.client.toLowerCase().includes(searchTerm)) ||
+                (ev.location && ev.location.toLowerCase().includes(searchTerm)) ||
+                (ev.status && ev.status.toLowerCase().includes(searchTerm))
+            );
+
+            if(filteredEvents.length === 0) {
+                cont.innerHTML = `
+                    <div class="col-span-full bg-white dark:bg-gray-800 p-10 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 text-center">
+                        <i class="fa-solid fa-calendar-xmark text-6xl text-gray-300 dark:text-gray-600 mb-4"></i>
+                        <h3 class="text-lg font-bold text-gray-700 dark:text-gray-300">لا يوجد أحداث أو فعاليات حالياً</h3>
+                        <p class="text-sm text-gray-500 mt-2">قم بإضافة فعالية جديدة لتظهر هنا.</p>
+                    </div>`;
+                return;
+            }
+
+            filteredEvents.forEach(ev => {
+                // الألوان حسب الحالة الجديدة
+                let statusColor = 'bg-gray-100 text-gray-600';
+                if(ev.status === 'Done') statusColor = 'bg-green-200 text-green-800';
+                else if(ev.status === 'In Progress') statusColor = 'bg-blue-200 text-blue-800 animate-pulse';
+                else if(ev.status === 'Expected') statusColor = 'bg-orange-200 text-orange-800';
+                else if(ev.status === 'Confirmed') statusColor = 'bg-purple-200 text-purple-800';
+                else if(ev.status === 'Pending') statusColor = 'bg-red-200 text-red-800';
+                else if(ev.status === 'Canceled') statusColor = 'bg-gray-200 text-gray-800';
+
+                // ألوان Business Model
+                let modelColor = 'bg-gray-100 text-gray-600';
+                if(ev.businessModel === 'Rental Model') modelColor = 'bg-yellow-200 text-yellow-800';
+                else if(ev.businessModel === 'Purchase Model') modelColor = 'bg-green-200 text-green-800';
+                else if(ev.businessModel === 'Proof Of Concept') modelColor = 'bg-red-200 text-red-800';
+                else if(ev.businessModel === 'Sponsorship') modelColor = 'bg-teal-200 text-teal-800';
+                else if(ev.businessModel === 'Educational Session') modelColor = 'bg-purple-200 text-purple-800';
+                else if(ev.businessModel === 'Technical Visit') modelColor = 'bg-gray-200 text-gray-800';
+                else if(ev.businessModel === 'Meeting') modelColor = 'bg-cyan-200 text-cyan-800';
+
+                // جلب أسماء الروبوتات المشاركة
+                let robotsHtml = '<span class="text-gray-400 text-xs">لا يوجد روبوتات</span>';
+                if(ev.robotIds && ev.robotIds.length > 0) {
+                    const names = ev.robotIds.map(rid => {
+                        const r = globalRobots.find(x => x.id === rid);
+                        return r ? escapeHTML(r.name) : 'روبوت محذوف';
+                    });
+                    robotsHtml = names.map(n => `<span class="bg-red-50 text-red-600 border border-red-100 dark:bg-red-900/20 dark:border-red-800 px-2 py-0.5 rounded text-[10px] m-0.5 inline-block font-bold"><i class="fa-solid fa-robot mr-1"></i>${n}</span>`).join('');
+                }
+
+                // جلب أسماء المدراء والمسؤولين
+                const getEmpNames = (uidsArray) => {
+                    if(!uidsArray || uidsArray.length === 0) return '<span class="text-gray-400">غير محدد</span>';
+                    return uidsArray.map(uid => {
+                        const u = globalUsers.find(x => x.uid === uid);
+                        return u ? escapeHTML(u.name) : 'مجهول';
+                    }).join('، ');
+                };
+                const adminsList = getEmpNames(ev.siteAdmins);
+                const officersList = getEmpNames(ev.relationsOfficers);
+
+                // تحديد الصلاحية لإظهار زر "إضافة فعالية" في الأعلى
+                const addEventBtn = document.querySelector('button[onclick="window.openAddEventModal()"]');
+                const canManageEventsGlobal = window.isAdmin() || (currentUserData.permissions && currentUserData.permissions.canManageEvents);
+                if(addEventBtn) {
+                    if(canManageEventsGlobal) addEventBtn.classList.remove('hidden');
+                    else addEventBtn.classList.add('hidden');
+                }
+
+                // الصلاحيات (المدير أو صاحب الفعالية أو يمتلك صلاحية إدارة الفعاليات)
+                const isManager = (window.isAdmin()) || (ev.uid === currentUserData.uid) || canManageEventsGlobal;
+                let actionsHtml = '';
+                if(isManager) {
+                    actionsHtml = `
+                        <div class="mt-4 pt-3 border-t dark:border-gray-700 flex gap-2">
+                            <button onclick="window.openAddEventModal('${ev.id}')" class="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs py-2 rounded-lg font-bold transition"><i class="fa-solid fa-pen mx-1"></i> تعديل</button>
+                            <button onclick="window.deleteEvent('${ev.id}')" class="bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:hover:bg-red-900/40 px-3 py-2 rounded-lg text-xs font-bold transition border border-red-200 dark:border-red-800" title="حذف الفعالية"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    `;
+                }
+
+                cont.innerHTML += `
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border-t-4 border-red-500 flex flex-col h-full hover:shadow-md transition">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-bold text-base text-gray-800 dark:text-white truncate" title="${escapeHTML(ev.client)}"><i class="fa-solid fa-building mx-1 text-red-500"></i> ${escapeHTML(ev.client)}</h3>
+                            <span class="${statusColor} px-2 py-1 rounded text-[10px] font-bold shadow-sm whitespace-nowrap">${escapeHTML(ev.status)}</span>
+                        </div>
+                        <p class="text-xs mb-3 font-bold flex gap-2"><span class="${modelColor} px-2 py-0.5 rounded shadow-sm">${escapeHTML(ev.businessModel)}</span></p>
+                        
+                        <div class="text-xs text-gray-600 dark:text-gray-300 space-y-2 flex-1 bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg border dark:border-gray-700">
+                            <p class="flex items-center gap-2"><i class="fa-solid fa-calendar-day text-gray-400 w-4 text-center"></i> <b>البدء:</b> <span dir="ltr">${escapeHTML(ev.startDate || '---')}</span></p>
+                            <p class="flex items-center gap-2"><i class="fa-solid fa-flag-checkered text-gray-400 w-4 text-center"></i> <b>الانتهاء:</b> <span dir="ltr">${escapeHTML(ev.endDate || '---')}</span></p>
+                            <p class="flex items-center gap-2"><i class="fa-solid fa-location-dot text-gray-400 w-4 text-center"></i> <b>الموقع:</b> <span class="truncate">${escapeHTML(ev.location || 'غير محدد')}</span></p>
+                            <p class="flex items-center gap-2"><i class="fa-solid fa-user-tie text-gray-400 w-4 text-center"></i> <b>مدير الموقع:</b> <span class="truncate">${adminsList}</span></p>
+                            <p class="flex items-center gap-2"><i class="fa-solid fa-handshake text-gray-400 w-4 text-center"></i> <b>مسؤول العلاقات:</b> <span class="truncate">${officersList}</span></p>
+                            <div class="mt-2 pt-2 border-t dark:border-gray-600">
+                                <p class="text-[10px] font-bold text-gray-500 mb-1">الروبوتات المشاركة:</p>
+                                <div>${robotsHtml}</div>
+                            </div>
+                            <div class="mt-2 text-[10px] text-gray-400 text-center font-bold">
+                                تم الإنشاء بواسطة: ${escapeHTML(ev.addedBy)}
+                            </div>
+                        </div>
+                        ${actionsHtml}
+                    </div>
+                `;
+            });
+        };
+
+        window.deleteEvent = async (id) => {
+            if(confirm('هل أنت متأكد من حذف هذه الفعالية نهائياً؟')) {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', id));
+                    showToast('تم حذف الفعالية بنجاح', 'success');
+                } catch(e) { 
+                    console.error(e); 
+                    showToast('حدث خطأ أثناء الحذف', 'error'); 
+                }
+            }
+        };
+
+        window.updateSelectColor = (selectElement) => {
+            const selectedOption = selectElement.options[selectElement.selectedIndex];
+            selectElement.className = `w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500 shadow-sm font-bold appearance-none ${selectedOption.className}`;
+        };
+
+        window.filterEventRobots = () => {
+            const term = document.getElementById('searchEventRobots').value.toLowerCase();
+            document.querySelectorAll('.event-robot-label').forEach(label => {
+                const text = label.innerText.toLowerCase();
+                label.style.display = text.includes(term) ? 'flex' : 'none';
+            });
+        };
+
+        window.openAddEventModal = (id = null) => {
+            document.getElementById('eventForm').reset();
+            document.getElementById('eventId').value = id || '';
+            document.getElementById('eventModalTitle').innerText = id ? 'تعديل بيانات الفعالية' : 'إضافة فعالية جديدة';
+            
+            // تعيين التوقيع التلقائي
+            document.getElementById('evSignature').value = `${currentUserData.name} - ${new Date().toLocaleString('ar-EG')}`;
+
+            let existingEvent = null;
+            if (id) {
+                existingEvent = globalEvents.find(e => e.id === id);
+                if(existingEvent) {
+                    document.getElementById('evClient').value = existingEvent.client || '';
+                    document.getElementById('evBusinessModel').value = existingEvent.businessModel || 'Rental Model';
+                    document.getElementById('evDescription').value = existingEvent.description || '';
+                    document.getElementById('evLocation').value = existingEvent.location || '';
+                    document.getElementById('evStatus').value = existingEvent.status || 'Expected';
+                    document.getElementById('evDuration').value = existingEvent.duration || '';
+                    document.getElementById('evStartDate').value = existingEvent.startDate || '';
+                    document.getElementById('evEndDate').value = existingEvent.endDate || '';
+                    document.getElementById('evTime').value = existingEvent.time || '';
+                    document.getElementById('evRobotsRoles').value = existingEvent.robotsRoles || '';
+                    document.getElementById('evTransportation').value = existingEvent.transportation || 'Private Car';
+                    document.getElementById('evBranding').value = existingEvent.brandingResponsibility || 'Quill';
+                    document.getElementById('evSiteVisit').value = existingEvent.siteVisit || 'No Site Visit';
+                    document.getElementById('evContactName').value = existingEvent.contactName || '';
+                    document.getElementById('evPhone').value = existingEvent.phone || '';
+                    document.getElementById('evEmail').value = existingEvent.email || '';
+                    document.getElementById('evSiteReport').value = existingEvent.siteReport || '';
+                }
+            }
+
+            // تحديث ألوان القوائم المنسدلة
+            window.updateSelectColor(document.getElementById('evBusinessModel'));
+            window.updateSelectColor(document.getElementById('evStatus'));
+            window.updateSelectColor(document.getElementById('evTransportation'));
+            window.updateSelectColor(document.getElementById('evSiteVisit'));
+
+            // جلب الروبوتات ووضعها متقاربة
+            const robotsDiv = document.getElementById('eventRobotsSelection');
+            robotsDiv.innerHTML = '';
+            document.getElementById('searchEventRobots').value = '';
+            
+            globalRobots.forEach(r => {
+                const isChecked = existingEvent && existingEvent.robotIds && existingEvent.robotIds.includes(r.id) ? 'checked' : '';
+                robotsDiv.innerHTML += `
+                    <label class="event-robot-label flex items-center gap-1.5 p-1.5 border border-gray-200 dark:border-gray-600 hover:bg-red-50 dark:hover:bg-gray-600 rounded cursor-pointer transition bg-gray-50 dark:bg-gray-800">
+                        <input type="checkbox" value="${r.id}" class="event-robot-checkbox w-3.5 h-3.5 text-red-600 rounded focus:ring-red-500" ${isChecked}>
+                        <span class="text-xs font-bold text-gray-700 dark:text-gray-200">${escapeHTML(r.name)} <span class="text-[9px] text-gray-400">(${escapeHTML(r.serialNumber)})</span></span>
+                    </label>
+                `;
+            });
+
+            // جلب الموظفين لمدير الموقع ومسؤول العلاقات
+            const adminsDiv = document.getElementById('eventAdminsSelection');
+            const officersDiv = document.getElementById('eventOfficersSelection');
+            adminsDiv.innerHTML = ''; officersDiv.innerHTML = '';
+
+            globalUsers.forEach(u => {
+                const isAdminChecked = existingEvent && existingEvent.siteAdmins && existingEvent.siteAdmins.includes(u.uid) ? 'checked' : '';
+                const isOfficerChecked = existingEvent && existingEvent.relationsOfficers && existingEvent.relationsOfficers.includes(u.uid) ? 'checked' : '';
+                
+                const userHtml = (type, checked) => `
+                    <label class="flex items-center gap-2 p-1.5 border border-gray-100 dark:border-gray-600 hover:bg-red-50 dark:hover:bg-gray-600 rounded cursor-pointer transition">
+                        <input type="checkbox" value="${u.uid}" class="event-${type}-checkbox w-4 h-4 text-red-600 rounded focus:ring-red-500" ${checked}>
+                        <img src="${u.photoURL}" class="w-5 h-5 rounded-full object-cover">
+                        <span class="text-xs font-bold text-gray-700 dark:text-gray-200">${escapeHTML(u.name)}</span>
+                    </label>
+                `;
+                adminsDiv.innerHTML += userHtml('admin', isAdminChecked);
+                officersDiv.innerHTML += userHtml('officer', isOfficerChecked);
+            });
+
+            window.openModal('addEventModal');
+        };
+
+
+        document.getElementById('eventForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if(!currentUserData) return;
+
+            const btn = document.getElementById('saveEventBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الحفظ...';
+
+            const robotsCheckboxes = document.querySelectorAll('.event-robot-checkbox:checked');
+            const selectedRobots = Array.from(robotsCheckboxes).map(cb => cb.value);
+
+            const adminsCheckboxes = document.querySelectorAll('.event-admin-checkbox:checked');
+            const selectedAdmins = Array.from(adminsCheckboxes).map(cb => cb.value);
+
+            const officersCheckboxes = document.querySelectorAll('.event-officer-checkbox:checked');
+            const selectedOfficers = Array.from(officersCheckboxes).map(cb => cb.value);
+
+            const eventData = {
+                client: document.getElementById('evClient').value.trim(),
+                businessModel: document.getElementById('evBusinessModel').value,
+                description: document.getElementById('evDescription').value.trim(),
+                location: document.getElementById('evLocation').value.trim(),
+                status: document.getElementById('evStatus').value,
+                duration: document.getElementById('evDuration').value.trim(),
+                startDate: document.getElementById('evStartDate').value,
+                endDate: document.getElementById('evEndDate').value,
+                time: document.getElementById('evTime').value,
+                robotsRoles: document.getElementById('evRobotsRoles').value.trim(),
+                transportation: document.getElementById('evTransportation').value,
+                siteVisit: document.getElementById('evSiteVisit').value,
+                siteAdmins: selectedAdmins,
+                relationsOfficers: selectedOfficers,
+                brandingResponsibility: document.getElementById('evBranding').value,
+                contactName: document.getElementById('evContactName').value.trim(),
+                phone: document.getElementById('evPhone').value.trim(),
+                email: document.getElementById('evEmail').value.trim(),
+                siteReport: document.getElementById('evSiteReport').value.trim(),
+                robotIds: selectedRobots,
+                addedBy: currentUserData.name,
+                signature: document.getElementById('evSignature').value,
+                uid: currentUserData.uid,
+                timestamp: Date.now()
+            };
+
+            try {
+                const id = document.getElementById('eventId').value;
+                if(id) {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', id), eventData);
+                    showToast('تم تعديل الفعالية بنجاح', 'success');
+                } else {
+                    await addDoc(getColRef('events'), eventData);
+                    showToast('تم إضافة الفعالية بنجاح', 'success');
+                    window.logAction('إضافة فعالية', `تم إنشاء فعالية جديدة للعميل: ${eventData.client}`);
+                }
+                window.closeModal('addEventModal');
+                
+            } catch(err) {
+                console.error(err);
+                showToast('حدث خطأ أثناء الحفظ', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> حفظ الفعالية';
+            }
+        });
+
+        // ------------------ دوال قسم الموظفين والإيميلات ------------------
+
+        // دوال الإيميلات المصرح لها
+        window.pendingEmailTimers = {}; // لتخزين عدادات الإرسال في الخلفية
+
+        window.addAllowedEmail = async () => {
+            const input = document.getElementById('newAllowedEmailInput');
+            const btn = document.getElementById('addAllowedEmailBtn');
+            const email = input.value.trim().toLowerCase();
+            
+            if(!email) return;
+            if(globalAllowedEmails.includes(email)) {
+                showToast('هذا الإيميل مضاف ومصرح له مسبقاً', 'warning');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+            try {
+                const newList = [...new Set([...globalAllowedEmails, email])];
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'security'), { allowedEmails: newList }, { merge: true });
+                
+                input.value = '';
+                showToast('تم إضافة الإيميل بنجاح (سيتم إرسال الدعوة تلقائياً بعد 20 ثانية)', 'success');
+
+                // تشغيل المؤقت في الخلفية لإرسال الإيميل
+                window.pendingEmailTimers[email] = setTimeout(async () => {
+                    try {
+                        fetch(GOOGLE_SCRIPT_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify({
+                                action: 'sendInvite',
+                                email: email,
+                                token: await auth.currentUser.getIdToken()
+                            })
+                        }).catch(e => console.log('Invite email request sent'));
+                        delete window.pendingEmailTimers[email]; // تنظيف المؤقت
+                    } catch(e) {}
+                }, 20000);
+
+            } catch(e) { 
+                showToast('حدث خطأ في قاعدة البيانات', 'error'); 
+            } finally {
+                input.disabled = false;
+                btn.disabled = false;
+                btn.innerHTML = 'إضافة تصريح';
+            }
+        };
+
+        window.removeAllowedEmail = async (email) => {
+            if(!confirm(`هل أنت متأكد من حذف الإيميل (${email}) من قائمة المصرح لهم؟\nلن يتمكن من التسجيل مستقبلاً.`)) return;
+            try {
+                // إذا تم الحذف قبل مرور 20 ثانية، يتم إلغاء إرسال الإيميل
+                if(window.pendingEmailTimers[email]) {
+                    clearTimeout(window.pendingEmailTimers[email]);
+                    delete window.pendingEmailTimers[email];
+                    showToast('تم إلغاء إرسال الدعوة بنجاح', 'info');
+                }
+
+                const newList = globalAllowedEmails.filter(e => e !== email);
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'security'), { allowedEmails: newList }, { merge: true });
+                showToast('تم إزالة الإيميل', 'success');
+            } catch(e) { showToast('حدث خطأ', 'error'); }
+        };
+
+        window.renderAllowedEmails = () => {
+            const cont = document.getElementById('allowedEmailsContainer');
+            if(!cont) return;
+            cont.innerHTML = '';
+            
+            const registeredEmails = globalUsers.map(u => u.email ? u.email.toLowerCase() : '');
+            const pendingEmails = globalAllowedEmails.filter(email => !registeredEmails.includes(email.toLowerCase()));
+
+            if(pendingEmails.length === 0) {
+                cont.innerHTML = '<span class="text-xs text-gray-500 font-bold p-2">لا يوجد إيميلات معلقة حالياً.</span>';
+                return;
+            }
+            pendingEmails.forEach(email => {
+                // إضافة علامة توضح أن الإرسال قيد الانتظار إذا كان المؤقت يعمل
+                const isPendingSend = window.pendingEmailTimers[email] ? '<i class="fa-solid fa-clock text-orange-500 ml-1" title="يتم إرسال الدعوة..."></i>' : '';
+                
+                cont.innerHTML += `<span class="bg-green-100 text-green-800 text-[11px] px-3 py-1 rounded flex items-center gap-2 border border-green-200 font-bold" dir="ltr">
+                    ${escapeHTML(email)} ${isPendingSend}
+                    <button onclick="window.removeAllowedEmail('${escapeHTML(email)}')" class="text-red-500 hover:text-red-700 bg-green-200 w-5 h-5 rounded-full flex justify-center items-center"><i class="fa-solid fa-xmark"></i></button>
+                </span>`;
+            });
+        };
+
+        // دالة تغيير الصورة الشخصية للموظف (محولة لجوجل درايف)
+        window.changeProfileAvatar = (e) => {
+            const file = e.target.files[0];
+            if(!file || !currentUserData) return;
+            
+            showToast('جاري تحديث وتغيير الصورة الشخصية...', 'info');
+            
+            const reader = new FileReader();
+            reader.onload = async function(event) {
+                const base64Data = event.target.result.split(',')[1];
+                try {
+                    const downloadURL = await window.uploadToFirebase(file, 'avatars');
+
+                    if(downloadURL) {
+                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), {
+                            photoURL: downloadURL
+                        });
+                        
+                        currentUserData.photoURL = downloadURL;
+                        localStorage.setItem('quill_user_cache_services', JSON.stringify(currentUserData));
+                        
+                        document.getElementById('userAvatar').src = downloadURL;
+                        document.getElementById('settingsAvatarPreview').src = downloadURL;
+                        
+                        showToast('تم تحديث الصورة بنجاح!', 'success');
+                        window.renderEmployees(); 
+                    } else {
+                        throw new Error("No URL returned");
+                    }
+                } catch(error) {
+                    console.error(error);
+                    showToast('حدث خطأ أثناء رفع الصورة لدرايف', 'error');
+                }
+            };
+            reader.readAsDataURL(file);
+        };
+
+        // دوال الموظفين (المحدثة مع المحظورين والحسابات القديمة)
+        window.renderEmployees = () => {
+            const cont = document.getElementById('employeesContainer');
+            if(!cont) return;
+            cont.innerHTML = '';
+            const searchTerm = document.getElementById('searchEmployees')?.value.toLowerCase() || '';
+            
+            const filteredUsers = globalUsers.filter(u => {
+                // إخفاء حساب المدير (CEO) عن أي شخص آخر يملك صلاحية الإدارة
+                if (!window.isAdmin() && (u.role === 'CEO' || u.role === 'مطور' || (u.role && u.role.toUpperCase() === 'DEVELOPER'))) return false;
+                
+                return (u.name || '').toLowerCase().includes(searchTerm) || (u.role || '').toLowerCase().includes(searchTerm);
+            });
+            
+            if(filteredUsers.length === 0) {
+                cont.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8 font-bold">لا يوجد موظفين مسجلين.</p>';
+                return;
+            }
+
+            filteredUsers.forEach(u => {
+                const isCEO = (u.role === 'CEO' || u.role === 'مطور' || (u.role && u.role.toUpperCase() === 'DEVELOPER'));
+                const isMe = currentUserData.uid === u.uid;
+                const amICEO = window.isAdmin();
+                const ceoBadge = isCEO ? '<span class="bg-red-100 text-red-600 px-2 py-0.5 rounded text-[10px] font-bold shadow-sm">مدير النظام</span>' : '';
+                
+                // تحديد الحسابات القديمة (إذا لم تكن معتمدة ولم يكن إيميلها @quill.world)
+                const isLegacyGoogle = (!u.email || !u.email.endsWith('@quill.world')) && !u.legacyApproved;
+                const legacyBadge = isLegacyGoogle ? '<div class="w-full bg-yellow-100 text-yellow-800 text-[10px] p-2 mt-2 rounded border border-yellow-300 font-bold"><i class="fa-brands fa-google text-red-500 mr-1"></i> حساب قديم / يحتاج مراجعة</div>' : '';
+                
+                // تحديد الحظر
+                const isBlocked = u.isBlocked === true;
+                const cardClass = isBlocked ? 'bg-red-50 dark:bg-red-900/20 border-red-500 shadow-md scale-[1.02]' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700';
+                const blockedBadge = isBlocked ? '<div class="w-full bg-red-600 text-white text-[10px] p-2 mt-2 rounded font-bold"><i class="fa-solid fa-ban mr-1"></i> حساب محظور أمنياً</div>' : '';
+
+                cont.innerHTML += `
+                    <div class="${cardClass} p-4 rounded-xl shadow-sm border flex flex-col items-center text-center hover:shadow-md transition relative">
+                        <img src="${escapeHTML(u.photoURL)}" class="w-20 h-20 rounded-full object-cover border-2 ${isCEO ? 'border-red-400' : 'border-gray-200'} shadow-sm mb-3">
+                        <h3 class="font-bold text-lg ${isBlocked ? 'text-red-700' : 'text-gray-800'} dark:text-white mb-1">${escapeHTML(u.name)}</h3>
+                        <p class="text-xs text-gray-500 font-bold mb-2" dir="ltr">${escapeHTML(u.role === 'pending' ? (u.requestedRole || 'قيد الانتظار') : u.role)} ${u.role === 'pending' ? '<span class="text-orange-500">(بانتظار الموافقة)</span>' : ''}</p>
+                        ${ceoBadge}
+                        ${legacyBadge}
+                        ${blockedBadge}
+                        <p class="text-[10px] text-gray-400 mt-2 mb-4 w-full truncate border-t dark:border-gray-700 pt-2"><i class="fa-solid fa-envelope mx-1"></i>${escapeHTML(u.email || 'لا يوجد إيميل')}</p>
+                        
+                        <!-- أزرار الإبقاء للحسابات القديمة -->
+                        ${(amICEO && isLegacyGoogle && !isMe) ? `
+                        <div class="w-full flex gap-2 mb-3 bg-red-50 p-2 rounded-lg border border-red-100">
+                            <button onclick="window.keepLegacyUser('${u.uid}')" class="flex-1 bg-green-500 hover:bg-green-600 text-white text-[10px] py-1.5 rounded font-bold transition shadow-sm"><i class="fa-solid fa-check mx-1"></i>اعتماد (إبقاء)</button>
+                        </div>
+                        ` : ''}
+
+                        <div class="w-full flex gap-2 mt-auto">
+                            ${u.role === 'pending' && amICEO ? `
+                                <button onclick="window.approvePendingUser('${u.uid}', '${escapeHTML(u.requestedRole || 'Employee')}')" class="flex-1 bg-green-500 hover:bg-green-600 text-white text-xs py-2 rounded font-bold transition shadow-sm"><i class="fa-solid fa-check mx-1"></i>موافقة</button>
+                                <button onclick="window.rejectPendingUser('${u.uid}')" class="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs py-2 rounded font-bold transition shadow-sm"><i class="fa-solid fa-xmark mx-1"></i>رفض</button>
+                            ` : `
+                                ${isBlocked && amICEO ? `<button onclick="window.unblockEmployee('${u.uid}')" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white text-xs py-2 rounded font-bold transition shadow-sm"><i class="fa-solid fa-unlock mx-1"></i>فك الحظر</button>` : ''}
+                                
+                                ${(!isBlocked && (amICEO || (currentUserData.permissions && currentUserData.permissions.canManageEmployees))) ? 
+                                `<button onclick="window.openEditEmployeeModal('${u.uid}')" class="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs py-2 rounded font-bold transition shadow-sm border border-gray-200 dark:border-gray-600"><i class="fa-solid fa-pen mx-1"></i>تعديل</button>` : ''}
+                                
+                                ${amICEO && !isMe ? 
+                                `<button onclick="window.deleteEmployee('${u.uid}', '${escapeHTML(u.name)}')" class="flex-1 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-600 text-xs py-2 rounded font-bold transition shadow-sm border border-red-200 dark:border-red-800"><i class="fa-solid fa-trash mx-1"></i>حذف</button>` : ''}
+                            `}
+                        </div>
+                    </div>
+                `;
+            });
+        };
+
+        window.keepLegacyUser = async (uid) => {
+            if(confirm('هل أنت متأكد من رغبتك في اعتماد هذا الحساب القديم؟ (سيبقى إيميله كما هو ولن يتم تحذيرك منه مجدداً)')) {
+                try {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', uid), {
+                        legacyApproved: true // اعتماد الحساب بدون تغيير الإيميل
+                    });
+                    showToast('تم اعتماد الحساب وإبقاؤه', 'success');
+                    window.renderEmployees();
+                } catch(e) {
+                    console.error(e); showToast('حدث خطأ', 'error');
+                }
+            }
+        };
+
+        window.approvePendingUser = async (uid, requestedRole) => {
+            if(confirm('هل توافق على انضمام هذا الموظف للنظام؟')) {
+                try {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', uid), {
+                        role: requestedRole || 'Employee'
+                    });
+                    showToast('تمت الموافقة على الموظف بنجاح', 'success');
+                    window.sendSystemNotification(uid, 'تمت الموافقة!', 'تم تفعيل حسابك بنجاح، يمكنك الآن استخدام النظام.', 'notices', 'home-grid');
+                } catch(e) { console.error(e); showToast('حدث خطأ', 'error'); }
+            }
+        };
+
+        window.rejectPendingUser = async (uid) => {
+            if(confirm('هل أنت متأكد من رفض هذا الموظف وحذفه من النظام؟')) {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', uid));
+                    showToast('تم رفض وحذف الموظف', 'success');
+                } catch(e) { console.error(e); showToast('حدث خطأ', 'error'); }
+            }
+        };
+
+        window.deleteEmployee = async (uid, name) => {
+            if(confirm(`تحذير خطير: هل أنت متأكد من حذف الموظف (${name}) نهائياً من النظام؟\nسيتم إجباره على التسجيل كأنه مستخدم جديد بالكامل ولن يجد بياناته.`)) {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', uid));
+                    try { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'otp_security', uid)); } catch(ex){} // مسح بيانات الحماية إذا وجدت
+                    showToast('تم حذف الموظف من النظام نهائياً', 'success');
+                    window.renderEmployees();
+                } catch(e) {
+                    console.error(e); 
+                    showToast('تم الحذف (تحديث السجلات المحلية)', 'success');
+                    window.renderEmployees();
+                }
+            }
+        };
+
+        window.unblockEmployee = async (uid) => {
+            if(!uid) return;
+            if(confirm('هل تريد فك الحظر الأمني عن هذا الموظف؟\nسيتم فك الحظر، وعند دخوله المرة القادمة سيمر بخطوات تسجيل الدخول وتأكيد الـ OTP من البداية.')) {
+                try {
+                    // مسح مستند الـ OTP بالكامل لإجباره على التفعيل من جديد
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'otp_security', uid));
+                    // فك الحظر عن حساب المستخدم
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', uid), { isBlocked: false });
+                    showToast('تم فك الحظر الأمني بنجاح. سيتم طلب تفعيل الجهاز عند دخوله القادم.', 'success');
+                    window.renderEmployees();
+                } catch(e) {
+                    console.error(e); showToast('حدث خطأ أثناء فك الحظر', 'error');
+                }
+            }
+        };
+
+        window.openEditEmployeeModal = (uid) => {
+            const u = globalUsers.find(user => user.uid === uid);
+            if(!u) return;
+
+            document.getElementById('editEmpUid').value = u.uid;
+            document.getElementById('editEmpName').value = u.name || '';
+            document.getElementById('editEmpRole').value = (u.role === 'pending' ? u.requestedRole : u.role) || '';
+            document.getElementById('editEmpPhotoPreview').src = u.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=00839b&color=fff`;
+            document.getElementById('editEmpPhotoUrl').value = u.photoURL || '';
+
+            const isMe = currentUserData.uid === uid;
+            
+            if (isMe && !window.isAdmin()) {
+                document.getElementById('editEmpRoleContainer').classList.add('hidden');
+                document.getElementById('editEmpPermissionsSection').classList.add('hidden');
+            } else {
+                document.getElementById('editEmpRoleContainer').classList.remove('hidden');
+                document.getElementById('editEmpPermissionsSection').classList.remove('hidden');
+                
+                const perms = u.permissions || {};
+                document.getElementById('permManageClients').checked = !!perms.canManageClients;
+                document.getElementById('permViewContracts').checked = !!perms.canViewContracts;
+                document.getElementById('permAddContracts').checked = !!perms.canAddContracts;
+                if(document.getElementById('permManageLeaves')) document.getElementById('permManageLeaves').checked = !!perms.canManageLeaves;
+                if(document.getElementById('permCreateMeetings')) document.getElementById('permCreateMeetings').checked = !!perms.canCreateMeetings;
+                if(document.getElementById('permManageEmployees')) document.getElementById('permManageEmployees').checked = !!perms.canManageEmployees;
+                if(document.getElementById('permManageExpenses')) document.getElementById('permManageExpenses').checked = !!perms.canManageExpenses;
+                if(document.getElementById('permAssignTasks')) document.getElementById('permAssignTasks').checked = !!perms.canAssignTasks;
+                if(document.getElementById('permManageEvents')) document.getElementById('permManageEvents').checked = !!perms.canManageEvents;
+                
+                // الصلاحيات الجديدة للجرد والروبوتات
+                if(document.getElementById('permViewInventory')) document.getElementById('permViewInventory').checked = !!perms.permViewInventory;
+                if(document.getElementById('permManageInventory')) document.getElementById('permManageInventory').checked = !!perms.permManageInventory;
+                if(document.getElementById('permViewRobots')) document.getElementById('permViewRobots').checked = !!perms.permViewRobots;
+                if(document.getElementById('permManageRobots')) document.getElementById('permManageRobots').checked = !!perms.permManageRobots;
+            }
+
+            window.openModal('editEmployeeModal');
+        };
+
+        window.saveEmployeeChanges = async () => {
+            const uid = document.getElementById('editEmpUid').value;
+            const name = document.getElementById('editEmpName').value.trim();
+            const photoUrl = document.getElementById('editEmpPhotoUrl').value;
+
+            const isMe = currentUserData.uid === uid;
+            let role = document.getElementById('editEmpRole').value.trim();
+            if (!role && !isMe) { showToast('يرجى إدخال المسمى الوظيفي', 'warning'); return; }
+            let finalPerms = {};
+
+            if (isMe) {
+                role = currentUserData.role; 
+                finalPerms = currentUserData.permissions || {};
+            } else {
+                // الفحص الآمن للعناصر لمنع توقف الشاشة
+                const getCheckVal = (id) => {
+                    const el = document.getElementById(id);
+                    return el ? el.checked : false;
+                };
+
+                finalPerms = {
+                    canManageClients: getCheckVal('permManageClients'),
+                    canViewContracts: getCheckVal('permViewContracts'),
+                    canAddContracts: getCheckVal('permAddContracts'),
+                    canManageEmployees: getCheckVal('permManageEmployees'),
+                    canManageExpenses: getCheckVal('permManageExpenses'),
+                    canManageLeaves: getCheckVal('permManageLeaves'),
+                    canCreateMeetings: getCheckVal('permCreateMeetings'),
+                    canAssignTasks: getCheckVal('permAssignTasks'),
+                    canManageEvents: getCheckVal('permManageEvents'),
+                    permViewInventory: getCheckVal('permViewInventory'),
+                    permManageInventory: getCheckVal('permManageInventory'),
+                    permViewRobots: getCheckVal('permViewRobots'),
+                    permManageRobots: getCheckVal('permManageRobots')
+                };
+
+                if (role.toUpperCase() === 'CEO' || role === 'مطور') {
+                    if (!window.isAdmin()) {
+                        showToast('غير مصرح لك بتعيين هذا الحساب كمدير!', 'error'); return;
+                    } else {
+                        const confirmTransfer = confirm('تنبيه خطير: هل أنت متأكد من نقل منصب الإدارة لهذا الحساب؟ بمجرد الموافقة سيتم تجريدك من صلاحياتك فوراً.');
+                        if (!confirmTransfer) return;
+                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), { role: 'Employee' });
+                    }
+                }
+            }
+
+            if(!name) { showToast('يرجى التأكد من إدخال الاسم', 'warning'); return; }
+
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', uid), {
+                    name: name, role: role, photoURL: photoUrl, permissions: finalPerms
+                });
+                showToast('تم تحديث البيانات بنجاح', 'success');
+                window.closeModal('editEmployeeModal');
+                window.renderEmployees(); 
+            } catch(e) { 
+                console.error(e); 
+                showToast('حدث خطأ أثناء حفظ التعديلات', 'error'); 
+            }
+        };
+
+        // معالجة تغيير وتحديث الصورة كـ Base64 لسهولة التخزين السريع
+        const editEmpPhotoInput = document.getElementById('editEmpPhotoInput');
+        if(editEmpPhotoInput) {
+            editEmpPhotoInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if(!file) return;
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    document.getElementById('editEmpPhotoPreview').src = event.target.result;
+                    document.getElementById('editEmpPhotoUrl').value = event.target.result; 
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+// دوال قسم المناقشة
+let currentGroupId = 'general'; // للتحكم بالمجموعة الحالية المفتوحة
+
+window.renderDiscussion = () => {
+    const box = document.getElementById('discussionChatBox');
+    if(!box) return;
+    
+    const filteredDiscussions = globalDiscussions.filter(msg => {
+    // حل مشكلة اختلاط الرسائل بجعل المطابقة دقيقة جداً نصياً
+    const mGroup = msg.groupId ? String(msg.groupId).trim() : 'general';
+    const cGroup = currentGroupId ? String(currentGroupId).trim() : 'general';
+    return mGroup === cGroup;
+});
+
+    if(filteredDiscussions.length === 0) {
+        box.innerHTML = '<div class="m-auto text-center"><i class="fa-regular fa-comments text-5xl text-gray-300 mb-3"></i><p class="text-gray-500 font-bold text-sm">لا توجد رسائل سابقة. كن أول من يبدأ النقاش!</p></div>';
+        return;
+    }
+    
+    box.innerHTML = '';
+    let lastDate = '';
+    
+    filteredDiscussions.forEach(msg => {
+        const msgDate = new Date(msg.timestamp).toLocaleDateString('ar-EG');
+        if(msgDate !== lastDate) {
+            box.innerHTML += `<div class="text-center my-4 w-full"><span class="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-bold px-3 py-1 rounded-full">${msgDate}</span></div>`;
+            lastDate = msgDate;
+        }
+        
+        const isMe = msg.uid === currentUserData.uid;
+        const timeStr = new Date(msg.timestamp).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+        
+        // تنسيق الفقاعات (Bubbles) مثل التطبيقات الحديثة
+        const alignmentClass = isMe 
+            ? 'bg-gradient-to-br from-[#00839b] to-[#006b80] text-white rounded-2xl rounded-tl-none shadow-md border-none' 
+            : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-2xl rounded-tr-none shadow-sm border border-gray-100 dark:border-gray-700';
+        const nameColor = isMe ? 'text-blue-100' : 'text-[#002d74] dark:text-secondary';
+        const textColor = isMe ? 'text-white' : 'text-gray-800 dark:text-gray-200';
+        const userPhoto = msg.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.name)}&background=00839b&color=fff`;
+
+        // معالجة الردود
+        let replyHtml = '';
+        if(msg.replyTo) {
+            replyHtml = `
+                <div class="bg-black/5 dark:bg-white/10 p-2 rounded mb-2 border-r-2 border-secondary text-[10px] text-gray-700 dark:text-gray-300 opacity-80 truncate">
+                    <i class="fa-solid fa-reply mr-1"></i> ${escapeHTML(msg.replyTo.text)}
+                </div>
+            `;
+        }
+
+        // معالجة الصوت أو النص
+        // معالجة الصوت، الصور، الملفات، أو النص
+        let contentHtml = '';
+        if(msg.audioUrl) {
+            contentHtml = `<audio controls src="${msg.audioUrl}" class="h-8 max-w-[200px] mt-1"></audio>`;
+        } else if (msg.fileUrl) {
+            if(msg.fileType && msg.fileType.startsWith('image/')) {
+                contentHtml = `<img src="${msg.fileUrl}" onclick="window.open('${msg.fileUrl}', '_blank')" class="max-w-[200px] md:max-w-[250px] rounded-lg mt-1 cursor-pointer border border-gray-200 shadow-sm hover:opacity-90 transition">`;
+            } else {
+                contentHtml = `
+                    <div class="mt-1 bg-black/10 dark:bg-white/10 p-2 rounded-lg flex items-center gap-3">
+                        <i class="fa-solid fa-file-arrow-down text-2xl"></i>
+                        <div class="flex flex-col">
+                            <span class="text-xs font-bold truncate max-w-[150px]" dir="ltr">${escapeHTML(msg.fileName || 'ملف مرفق')}</span>
+                            <a href="${msg.fileUrl}" target="_blank" class="text-[10px] underline hover:text-white mt-1">تحميل الملف</a>
+                        </div>
+                    </div>`;
+            }
+        } else {
+            // تلوين المنشن
+            let formattedText = escapeHTML(msg.text || '').replace(/@([^\s]+)/g, `<span class="font-bold px-1 rounded ${isMe ? 'bg-white/30' : 'bg-[#00839b]/20 text-[#00839b]'}">@$1</span>`);
+            contentHtml = `<p class="text-sm ${textColor} whitespace-pre-wrap leading-relaxed inline-block break-words w-fit">${formattedText}</p>`;
+        }
+
+        // بناء قائمة السياق (مع تمرير event.stopPropagation لمنع المشاكل)
+        let menuItems = '';
+        if(isMe || window.isAdmin()) {
+            menuItems += `<button onclick="event.stopPropagation(); window.chatAction('delete', '${msg.id}')" class="w-full text-right px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-red-500"><i class="fa-solid fa-trash w-4"></i> حذف</button>`;
+        }
+        if(msg.text) {
+            menuItems += `<button onclick="event.stopPropagation(); window.chatAction('reply', '${msg.id}', '${encodeURIComponent(msg.text)}')" class="w-full text-right px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"><i class="fa-solid fa-reply w-4 text-green-500"></i> رد</button>`;
+            menuItems += `<button onclick="event.stopPropagation(); window.chatAction('copy', '${encodeURIComponent(msg.text)}')" class="w-full text-right px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"><i class="fa-solid fa-copy w-4 text-gray-500"></i> نسخ النص</button>`;
+        }
+
+        const menuHtml = `
+            <div class="relative group/menu inline-block self-center">
+                <button class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 transition p-2 focus:opacity-100"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                <div class="absolute ${isMe ? 'left-0' : 'right-0'} top-full mt-1 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 hidden group-hover/menu:block group-focus/menu:block overflow-hidden">
+                    ${menuItems}
+                </div>
+            </div>
+        `;
+
+        box.innerHTML += `
+            <div class="flex gap-2 w-full ${isMe ? 'flex-row-reverse' : ''} animate-fade-in group">
+                <img src="${userPhoto}" class="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-600 shadow-sm flex-shrink-0 object-cover mt-1">
+                <div class="flex flex-col max-w-[85%] md:max-w-[70%]">
+                    <div class="flex items-start gap-1 ${isMe ? 'flex-row-reverse' : ''}">
+                        <div class="px-4 py-2 ${alignmentClass} relative w-fit max-w-[85%] md:max-w-[75%] break-words">
+                            <div class="flex justify-between items-center mb-0.5 gap-4 ${isMe ? 'flex-row-reverse' : ''}">
+                                <span class="font-bold text-[11px] ${nameColor}">${escapeHTML(msg.name)}</span>
+                            </div>
+                            ${replyHtml}
+                            <div class="text-sm ${textColor} whitespace-pre-wrap leading-relaxed inline-block break-words w-full">
+                                ${contentHtml}
+                            </div>
+                        </div>
+                        ${menuHtml}
+                    </div>
+                    <span class="text-[9px] text-gray-400 mt-1 ${isMe ? 'text-left mr-1' : 'text-right ml-1'}">${timeStr}</span>
+                </div>
+            </div>
+        `; 
+    });
+    
+    box.scrollTop = box.scrollHeight;
+};
+
+// وظائف القائمة المنسدلة للرسائل والردود والتسجيل
+let currentReplyTo = null;
+let mediaRecorder;
+let audioChunks = [];
+let isRecording = false;
+
+window.cancelReply = () => {
+    currentReplyTo = null;
+    const banner = document.getElementById('replyBanner');
+    if(banner) banner.classList.add('hidden');
+    const textElement = document.getElementById('replyBannerText');
+    if(textElement) textElement.innerText = '';
+    const input = document.getElementById('discussionInput');
+    if(input) input.focus();
+};
+
+window.chatAction = (action, payload, extra = '') => {
+    if(action === 'copy') {
+        navigator.clipboard.writeText(decodeURIComponent(payload));
+        showToast('تم نسخ النص', 'success');
+    } else if (action === 'delete') {
+        if(confirm('هل أنت متأكد من حذف الرسالة؟')) {
+            deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'discussions', payload)).then(() => {
+                showToast('تم الحذف', 'success');
+            }).catch(e=>console.log(e));
+        }
+    } else if (action === 'reply') {
+        currentReplyTo = { id: payload, text: decodeURIComponent(extra) };
+        document.getElementById('replyBannerText').innerText = currentReplyTo.text;
+        document.getElementById('replyBanner').classList.remove('hidden');
+        document.getElementById('discussionInput').focus();
+    } else if (action === 'pin') {
+        showToast('ميزة التثبيت قيد التطوير', 'info');
+    }
+};
+
+// تحديث أيقونة المايك/الإرسال ونظام المنشن تلقائياً
+document.getElementById('discussionInput').addEventListener('input', function(e) {
+    const icon = document.getElementById('sendChatIcon');
+    if(this.value.trim() !== '') {
+        icon.className = 'fa-solid fa-paper-plane';
+    } else {
+        icon.className = 'fa-solid fa-microphone';
+    }
+
+    const val = this.value;
+    const lastChar = val.slice(-1);
+    if(lastChar === '@') {
+        window.triggerMention();
+    } else if (!val.includes('@')) {
+        document.getElementById('mentionDropdown').classList.add('hidden');
+    }
+});
+
+window.triggerMention = () => {
+    const drop = document.getElementById('mentionDropdown');
+    drop.innerHTML = `<div onclick="window.insertMention('الجميع', 'all')" class="p-2 text-sm font-bold text-red-500 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer border-b dark:border-gray-600"><i class="fa-solid fa-bullhorn mx-1"></i> إشارة للجميع</div>`;
+    
+    let membersToShow = currentGroupId === 'general' ? globalUsers : globalUsers.filter(u => globalGroups.find(g => g.id === currentGroupId)?.members.includes(u.uid));
+    
+    membersToShow.forEach(u => {
+        if(u.uid !== currentUserData.uid) {
+            drop.innerHTML += `
+                <div onclick="window.insertMention('${escapeHTML(u.name)}', '${u.uid}')" class="p-2 flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition">
+                    <img src="${u.photoURL}" class="w-6 h-6 rounded-full object-cover">
+                    <span class="text-xs font-bold text-gray-700 dark:text-gray-200">${escapeHTML(u.name)}</span>
+                </div>
+            `;
+        }
+    });
+    drop.classList.remove('hidden');
+};
+
+window.insertMention = (name, uid) => {
+    const input = document.getElementById('discussionInput');
+    input.value = input.value.replace(/@$/, '') + `@${name} `;
+    document.getElementById('mentionDropdown').classList.add('hidden');
+    document.getElementById('sendChatIcon').className = 'fa-solid fa-paper-plane';
+    input.focus();
+};
+
+window.toggleRecordOrSend = async () => {
+    const input = document.getElementById('discussionInput');
+    const btn = document.getElementById('sendChatBtn');
+    const icon = document.getElementById('sendChatIcon');
+
+    if(input.value.trim() !== '') {
+        window.sendDiscussionMessage();
+    } else {
+        if(!isRecording) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                audioChunks = [];
+                mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    window.sendVoiceMessage(audioBlob);
+                };
+                mediaRecorder.start();
+                isRecording = true;
+                btn.classList.replace('bg-secondary', 'bg-red-500');
+                btn.classList.add('animate-pulse');
+                icon.className = 'fa-solid fa-stop text-white';
+                input.placeholder = 'جاري التسجيل... اضغط للإيقاف والإرسال';
+                input.disabled = true;
+            } catch(e) {
+                console.error(e);
+                showToast('يرجى السماح بالوصول للميكروفون من إعدادات المتصفح', 'error');
+            }
+        } else {
+            mediaRecorder.stop();
+            mediaRecorder.stream.getTracks().forEach(t => t.stop());
+            isRecording = false;
+            btn.classList.replace('bg-red-500', 'bg-secondary');
+            btn.classList.remove('animate-pulse');
+            icon.className = 'fa-solid fa-microphone text-white';
+            input.placeholder = 'اكتب رسالتك... (@ للمنشن)';
+            input.disabled = false;
+        }
+    }
+};
+
+window.sendVoiceMessage = async (audioBlob) => {
+    showToast('جاري إرسال التسجيل...', 'info');
+    try {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const base64Data = e.target.result.split(',')[1];
+            const fileUrl = await window.uploadToFirebase(audioBlob, 'chat_audio');
+
+            await addDoc(getColRef('discussions'), {
+                uid: currentUserData.uid, name: currentUserData.name, photoURL: currentUserData.photoURL,
+                audioUrl: fileUrl, groupId: currentGroupId || 'general', timestamp: Date.now(), // تأكيد المجموعة هنا
+                replyTo: currentReplyTo
+            });
+            window.cancelReply();
+        };
+        reader.readAsDataURL(audioBlob);
+    } catch(e) { console.error(e); showToast('فشل إرسال الصوت', 'error'); }
+};
+
+       window.toggleQuickAdd = (status) => {
+            const container = document.getElementById(`quick-add-${status}`);
+            const input = document.getElementById(`quick-input-${status}`);
+            if (container.classList.contains('hidden')) {
+                container.classList.remove('hidden');
+                window.populateQuickAddAssignee(status);
+                input.focus();
+            } else {
+                container.classList.add('hidden');
+            }
+        };
+
+        window.populateQuickAddAssignee = (status) => {
+            const select = document.getElementById(`quick-assignee-${status}`);
+            if (!select) return;
+            select.innerHTML = '';
+            const isCEO = window.isAdmin();
+            const canAssign = currentUserData.permissions && currentUserData.permissions.canAssignTasks;
+            if (isCEO || canAssign) {
+                globalUsers.forEach(emp => {
+                    if (emp.status !== 'pending' && emp.status !== 'rejected') {
+                        select.innerHTML += `<option value="${emp.uid}" data-name="${escapeHTML(emp.name)}">${escapeHTML(emp.name)}</option>`;
+                    }
+                });
+            } else {
+                select.innerHTML = `<option value="${currentUserData.uid}" data-name="${escapeHTML(currentUserData.name)}">${escapeHTML(currentUserData.name)} (أنت)</option>`;
+            }
+        };
+
+        window.submitQuickAdd = async (statusKey) => {
+            const titleInput = document.getElementById(`quick-input-${statusKey}`);
+            const assigneeSelect = document.getElementById(`quick-assignee-${statusKey}`);
+            const deadlineInput = document.getElementById(`quick-deadline-${statusKey}`);
+            const title = titleInput.value.trim();
+            if (!title) { showToast('يرجى كتابة اسم المهمة', 'warning'); return; }
+            if (!assigneeSelect.value) { showToast('يرجى اختيار الموظف', 'warning'); return; }
+
+            const statusMap = { pending: 'pending', progress: 'in-progress', review: 'pending_approval', completed: 'completed' };
+            const realStatus = statusMap[statusKey] || 'pending';
+            const assigneeName = assigneeSelect.options[assigneeSelect.selectedIndex].getAttribute('data-name');
+            const deadlineTimestamp = deadlineInput.value ? new Date(deadlineInput.value).getTime() : null;
+
+            try {
+                const taskData = {
+                    title: title,
+                    desc: '',
+                    assigneeId: assigneeSelect.value,
+                    assigneeName: assigneeName,
+                    assigneeIds: [assigneeSelect.value],
+                    createdBy: currentUserData.uid,
+                    creatorName: currentUserData.name,
+                    deadline: deadlineTimestamp,
+                    isHighPriority: false,
+                    checklists: [],
+                    status: realStatus,
+                    timestamp: Date.now(),
+                    orderIndex: globalTasks.length,
+                    startedAt: (realStatus !== 'pending') ? Date.now() : null,
+                    completedAt: (realStatus === 'pending_approval' || realStatus === 'completed') ? Date.now() : null
+                };
+                await addDoc(getColRef('tasks'), taskData);
+                if (assigneeSelect.value !== currentUserData.uid) {
+                    window.sendSystemNotification(assigneeSelect.value, 'مهمة جديدة', `تم إسناد مهمة جديدة لك: ${title}`, 'tasks', 'tasks');
+                }
+                titleInput.value = '';
+                deadlineInput.value = '';
+                document.getElementById(`quick-add-${statusKey}`).classList.add('hidden');
+                showToast('تمت إضافة المهمة بنجاح', 'success');
+            } catch (e) {
+                console.error(e);
+                showToast('حدث خطأ أثناء الإضافة', 'error');
+            }
+        };
+
+// ================= تفعيل زر المرفقات في المناقشة 100% =================
+        document.addEventListener("DOMContentLoaded", () => {
+            const chatAttachmentInput = document.getElementById('chatAttachmentInput');
+            if(chatAttachmentInput) {
+                chatAttachmentInput.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if(!file) return;
+                    if(file.size > 5 * 1024 * 1024) { showToast('الملف كبير جداً للدردشة! الحد الأقصى 5MB', 'warning'); e.target.value = ''; return; }
+                    
+                    showToast('جاري إرسال المرفق...', 'info');
+                    const reader = new FileReader();
+                    reader.onload = async (ev) => {
+                        const base64Data = ev.target.result.split(',')[1];
+                        try {
+                            const fileUrl = await window.uploadToFirebase(file, 'chat_files');
+
+                            await addDoc(getColRef('discussions'), {
+                                uid: currentUserData.uid, name: currentUserData.name, photoURL: currentUserData.photoURL,
+                                fileUrl: fileUrl, fileName: file.name, fileType: file.type, // الحقول الجديدة للمرفقات
+                                groupId: currentGroupId, timestamp: Date.now(), replyTo: currentReplyTo
+                            });
+                            
+                            window.cancelReply();
+                            showToast('تم إرسال الملف', 'success');
+                            e.target.value = '';
+                        } catch(error) { console.error(error); showToast('فشل إرسال الملف', 'error'); }
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+        });
+        // ======================================================================
+
+window.sendDiscussionMessage = async () => {
+    const input = document.getElementById('discussionInput');
+    const btn = document.getElementById('sendChatBtn');
+    if(!input || !btn) return;
+
+    const text = input.value.trim();
+    if(!text || !currentUserData) return;
+    
+    input.disabled = true;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    
+    let mentionedUids = [];
+    if(text.includes('@الجميع')) {
+        mentionedUids = globalUsers.map(u => u.uid).filter(id => id !== currentUserData.uid);
+    } else {
+        globalUsers.forEach(u => {
+            if(text.includes(`@${u.name}`) && u.uid !== currentUserData.uid) mentionedUids.push(u.uid);
+        });
+    }
+
+    try {
+        const payload = {
+            uid: currentUserData.uid,
+            name: currentUserData.name,
+            photoURL: currentUserData.photoURL || 'https://ui-avatars.com/api/?name=User',
+            text: text,
+            groupId: currentGroupId || 'general', // تأكيد المجموعة هنا
+            timestamp: Date.now()
+        };
+        // إضافة الرد فقط إذا كان موجوداً لمنع خطأ Undefined
+        if (currentReplyTo) {
+            payload.replyTo = currentReplyTo;
+        }
+
+        await addDoc(getColRef('discussions'), payload);
+        
+        input.value = ''; 
+        input.style.height = 'auto';
+        document.getElementById('sendChatIcon').className = 'fa-solid fa-microphone';
+        window.cancelReply();
+
+        mentionedUids.forEach(uid => {
+            window.sendSystemNotification(uid, 'إشارة جديدة', `قام ${currentUserData.name} بالإشارة إليك في المناقشة.`, 'chat', 'discussion');
+        });
+
+    } catch(e) { 
+        console.error("Chat Send Error: ", e);
+        showToast('حدث خطأ، تأكد من اتصال الإنترنت', 'error'); 
+    } finally { 
+        btn.disabled = false;
+        btn.innerHTML = '<i id="sendChatIcon" class="fa-solid fa-microphone"></i>';
+        input.disabled = false; 
+        input.focus(); 
+    }
+};
+
+window.deleteGroup = async (groupId) => {
+    if(confirm('هل أنت متأكد من حذف هذه المجموعة؟')) {
+        try {
+            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'chat_groups', groupId));
+            currentGroupId = 'general';
+            document.getElementById('currentChatTitle').innerText = 'الدردشة العامة للشركة';
+            window.cancelReply();
+            window.renderDiscussion();
+            showToast('تم حذف المجموعة بنجاح', 'success');
+        } catch(e) { console.error(e); showToast('حدث خطأ أثناء الحذف', 'error'); }
+    }
+};
+
+// --- دوال المجموعات والأعضاء ---
+window.openCreateGroupModal = () => {
+    document.getElementById('createGroupForm').reset();
+    const list = document.getElementById('newGroupMembersList');
+    list.innerHTML = '';
+    globalUsers.forEach(u => {
+        if(u.uid !== currentUserData.uid) {
+            list.innerHTML += `
+                <label class="flex items-center gap-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded cursor-pointer transition">
+                    <input type="checkbox" value="${u.uid}" class="group-member-cb w-4 h-4 text-secondary rounded">
+                    <img src="${u.photoURL}" class="w-6 h-6 rounded-full object-cover">
+                    <span class="text-sm font-bold text-gray-700 dark:text-gray-200">${escapeHTML(u.name)}</span>
+                </label>
+            `;
+        }
+    });
+    window.openModal('createGroupModal');
+};
+
+window.handleCreateGroup = async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('newGroupName').value.trim();
+    const cbs = document.querySelectorAll('.group-member-cb:checked');
+    const members = Array.from(cbs).map(cb => cb.value);
+    members.push(currentUserData.uid);
+
+    if(members.length < 2) {
+        showToast('يجب اختيار عضو واحد على الأقل (غيرك)', 'warning'); return;
+    }
+
+    try {
+        const docRef = await addDoc(getColRef('chat_groups'), {
+            name: name,
+            members: members,
+            createdBy: currentUserData.uid,
+            timestamp: Date.now()
+        });
+        
+        window.closeModal('createGroupModal');
+        showToast('تم إنشاء المجموعة بنجاح', 'success');
+        
+        // الانتقال تلقائياً للمجموعة الجديدة
+        currentGroupId = docRef.id;
+        document.getElementById('currentChatTitle').innerText = name;
+        
+        // إرسال رسالة نظام آلية تفيد بمن أنشأ المجموعة
+        await addDoc(getColRef('discussions'), {
+            uid: 'system',
+            name: 'نظام Quill',
+            photoURL: 'https://quill.world/wp-content/uploads/2022/01/New-Project-10-1.png',
+            text: `تم إنشاء المجموعة بواسطة ${currentUserData.name}`,
+            groupId: currentGroupId,
+            timestamp: Date.now()
+        });
+
+        window.cancelReply();
+        window.renderDiscussion();
+        
+    } catch(err) { console.error(err); showToast('حدث خطأ', 'error'); }
+};
+
+window.openChatMembersModal = () => {
+    const list = document.getElementById('chatMembersList');
+    list.innerHTML = '';
+    
+    let membersToShow = [];
+    if(currentGroupId === 'general') {
+        membersToShow = globalUsers; // الجميع في الدردشة العامة
+    } else {
+        const group = globalGroups.find(g => g.id === currentGroupId);
+        if(group) {
+            membersToShow = globalUsers.filter(u => group.members.includes(u.uid));
+        }
+    }
+
+    document.getElementById('currentChatMembersCount').innerText = `${membersToShow.length} عضو`;
+
+    membersToShow.forEach(u => {
+        list.innerHTML += `
+            <div class="flex items-center gap-3 bg-gray-50 dark:bg-gray-700 p-2 rounded-lg border border-gray-200 dark:border-gray-600">
+                <img src="${u.photoURL}" class="w-8 h-8 rounded-full object-cover border border-gray-300">
+                <div>
+                    <p class="text-xs font-bold text-gray-800 dark:text-white">${escapeHTML(u.name)}</p>
+                    <p class="text-[10px] text-gray-500">${escapeHTML(u.role)}</p>
+                </div>
+            </div>
+        `;
+    });
+    window.openModal('chatMembersModal');
+};
+
+// 1. دالة تأكيد العودة وحفظ السبب
+window.confirmReEntry = async () => {
+            const reasonInput = document.getElementById('reEntryReasonInput');
+            const reason = reasonInput.value.trim();
+            
+            // --- نظام الكشف الصارم (Gibberish Detector Pro) ---
+            const cleanReason = reason.replace(/[\.\-\_\s]/g, ''); 
+            const words = reason.split(/\s+/).filter(w => w.length > 0);
+
+            if (cleanReason.length < 15) {
+                showToast('مرفوض: يجب كتابة مبرر حقيقي وواضح لا يقل عن 15 حرفاً!', 'error');
+                reasonInput.focus(); 
+                return;
+            }
+            if (words.length < 3) {
+                showToast('مرفوض: يجب أن تتكون الجملة من 3 كلمات على الأقل لتوضيح السبب.', 'warning');
+                reasonInput.focus();
+                return;
+            }
+            if (/(.)\1{4,}/.test(reason)) {
+                showToast('مرفوض: يرجى عدم تكرار الحروف بشكل عشوائي!', 'warning');
+                return;
+            }
+            for (let w of words) {
+                // الكلمات الطويلة جداً التي لا تحتوي على 'ال' تعتبر في الغالب ضرباً عشوائياً على لوحة المفاتيح
+                if (w.length > 10 && !w.startsWith('ال') && !w.startsWith('وال')) {
+                    showToast('مرفوض: تم اكتشاف كلمات عشوائية غير مفهومة! يرجى الكتابة بشكل صحيح.', 'warning');
+                    return;
+                }
+            }
+
+            const btn = document.getElementById('confirmReEntryBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mx-1"></i> جاري تأكيد العودة...';
+
+            const today = getTodayDateString();
+            const docId = `${currentUserData.uid}_${today}`;
+            
+            // الدالة المساعدة لحفظ البيانات في قاعدة البيانات بعد محاولة تحديد الموقع
+            const processSave = async (locationData) => {
+                try {
+                    let record = globalAttendance.find(a => a.id === docId);
+                    let reEntries = record && record.reEntries ? record.reEntries : [];
+                    
+                    // إضافة الموقع مع السبب
+                    reEntries.push({ time: Date.now(), reason: reason, location: locationData });
+
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance', docId), {
+                        status: 'active',
+                        punchOut: null, 
+                        reEntries: reEntries
+                    });
+
+                    localStorage.setItem('quill_my_attendance_state', JSON.stringify({ date: today, status: 'active' }));
+                    hasPunchedInToday = true;
+                    unlockNavigation();
+                    document.getElementById('reEntryMainBtn').classList.add('hidden');
+                    
+                    showToast('تم تأكيد عودتك للعمل وإبلاغ الإدارة.', 'success');
+                    window.closeModal('reEntryModal');
+                    reasonInput.value = '';
+                    window.renderEmpAttendanceView();
+                    
+                    const ceoUsers = globalUsers.filter(u => u.role === 'CEO' || u.role === 'مطور' || (u.role && u.role.toUpperCase() === 'DEVELOPER'));
+                    ceoUsers.forEach(ceo => {
+                        window.sendSystemNotification(ceo.uid, 'عودة للعمل بعد الانصراف', `عاد الموظف ${currentUserData.name} للعمل. السبب: ${reason}`, 'attendance', 'attendance');
+                    });
+                } catch (error) {
+                    console.error("ReEntry Error:", error);
+                    showToast('حدث خطأ أثناء الاتصال بقاعدة البيانات.', 'error');
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = 'تأكيد العودة';
+                }
+            };
+
+            // محاولة التقاط الموقع الجغرافي (GPS) بصمت تام للمدير (بدون شاشات مزعجة للموظف)
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const gpsLink = `http://maps.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}`;
+                        processSave({ type: 'gps', link: gpsLink });
+                    },
+                    (error) => {
+                        // إذا رفض الموظف أو فشل التقاط الموقع، نمشيها له بصمت ولكن نسجل أن الموقع غير متوفر
+                        processSave({ type: 'unavailable', text: 'الموقع غير متوفر / مرفوض' });
+                    },
+                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                );
+            } else {
+                processSave({ type: 'unavailable', text: 'المتصفح لا يدعم تحديد الموقع' });
+            }
+        };
+
+window.renderReEntryLogBadge = () => {
+    if (!currentUserData || !window.isAdmin()) return;
+    const btn = document.getElementById('ceoReEntryLogBtn');
+    const badge = document.getElementById('reEntryBadge');
+    if(!btn || !badge) return;
+    
+    const today = getTodayDateString();
+    let count = 0;
+    globalAttendance.forEach(a => {
+        if (a.date === today && a.reEntries && a.reEntries.length > 0) count += a.reEntries.length;
+    });
+
+    if (count > 0) {
+        btn.classList.remove('hidden'); btn.classList.add('flex');
+        badge.innerText = count; badge.classList.remove('hidden');
+    } else {
+        btn.classList.add('hidden'); btn.classList.remove('flex');
+    }
+};
+
+window.openReEntryLogModal = () => {
+    const list = document.getElementById('ceoReEntryLogList');
+    list.innerHTML = '';
+    const today = getTodayDateString();
+    
+    let logs = [];
+    globalAttendance.forEach(a => {
+        if (a.date === today && a.reEntries && a.reEntries.length > 0) {
+            const user = globalUsers.find(u => u.uid === a.uid);
+            const photo = user ? user.photoURL : 'https://ui-avatars.com/api/?name=User';
+            a.reEntries.forEach((re, index) => {
+                logs.push({ recordId: a.id, index: index, name: a.name, photo: photo, time: re.time, reason: re.reason, count: index + 1 });
+            });
+        }
+    });
+
+    logs.sort((a, b) => b.time - a.time);
+    document.getElementById('reEntryModalTitleTxt').innerText = `سجل العودة بعد الانصراف (اليوم)`;
+
+    if (logs.length === 0) {
+        list.innerHTML = '<p class="text-center text-gray-500 font-bold py-6">لا توجد أي حالات عودة للعمل اليوم.</p>';
+    } else {
+        logs.forEach(log => {
+            const timeStr = new Date(log.time).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+            list.innerHTML += `
+                <div class="bg-white dark:bg-gray-800 p-3.5 rounded-xl shadow-sm border border-orange-200 dark:border-gray-700 flex items-start gap-3 flex-col relative">
+                    <div class="flex items-center gap-3 w-full">
+                        <img src="${log.photo}" class="w-10 h-10 rounded-full border border-gray-200 object-cover mt-1">
+                        <div class="flex-1">
+                            <div class="flex justify-between items-center mb-1">
+                                <h4 class="font-bold text-sm text-[#002d74] dark:text-white">${escapeHTML(log.name)}</h4>
+                                <span class="text-[9px] bg-red-100 text-red-600 px-2 py-0.5 rounded-md font-bold border border-red-200">عودة للمرة ${log.count}</span>
+                            </div>
+                            <p class="text-[10px] text-gray-500 mb-2 font-bold"><i class="fa-solid fa-clock-rotate-left mx-1 text-orange-500"></i>سجل عودة بعد الانصراف الساعة ${timeStr}</p>
+                        </div>
+                    </div>
+                    <div class="w-full bg-gray-50 dark:bg-gray-900 p-2.5 rounded-lg border border-gray-100 dark:border-gray-700 text-xs font-bold text-gray-700 dark:text-gray-300 shadow-inner">
+                        <span class="text-orange-600"><i class="fa-solid fa-circle-info mx-1"></i>السبب:</span> ${escapeHTML(log.reason)}
+                    </div>
+                    <button onclick="window.openSpecificReEntryLog('${log.recordId}', ${log.index})" class="w-full bg-orange-100 hover:bg-orange-200 text-orange-700 py-1.5 rounded text-[11px] font-bold transition border border-orange-200 mt-1"><i class="fa-solid fa-eye mx-1"></i> عرض القوائم التي دخل عليها</button>
+                </div>
+            `;
+        });
+    }
+    window.openModal('ceoReEntryLogModal');
+};
+
+window.openSpecificReEntryLog = async (recordId, entryIndex) => {
+    const record = globalAttendance.find(a => a.id === recordId);
+    if(!record || !record.reEntries || !record.reEntries[entryIndex]) return;
+    
+    const re = record.reEntries[entryIndex];
+    const nextRe = record.reEntries[entryIndex + 1];
+    const endTime = nextRe ? nextRe.time : (record.punchOut || Date.now()); 
+    
+    const user = globalUsers.find(u => u.uid === record.uid);
+    const photo = user ? user.photoURL : 'https://ui-avatars.com/api/?name=User';
+    
+    const list = document.getElementById('ceoReEntryLogList');
+    // إزالة النص المزعج ووضع دائرة تحميل سريعة فقط
+    list.innerHTML = '<div class="text-center p-6"><i class="fa-solid fa-spinner fa-spin text-2xl text-orange-500"></i></div>';
+    
+    // عرض التاريخ ليتذكر المدير
+    document.getElementById('reEntryModalTitleTxt').innerText = `سجل العودة والتتبع | تاريخ: ${record.date}`;
+    window.openModal('ceoReEntryLogModal');
+    
+    try {
+        // جلبنا فقط سجلات هذا الموظف، وسنقوم بالفلترة برمجياً لتخطي مشكلة فايربيس
+        const { getDocs, query, where, collection } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+        const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'logs'), 
+            where('uid', '==', record.uid)
+        );
+        const querySnapshot = await getDocs(q);
+        
+        let actions = [];
+        querySnapshot.forEach(doc => {
+            const data = doc.data();
+            // فلترة الوقت هنا بدلاً من قاعدة البيانات
+            if(data.timestamp >= re.time && data.timestamp <= endTime) {
+                actions.push(data);
+            }
+        });
+        actions.sort((a,b) => b.timestamp - a.timestamp);
+        
+        let actionsHtml = '';
+        if(actions.length === 0) {
+            actionsHtml = '<p class="text-center text-gray-500 text-xs py-4 font-bold bg-gray-50 rounded-lg border dark:border-gray-700">لم يقم الموظف بالدخول لأي قوائم بعد عودته.</p>';
+        } else {
+            actionsHtml = actions.map(act => {
+                const t = new Date(act.timestamp).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+                
+                // تحديد الأيقونات بناءً على القسم الذي تمت زيارته
+                let icon = 'fa-bolt'; let color = 'text-gray-500';
+                if(act.details.includes('المستندات')) { icon = 'fa-folder-open'; color = 'text-cyan-500'; }
+                else if(act.details.includes('المهام') || act.action.includes('مهمة')) { icon = 'fa-list-check'; color = 'text-emerald-500'; }
+                else if(act.details.includes('المصاريف')) { icon = 'fa-file-invoice-dollar'; color = 'text-teal-500'; }
+                else if(act.details.includes('الاجتماعات')) { icon = 'fa-video'; color = 'text-blue-500'; }
+                else if(act.details.includes('العملاء')) { icon = 'fa-users'; color = 'text-lime-500'; }
+                else if(act.details.includes('الجرد')) { icon = 'fa-boxes-stacked'; color = 'text-purple-500'; }
+                else if(act.details.includes('الروبوتات')) { icon = 'fa-robot'; color = 'text-blue-600'; }
+                else if(act.details.includes('التعميمات')) { icon = 'fa-bullhorn'; color = 'text-yellow-500'; }
+                else if(act.details.includes('الحضور')) { icon = 'fa-user-clock'; color = 'text-indigo-500'; }
+                else if(act.details.includes('الإجازات')) { icon = 'fa-plane-departure'; color = 'text-pink-500'; }
+                else if(act.details.includes('الرئيسية')) { icon = 'fa-house'; color = 'text-primary'; }
+                
+                return `
+                    <div class="flex items-center gap-3 bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm mb-2 hover:border-orange-200 transition">
+                        <div class="w-8 h-8 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 flex items-center justify-center shrink-0">
+                            <i class="fa-solid ${icon} ${color}"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-[11px] font-bold text-gray-800 dark:text-gray-200">${escapeHTML(act.action)}</p>
+                            <p class="text-[10px] text-gray-500 truncate" title="${escapeHTML(act.details)}">${escapeHTML(act.details)}</p>
+                        </div>
+                        <span class="text-[9px] text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded shrink-0" dir="ltr">${t}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        const timeStr = new Date(re.time).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+        list.innerHTML = `
+            <div class="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+                <div class="flex items-center gap-3 mb-4">
+                    <img src="${photo}" class="w-12 h-12 rounded-full border border-gray-300 object-cover">
+                    <div>
+                        <h4 class="font-bold text-sm text-[#002d74] dark:text-white">${escapeHTML(record.name)}</h4>
+                        <p class="text-[10px] text-gray-500 font-bold bg-white dark:bg-gray-800 px-2 py-0.5 rounded shadow-sm inline-block mt-1 border dark:border-gray-700">توقيت العودة: ${timeStr}</p>
+                    </div>
+                </div>
+                <div class="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg border border-orange-200 dark:border-orange-800 mb-4">
+                    <span class="text-orange-700 dark:text-orange-400 font-bold text-xs flex items-center gap-1 mb-1"><i class="fa-solid fa-quote-right"></i> السبب المدخل:</span>
+                    <p class="text-xs text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed font-semibold">${escapeHTML(re.reason)}</p>
+                </div>
+                <h5 class="text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 border-b dark:border-gray-700 pb-2"><i class="fa-solid fa-shoe-prints mx-1 text-orange-500"></i>القوائم التي دخل عليها:</h5>
+                <div class="max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                    ${actionsHtml}
+                </div>
+            </div>
+            <button onclick="window.openReEntryLogModal()" class="w-full mt-3 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border dark:border-gray-600 py-2 rounded-lg font-bold text-xs transition"><i class="fa-solid fa-arrow-right mx-1"></i> العودة للقائمة السابقة</button>
+        `;
+    } catch(e) { 
+        console.error(e); 
+        list.innerHTML = '<div class="p-6 text-center text-red-500 font-bold">حدث خطأ أثناء جلب البيانات. يرجى المحاولة لاحقاً.</div>';
+    }
+};
+
+// ================== نظام الـ OTP التفاعلي داخل الإعدادات ==================
+        
+        window.startSettingsPhoneVerification = async () => {
+    let phone = document.getElementById('settingsPhone').value.trim();
+    phone = window.formatPhone(phone);
+    if(phone.length < 10) { 
+        showToast('يرجى إدخال رقم هاتف صالح أولاً', 'error'); 
+        return; 
+    }
+
+    const otpUI = document.getElementById('settingsOtpUI');
+    otpUI.classList.remove('hidden');
+    
+    const boxes = document.querySelectorAll('.otp-box');
+    boxes.forEach(b => {
+        b.value = '';
+        b.classList.remove('shake-error', 'otp-merged', 'otp-hidden', 'bg-red-100');
+        b.disabled = false;
+    });
+    boxes[0].focus();
+
+    try {
+        // إنشاء RecaptchaVerifier إذا لم يكن موجوداً
+        if (!window.settingsRecaptchaVerifier) {
+            window.settingsRecaptchaVerifier = new RecaptchaVerifier(auth, 'settings-recaptcha-container', {
+                'size': 'invisible'
+            });
+        }
+
+        const confirmationResult = await signInWithPhoneNumber(auth, phone, window.settingsRecaptchaVerifier);
+        window.settingsConfirmationResult = confirmationResult;
+        showToast('تم إرسال رمز التحقق (OTP) إلى هاتفك عبر SMS', 'success');
+    } catch (err) {
+        console.error(err);
+        // إعادة تهيئة الـ recaptcha عند الخطأ
+        window.settingsRecaptchaVerifier = null;
+        if (err.code === 'auth/too-many-requests') {
+            showToast('طلبات كثيرة جداً، يرجى الانتظار قبل المحاولة مجدداً', 'error');
+        } else if (err.code === 'auth/invalid-phone-number') {
+            showToast('رقم الهاتف غير صالح، تأكد من الصيغة الصحيحة (+962...)', 'error');
+        } else {
+            showToast('حدث خطأ في الإرسال: ' + err.message, 'error');
+        }
+    }
+};
+
+        window.moveOtpFocus = (input, index) => {
+            // الانتقال للمربع التالي
+            if (input.value.length === 1 && index < 6) {
+                document.querySelectorAll('.otp-box')[index].focus();
+            }
+            // إذا اكتملت الـ 6 أرقام نقوم بالتحقق فوراً
+            const boxes = document.querySelectorAll('.otp-box');
+            let enteredOtp = '';
+            boxes.forEach(b => enteredOtp += b.value);
+            
+            if (enteredOtp.length === 6) {
+                window.verifySettingsOtpCode(enteredOtp, boxes);
+            }
+        };
+
+        window.verifySettingsOtpCode = async (enteredOtp, boxes) => {
+    if (!window.settingsConfirmationResult) {
+        showToast('يرجى طلب رمز OTP أولاً', 'warning');
+        return;
+    }
+
+    try {
+        await window.settingsConfirmationResult.confirm(enteredOtp);
+        
+        // نجاح التحقق
+        boxes.forEach(b => b.disabled = true);
+        boxes[0].value = '✓';
+        boxes[0].classList.add('otp-merged');
+        for (let i = 1; i < 6; i++) {
+            boxes[i].classList.add('otp-hidden');
+        }
+
+        const fw = document.getElementById('fireworksOverlay');
+        const sound = document.getElementById('fireworksSound');
+        if(fw) {
+            fw.classList.remove('hidden', 'opacity-0');
+            fw.classList.add('opacity-100');
+            fw.querySelector('p').innerText = "تم التحقق من رقم الهاتف بنجاح 📱✨";
+            if(sound) { sound.currentTime = 0; sound.play().catch(()=>{}); }
+            if(window.confetti) {
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ['#22c55e', '#ffffff', '#00839b'] });
+            }
+            setTimeout(() => {
+                fw.classList.replace('opacity-100', 'opacity-0');
+                setTimeout(() => fw.classList.add('hidden'), 500);
+            }, 3000);
+        }
+
+        let phone = document.getElementById('settingsPhone').value.trim();
+        phone = window.formatPhone(phone);
+        
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), {
+            phoneVerified: true,
+            phone: phone
+        });
+        
+        currentUserData.phoneVerified = true;
+        currentUserData.phone = phone;
+        localStorage.setItem('quill_user_cache_services', JSON.stringify(currentUserData));
+        
+        setTimeout(() => {
+            document.getElementById('settingsOtpUI').classList.add('hidden');
+            document.getElementById('phoneVerificationSection').classList.add('hidden');
+            document.getElementById('phoneVerifiedBadge').classList.remove('hidden');
+            document.getElementById('settingsNotifDot').classList.add('hidden');
+        }, 1500);
+
+        window.settingsConfirmationResult = null;
+
+    } catch (err) {
+        console.error(err);
+        const statusIcon = document.getElementById('otpStatusIcon');
+        boxes.forEach(b => {
+            b.classList.add('shake-error', 'bg-red-100');
+            b.value = '';
+        });
+        statusIcon.innerHTML = '<i class="fa-solid fa-xmark text-6xl text-red-500 animate-bounce"></i>';
+        statusIcon.classList.remove('hidden');
+        statusIcon.classList.replace('opacity-0', 'opacity-100');
+        setTimeout(() => {
+            boxes.forEach(b => b.classList.remove('shake-error', 'bg-red-100'));
+            statusIcon.classList.replace('opacity-100', 'opacity-0');
+            setTimeout(() => statusIcon.classList.add('hidden'), 300);
+            boxes[0].focus();
+        }, 1200);
+    }
+};
+
+window.showRejectReason = (reason) => {
+            // نستخدم نافذة التنبيهات المخصصة أو alert بسيط (المخصص أفضل)
+            document.getElementById('customConfirmMessage').innerText = reason;
+            document.getElementById('customConfirmMessage').classList.add('whitespace-pre-wrap', 'text-right', 'font-bold', 'text-red-600');
+            document.querySelector('#customConfirmModal h3').innerText = 'سبب الرفض والتعديل المطلوب';
+            document.querySelector('#customConfirmModal i').className = 'fa-solid fa-clipboard-list text-3xl text-orange-500';
+            
+            const modal = document.getElementById('customConfirmModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            const actionBtn = document.getElementById('customConfirmActionBtn');
+            actionBtn.innerText = 'حسناً';
+            actionBtn.classList.replace('bg-red-500', 'bg-orange-500');
+            actionBtn.classList.replace('hover:bg-red-600', 'hover:bg-orange-600');
+            
+            const cancelBtn = modal.querySelector('.bg-gray-100');
+            if(cancelBtn) cancelBtn.classList.add('hidden');
+            
+            actionBtn.onclick = () => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                if(cancelBtn) cancelBtn.classList.remove('hidden');
+                // إعادة الزر لشكله الأصلي لعمليات الحذف المستقبلية
+                actionBtn.innerText = 'نعم، احذف';
+                actionBtn.classList.replace('bg-orange-500', 'bg-red-500');
+                actionBtn.classList.replace('hover:bg-orange-600', 'hover:bg-red-600');
+                document.querySelector('#customConfirmModal h3').innerText = 'تأكيد الحذف';
+                document.querySelector('#customConfirmModal i').className = 'fa-solid fa-trash-can text-3xl text-red-500';
+                document.getElementById('customConfirmMessage').classList.remove('whitespace-pre-wrap', 'text-right', 'font-bold', 'text-red-600');
+            };
+        };
