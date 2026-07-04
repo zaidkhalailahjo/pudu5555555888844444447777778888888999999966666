@@ -5,7 +5,7 @@
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
         import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
         
-      const firebaseConfig = {
+         const firebaseConfig = {
             apiKey: "AIzaSyCfoP0rgX8WZthQVP_AeZcxDHHCllgu3TM",
             authDomain: "quill-world.firebaseapp.com",
             projectId: "quill-world",
@@ -12043,7 +12043,6 @@ window.i18nDict = {
   "), 1000); } finally { btn.disabled = false; btn.innerHTML = oldBtnText; } }; // دالة مساعدة لإخفاء عناصر واجهة الـ OTP عند الحظر function hideOtpControls(errorElement) { document.getElementById(": "), 1000); } finally { btn. disabled = false; btn.innerHTML = oldBtnText; } }; // Helper function to hide OTP interface elements when blocked function hideOtpControls(errorElement) { document.getElementById(",
   "90 يوم": "90 days",
   "إلى تاريخ": "To date",
-  "); return; } // 2. فحص تكرار الحروف (مثل ههههه أو ثثثثث أو ----- ) if (/(.)\1{4,}/.test(text)) { showToast(": "); return; } // 2. Check the repetition of letters (such as hahaha, ththasthaat, or ----- ) if (/(.)\1{4,}/.test(text)) { showToast(",
   "أخرى": "Other",
   "ملف العقد (صورة أو PDF)": "Contract file (image or PDF)",
   "إلغاء": "cancellation",
