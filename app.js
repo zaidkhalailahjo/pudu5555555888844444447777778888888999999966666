@@ -12269,19 +12269,25 @@ window.applyTranslations = () => {
     const nodesToReplace = [];
     while(node = walk.nextNode()) {
         const text = node.nodeValue.trim();
-        // Ignore empty nodes or nodes containing HTML tags
         if(text && window.i18nDict && window.i18nDict[text]) {
-            nodesToReplace.push({node, text});
-        } else if (node.parentElement && node.parentElement.hasAttribute('data-original')) {
-            nodesToReplace.push({node, text: node.parentElement.getAttribute('data-original'), isRevert: true});
+            if(!node.__originalText) node.__originalText = text;
+            nodesToReplace.push({node, text: node.__originalText});
+        } else if (node.__originalText) {
+            nodesToReplace.push({node, text: node.__originalText, isRevert: true});
         }
     }
     
     nodesToReplace.forEach(({node, text, isRevert}) => {
-        if (!isRevert && !node.parentElement.hasAttribute('data-original')) {
-            node.parentElement.setAttribute('data-original', text);
+        const translated = window.t(text);
+        if (isRevert) {
+            // It might be already translated, we just replace the translated part back or update it.
+            // But we lost the original whitespace if we did a naive replace.
+            // Actually, if we just store the full original nodeValue!
+            node.nodeValue = node.__originalNodeValue.replace(text, translated);
+        } else {
+            if(!node.__originalNodeValue) node.__originalNodeValue = node.nodeValue;
+            node.nodeValue = node.__originalNodeValue.replace(text, translated);
         }
-        node.nodeValue = isRevert ? window.t(text) : node.nodeValue.replace(text, window.t(text));
     });
 
     // Placeholders
@@ -12295,15 +12301,6 @@ window.applyTranslations = () => {
         }
     });
 };
-
-// Call on load
-document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(window.applyTranslations, 1000); // Wait for initial render
-});
-
-// Intercept toggleLanguage if needed, though they reload the page so we just run on load
-
-
 
 window.setupTranslationObserver = () => {
     if (window.translationObserver) return;
