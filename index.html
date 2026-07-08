@@ -2780,9 +2780,9 @@
                 <button onclick="window.closeModal('bulkMoveInventoryModal')" class="hover:text-gray-200"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
             <div class="p-4 md:p-6 space-y-4">
-                <div class="flex gap-2 border-b dark:border-gray-700 pb-2 mb-4">
-                    <button id="moveNowTab" type="button" onclick="window.setMoveMode('now')" class="flex-1 py-2 font-bold text-sm bg-purple-100 text-purple-700 rounded-lg">النقل الآن</button>
-                    <button id="moveScheduleTab" type="button" onclick="window.setMoveMode('schedule')" class="flex-1 py-2 font-bold text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">جدولة النقل</button>
+                <div class="mb-4 bg-purple-50 dark:bg-purple-900/10 p-3 rounded-lg border border-purple-100 dark:border-purple-800">
+                    <label class="block text-sm font-bold text-purple-800 dark:text-purple-300 mb-2">تاريخ الجرد الفعلي (متى تم الجرد؟) <span class="text-red-500">*</span></label>
+                    <input type="date" id="actualInventoryDateInput" required class="w-full border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 outline-none focus:border-purple-500 font-bold">
                 </div>
                 
                 <div id="moveNowSection">
