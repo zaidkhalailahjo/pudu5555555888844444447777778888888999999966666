@@ -5654,8 +5654,12 @@ async function autoDeleteOldAttendance() {
             if(id === 'traineeSessionModal') document.getElementById('traineeSessionForm').reset();
             if(id === 'inventoryModal') document.getElementById('inventoryForm').reset();
             if(id === 'bulkMoveInventoryModal') {
-                  document.getElementById('bulkMoveDateInput').value = '';
-                  if(document.getElementById('actualInventoryDateInput')) document.getElementById('actualInventoryDateInput').value = '';
+                const dateInput = document.getElementById('bulkMoveDateInput');
+                if (dateInput && dateInput._flatpickr) {
+                    dateInput._flatpickr.clear();
+                } else if (dateInput) {
+                    dateInput.value = '';
+                }
             }
             if(id === 'addRentalModal') document.getElementById('rentalForm').reset();
             if(id === 'addClientModal') {
