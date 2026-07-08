@@ -4905,43 +4905,72 @@ async function autoDeleteOldAttendance() {
         };
 
         window.confirmBulkMove = async () => {
-            const isNow = inventoryConfig.moveMode === 'now';
-            const dateInputEl = document.getElementById('bulkMoveDateInput');
-            let scheduleTimestamp = null;
+    const isNow = inventoryConfig.moveMode === 'now';
+    const dateInputEl = document.getElementById('bulkMoveDateInput');
+    let scheduleTimestamp = null;
 
-            // إذا كان الخيار "جدولة النقل"
-            if (!isNow) {
-                if (dateInputEl._flatpickr && dateInputEl._flatpickr.selectedDates[0]) {
-                    scheduleTimestamp = dateInputEl._flatpickr.selectedDates[0].getTime();
-                } else if (dateInputEl.value) {
-                    scheduleTimestamp = new Date(dateInputEl.value).getTime();
-                }
+    // إذا اخترت "جدولة النقل"
+    if (!isNow) {
+        if (dateInputEl._flatpickr && dateInputEl._flatpickr.selectedDates[0]) {
+            scheduleTimestamp = dateInputEl._flatpickr.selectedDates[0].getTime();
+        } else if (dateInputEl.value) {
+            scheduleTimestamp = new Date(dateInputEl.value).getTime();
+        }
 
-                if (!scheduleTimestamp) {
-                    showToast('يرجى تحديد تاريخ أمر النقل (الجدولة)', 'warning');
-                    return;
-                }
+        if (!scheduleTimestamp) {
+            showToast('يرجى تحديد تاريخ الجدولة', 'warning');
+            return;
+        }
 
-                if (scheduleTimestamp <= Date.now()) {
-                    showToast('تاريخ الجدولة يجب أن يكون في المستقبل', 'error');
-                    return;
-                }
+        if (scheduleTimestamp <= Date.now()) {
+            showToast('تاريخ الجدولة يجب أن يكون في المستقبل', 'error');
+            return;
+        }
 
-                try {
-                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'inventory'), {
-                        scheduledMoveDate: scheduleTimestamp
-                    }, { merge: true });
-                    document.getElementById('currentScheduleMsg').innerText = `تمت الجدولة لتاريخ: ${new Date(scheduleTimestamp).toLocaleString('ar-EG')}`;
-                    document.getElementById('currentScheduleMsg').classList.remove('hidden');
-                    showToast('تمت جدولة نقل الجرد بنجاح', 'success');
-                    window.logAction('جدولة جرد', `تمت جدولة نقل الجرد لتاريخ ${new Date(scheduleTimestamp).toLocaleString('ar-EG')}`);
-                    setTimeout(() => window.closeModal('bulkMoveInventoryModal'), 1500);
-                } catch(e) {
-                    console.error(e);
-                    showToast('حدث خطأ أثناء الجدولة', 'error');
-                }
-                return;
-            }
+        try {
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'inventory'), {
+                scheduledMoveDate: scheduleTimestamp
+            }, { merge: true });
+            document.getElementById('currentScheduleMsg').innerText = `تمت الجدولة لتاريخ: ${new Date(scheduleTimestamp).toLocaleString('ar-EG')}`;
+            document.getElementById('currentScheduleMsg').classList.remove('hidden');
+            showToast('تمت جدولة نقل الجرد بنجاح', 'success');
+            setTimeout(() => window.closeModal('bulkMoveInventoryModal'), 1500);
+        } catch(e) { console.error(e); showToast('حدث خطأ', 'error'); }
+        return;
+    }
+
+    // تنفيذ النقل "الآن"
+    showToast('جاري النقل...', 'info');
+    const itemsToMove = globalInventory.filter(i => !i.isOld);
+    
+    if(itemsToMove.length === 0) {
+        showToast('لا يوجد شيء لنقله', 'warning');
+        window.closeModal('bulkMoveInventoryModal');
+        return;
+    }
+
+    try {
+        // نستخدم item.timestamp (التاريخ الذي أُضيف فيه العنصر أصلاً)
+        await Promise.all(itemsToMove.map(item => 
+            updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'inventory', item.id), { 
+                isOld: true,
+                movedToOldAt: item.timestamp 
+            })
+        ));
+        
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'inventory'), {
+            scheduledMoveDate: null
+        }, { merge: true });
+
+        showToast('تم نقل الجرد بنجاح (بناءً على تاريخ الجرد الأصلي)', 'success');
+        window.closeModal('bulkMoveInventoryModal');
+        populateOldInventoryDates();
+    } catch(e) { 
+        console.error(e); 
+        showToast('حدث خطأ أثناء النقل', 'error');
+    }
+};
+
 
             // تنفيذ النقل "الآن"
             showToast('جاري النقل...', 'info');
