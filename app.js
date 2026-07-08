@@ -4883,35 +4883,49 @@ async function autoDeleteOldAttendance() {
             }
         };
 
-        // Fix logic for moving items and scheduling.
         window.confirmBulkMove = async () => {
             const isNow = inventoryConfig.moveMode === 'now';
-            const dateInput = document.getElementById('bulkMoveDateInput').value;
-            
-            if(!isNow && !dateInput) {
-                showToast('يرجى تحديد التاريخ', 'warning');
+            const scheduleDateInput = document.getElementById('bulkMoveDateInput').value;
+            const actualDateInput = document.getElementById('actualInventoryDateInput').value;
+
+            if(!actualDateInput) {
+                showToast('يرجى تحديد تاريخ الجرد الفعلي', 'warning');
                 return;
             }
 
-            const moveDate = isNow ? new Date() : new Date(dateInput);
-            moveDate.setHours(23, 59, 59, 999); // End of selected day
-            const timestamp = moveDate.getTime();
-            
-            if(isNaN(timestamp)) {
+            if(!isNow && !scheduleDateInput) {
+                showToast('يرجى تحديد تاريخ أمر النقل (الجدولة)', 'warning');
+                return;
+            }
+
+            // حساب وقت تاريخ الجرد الفعلي
+            const actualDateObj = new Date(actualDateInput);
+            actualDateObj.setHours(23, 59, 59, 999);
+            const actualTimestamp = actualDateObj.getTime();
+
+            // حساب وقت أمر النقل المجدول (إن وجد)
+            let scheduleTimestamp = null;
+            if (!isNow) {
+                const scheduleDateObj = new Date(scheduleDateInput);
+                scheduleDateObj.setHours(23, 59, 59, 999);
+                scheduleTimestamp = scheduleDateObj.getTime();
+            }
+
+            if(isNaN(actualTimestamp) || (!isNow && isNaN(scheduleTimestamp))) {
                 showToast('تاريخ غير صحيح', 'error');
                 return;
             }
 
-            if(!isNow && timestamp > Date.now()) {
-                // It's a future date, we simulate scheduling by saving the target date to Firebase config
+            if(!isNow && scheduleTimestamp > Date.now()) {
                 try {
                     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'inventory'), {
-                        scheduledMoveDate: timestamp
+                        scheduledMoveDate: scheduleTimestamp,
+                        scheduledActualDate: actualTimestamp // نحفظ التاريخ الفعلي لاستخدامه وقت التنفيذ
                     }, { merge: true });
-                    document.getElementById('currentScheduleMsg').innerText = `تمت الجدولة لتاريخ: ${moveDate.toLocaleDateString('ar-EG')}`;
+                    document.getElementById('currentScheduleMsg').innerText = `تمت الجدولة لتاريخ: ${new Date(scheduleTimestamp).toLocaleDateString('ar-EG')}`;
                     document.getElementById('currentScheduleMsg').classList.remove('hidden');
                     showToast('تمت جدولة نقل الجرد بنجاح', 'success');
-                    window.logAction('جدولة جرد', `تمت جدولة نقل الجرد ليوم ${dateInput}`);
+                    window.logAction('جدولة جرد', `تمت جدولة نقل الجرد ليوم ${scheduleDateInput} والتاريخ الفعلي للجرد ${actualDateInput}`);
                     setTimeout(() => window.closeModal('bulkMoveInventoryModal'), 1500);
                 } catch(e) {
                     console.error(e);
@@ -4933,16 +4947,17 @@ async function autoDeleteOldAttendance() {
                 await Promise.all(itemsToMove.map(item => 
                     updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'inventory', item.id), { 
                         isOld: true,
-                        movedToOldAt: timestamp
+                        movedToOldAt: actualTimestamp // استخدام التاريخ الفعلي للجرد في الأرشيف
                     })
                 ));
-                // Clear schedule if we just moved
+                // تفريغ الجدولة بعد النقل الناجح
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'inventory'), {
-                    scheduledMoveDate: null
+                    scheduledMoveDate: null,
+                    scheduledActualDate: null
                 }, { merge: true });
 
                 showToast('تم النقل بنجاح', 'success');
-                window.logAction('جرد شامل', `تم نقل الجرد الحالي إلى القديم بتارخ ${isNow ? 'اليوم' : dateInput}`);
+                window.logAction('جرد شامل', `تم نقل الجرد الحالي إلى القديم، التاريخ الفعلي للجرد: ${actualDateInput}`);
                 window.closeModal('bulkMoveInventoryModal');
                 populateOldInventoryDates();
             } catch(e) { 
