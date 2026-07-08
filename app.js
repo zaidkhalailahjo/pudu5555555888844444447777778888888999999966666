@@ -4906,47 +4906,35 @@ async function autoDeleteOldAttendance() {
 
         window.confirmBulkMove = async () => {
             const isNow = inventoryConfig.moveMode === 'now';
-            const scheduleDateInput = document.getElementById('bulkMoveDateInput').value;
-            const actualDateInput = document.getElementById('actualInventoryDateInput').value;
-
-            if(!actualDateInput) {
-                showToast('يرجى تحديد تاريخ الجرد الفعلي', 'warning');
-                return;
-            }
-
-            if(!isNow && !scheduleDateInput) {
-                showToast('يرجى تحديد تاريخ أمر النقل (الجدولة)', 'warning');
-                return;
-            }
-
-            // حساب وقت تاريخ الجرد الفعلي
-            const actualDateObj = new Date(actualDateInput);
-            actualDateObj.setHours(23, 59, 59, 999);
-            const actualTimestamp = actualDateObj.getTime();
-
-            // حساب وقت أمر النقل المجدول (إن وجد)
+            const dateInputEl = document.getElementById('bulkMoveDateInput');
             let scheduleTimestamp = null;
+
+            // إذا كان الخيار "جدولة النقل"
             if (!isNow) {
-                const scheduleDateObj = new Date(scheduleDateInput);
-                scheduleDateObj.setHours(23, 59, 59, 999);
-                scheduleTimestamp = scheduleDateObj.getTime();
-            }
+                if (dateInputEl._flatpickr && dateInputEl._flatpickr.selectedDates[0]) {
+                    scheduleTimestamp = dateInputEl._flatpickr.selectedDates[0].getTime();
+                } else if (dateInputEl.value) {
+                    scheduleTimestamp = new Date(dateInputEl.value).getTime();
+                }
 
-            if(isNaN(actualTimestamp) || (!isNow && isNaN(scheduleTimestamp))) {
-                showToast('تاريخ غير صحيح', 'error');
-                return;
-            }
+                if (!scheduleTimestamp) {
+                    showToast('يرجى تحديد تاريخ أمر النقل (الجدولة)', 'warning');
+                    return;
+                }
 
-            if(!isNow && scheduleTimestamp > Date.now()) {
+                if (scheduleTimestamp <= Date.now()) {
+                    showToast('تاريخ الجدولة يجب أن يكون في المستقبل', 'error');
+                    return;
+                }
+
                 try {
                     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'inventory'), {
-                        scheduledMoveDate: scheduleTimestamp,
-                        scheduledActualDate: actualTimestamp // نحفظ التاريخ الفعلي لاستخدامه وقت التنفيذ
+                        scheduledMoveDate: scheduleTimestamp
                     }, { merge: true });
-                    document.getElementById('currentScheduleMsg').innerText = `تمت الجدولة لتاريخ: ${new Date(scheduleTimestamp).toLocaleDateString('ar-EG')}`;
+                    document.getElementById('currentScheduleMsg').innerText = `تمت الجدولة لتاريخ: ${new Date(scheduleTimestamp).toLocaleString('ar-EG')}`;
                     document.getElementById('currentScheduleMsg').classList.remove('hidden');
                     showToast('تمت جدولة نقل الجرد بنجاح', 'success');
-                    window.logAction('جدولة جرد', `تمت جدولة نقل الجرد ليوم ${scheduleDateInput} والتاريخ الفعلي للجرد ${actualDateInput}`);
+                    window.logAction('جدولة جرد', `تمت جدولة نقل الجرد لتاريخ ${new Date(scheduleTimestamp).toLocaleString('ar-EG')}`);
                     setTimeout(() => window.closeModal('bulkMoveInventoryModal'), 1500);
                 } catch(e) {
                     console.error(e);
@@ -4954,6 +4942,39 @@ async function autoDeleteOldAttendance() {
                 }
                 return;
             }
+
+            // تنفيذ النقل "الآن"
+            showToast('جاري النقل...', 'info');
+            const itemsToMove = globalInventory.filter(i => !i.isOld);
+            
+            if(itemsToMove.length === 0) {
+                showToast('لا يوجد شيء لنقله', 'warning');
+                window.closeModal('bulkMoveInventoryModal');
+                return;
+            }
+
+            try {
+                // السر هنا: كل عنصر يأخذ تاريخ إنشائه الأصلي لكي ينفصل في الجرد القديم كل حسب تاريخه
+                await Promise.all(itemsToMove.map(item => 
+                    updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'inventory', item.id), { 
+                        isOld: true,
+                        movedToOldAt: item.timestamp // الحفاظ على تاريخ الجرد الأصلي لكل عنصر
+                    })
+                ));
+                
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'inventory'), {
+                    scheduledMoveDate: null
+                }, { merge: true });
+
+                showToast('تم النقل بنجاح', 'success');
+                window.logAction('جرد شامل', `تم نقل الجرد الحالي إلى القديم بتواريخ العناصر الأصلية`);
+                window.closeModal('bulkMoveInventoryModal');
+                populateOldInventoryDates();
+            } catch(e) { 
+                console.error(e); 
+                showToast('حدث خطأ أثناء النقل', 'error');
+            }
+        };
 
             showToast('جاري النقل...', 'info');
             const itemsToMove = globalInventory.filter(i => !i.isOld);
