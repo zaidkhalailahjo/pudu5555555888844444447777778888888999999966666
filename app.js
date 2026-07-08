@@ -5039,30 +5039,30 @@ async function autoDeleteOldAttendance() {
 
         // Check if there is a scheduled move that should be executed now
         function checkScheduledInventoryMove() {
-            if(!currentUserData || !window.isAdmin()) return;
-            getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'inventory')).then(docSnap => {
-                if(docSnap.exists() && docSnap.data().scheduledMoveDate) {
-                    const targetDate = docSnap.data().scheduledMoveDate;
+    if(!currentUserData || !window.isAdmin()) return;
+    getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'inventory')).then(docSnap => {
+        if(docSnap.exists() && docSnap.data().scheduledMoveDate) {
+            const targetDate = docSnap.data().scheduledMoveDate;
 
-                    if(Date.now() >= targetDate) {
-                        const itemsToMove = globalInventory.filter(i => !i.isOld);
-                        if(itemsToMove.length > 0) {
-                            Promise.all(itemsToMove.map(item => 
-                                updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'inventory', item.id), { 
-                                    isOld: true,
-                                    movedToOldAt: item.timestamp // الحفاظ على تاريخ الجرد الأصلي لكل عنصر هنا أيضاً
-                                })
-                            )).then(() => {
-                                updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'inventory'), {
-                                    scheduledMoveDate: null
-                                });
-                                populateOldInventoryDates();
-                            });
-                        }
-                    }
+            if(Date.now() >= targetDate) {
+                const itemsToMove = globalInventory.filter(i => !i.isOld);
+                if(itemsToMove.length > 0) {
+                    Promise.all(itemsToMove.map(item => 
+                        updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'inventory', item.id), { 
+                            isOld: true,
+                            movedToOldAt: item.timestamp // يبقى التاريخ الأصلي
+                        })
+                    )).then(() => {
+                        updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'inventory'), {
+                            scheduledMoveDate: null
+                        });
+                        populateOldInventoryDates();
+                    });
                 }
-            }).catch(e => console.error(e));
+            }
         }
+    }).catch(e => console.error(e));
+}
 
         window.deleteInventoryItem = async (id) => {
             if(!window.isAdmin()) return;
