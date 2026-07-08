@@ -4939,37 +4939,7 @@ async function autoDeleteOldAttendance() {
         return;
     }
 
-    // تنفيذ النقل "الآن"
-    showToast('جاري النقل...', 'info');
-    const itemsToMove = globalInventory.filter(i => !i.isOld);
     
-    if(itemsToMove.length === 0) {
-        showToast('لا يوجد شيء لنقله', 'warning');
-        window.closeModal('bulkMoveInventoryModal');
-        return;
-    }
-
-    try {
-        // نستخدم item.timestamp (التاريخ الذي أُضيف فيه العنصر أصلاً)
-        await Promise.all(itemsToMove.map(item => 
-            updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'inventory', item.id), { 
-                isOld: true,
-                movedToOldAt: item.timestamp 
-            })
-        ));
-        
-        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'inventory'), {
-            scheduledMoveDate: null
-        }, { merge: true });
-
-        showToast('تم نقل الجرد بنجاح (بناءً على تاريخ الجرد الأصلي)', 'success');
-        window.closeModal('bulkMoveInventoryModal');
-        populateOldInventoryDates();
-    } catch(e) { 
-        console.error(e); 
-        showToast('حدث خطأ أثناء النقل', 'error');
-    }
-};
 
 
             // تنفيذ النقل "الآن"
