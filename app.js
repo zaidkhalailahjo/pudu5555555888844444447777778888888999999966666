@@ -4972,6 +4972,8 @@ async function autoDeleteOldAttendance() {
             getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'inventory')).then(docSnap => {
                 if(docSnap.exists() && docSnap.data().scheduledMoveDate) {
                     const targetDate = docSnap.data().scheduledMoveDate;
+                    const actualDate = docSnap.data().scheduledActualDate || targetDate; // جلب تاريخ الجرد الفعلي المخزن
+
                     if(Date.now() >= targetDate) {
                         // Execute scheduled move silently
                         const itemsToMove = globalInventory.filter(i => !i.isOld);
@@ -4979,12 +4981,13 @@ async function autoDeleteOldAttendance() {
                             Promise.all(itemsToMove.map(item => 
                                 updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'inventory', item.id), { 
                                     isOld: true,
-                                    movedToOldAt: targetDate
+                                    movedToOldAt: actualDate // تعيين تاريخ الجرد الفعلي للملفات المؤرشفة
                                 })
                             )).then(() => {
                                 // Clear schedule
                                 updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'inventory'), {
-                                    scheduledMoveDate: null
+                                    scheduledMoveDate: null,
+                                    scheduledActualDate: null
                                 });
                                 populateOldInventoryDates();
                             });
