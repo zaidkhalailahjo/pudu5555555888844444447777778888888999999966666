@@ -5615,7 +5615,10 @@ async function autoDeleteOldAttendance() {
             if(id === 'traineeModal') document.getElementById('traineeForm').reset();
             if(id === 'traineeSessionModal') document.getElementById('traineeSessionForm').reset();
             if(id === 'inventoryModal') document.getElementById('inventoryForm').reset();
-            if(id === 'bulkMoveInventoryModal') document.getElementById('bulkMoveDateInput').value = '';
+            if(id === 'bulkMoveInventoryModal') {
+                  document.getElementById('bulkMoveDateInput').value = '';
+                  if(document.getElementById('actualInventoryDateInput')) document.getElementById('actualInventoryDateInput').value = '';
+            }
             if(id === 'addRentalModal') document.getElementById('rentalForm').reset();
             if(id === 'addClientModal') {
                 document.getElementById('clientForm').reset();
