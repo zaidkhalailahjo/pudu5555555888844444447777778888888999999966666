@@ -4863,7 +4863,28 @@ async function autoDeleteOldAttendance() {
 
         // MODIFICATION: Set Move Mode Logic (Now vs Schedule)
         window.openBulkMoveModal = () => {
-            document.getElementById('bulkMoveDateInput').value = getTodayDateString();
+            const dateInput = document.getElementById('bulkMoveDateInput');
+            
+            // تهيئة الكلندر الأنيق (Flatpickr)
+            if (typeof flatpickr !== 'undefined') {
+                if (!dateInput._flatpickr) {
+                    flatpickr(dateInput, {
+                        enableTime: true,
+                        dateFormat: "Y-m-dTH:i",
+                        altInput: true,
+                        altFormat: "Y-m-d h:i K",
+                        time_24hr: false,
+                        minDate: "today",
+                        locale: "ar"
+                    });
+                } else {
+                    dateInput._flatpickr.clear();
+                }
+            } else {
+                dateInput.type = 'datetime-local';
+                dateInput.value = '';
+            }
+
             window.setMoveMode('now');
             window.openModal('bulkMoveInventoryModal');
         };
