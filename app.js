@@ -3983,26 +3983,26 @@ async function autoDeleteOldAttendance() {
             if (compDateWrapper) {
                 if (val === 'إجازة تعويضية') {
                     // Show compensatory UI
-                    compDateWrapper.classList.remove('max-h-0', 'opacity-0', 'm-0');
-                    compDateWrapper.classList.add('max-h-[500px]', 'opacity-100', 'mt-4');
+                    compDateWrapper?.classList.remove('max-h-0', 'opacity-0', 'm-0');
+                    compDateWrapper?.classList.add('max-h-[500px]', 'opacity-100', 'mt-4');
                     
-                    singleDateWrapper.classList.remove('max-h-0', 'opacity-0', 'm-0');
-                    singleDateWrapper.classList.add('max-h-[500px]', 'opacity-100', 'mt-4');
+                    singleDateWrapper?.classList.remove('max-h-0', 'opacity-0', 'm-0');
+                    singleDateWrapper?.classList.add('max-h-[500px]', 'opacity-100', 'mt-4');
                     
                     // Hide reason, attachment, and normal dates
-                    leaveReasonWrapper.classList.remove('max-h-[500px]', 'opacity-100', 'mt-4');
-                    leaveReasonWrapper.classList.add('max-h-0', 'opacity-0', 'm-0');
+                    leaveReasonWrapper?.classList.remove('max-h-[500px]', 'opacity-100', 'mt-4');
+                    leaveReasonWrapper?.classList.add('max-h-0', 'opacity-0', 'm-0');
                     
-                    leaveAttachmentWrapper.classList.remove('max-h-[500px]', 'opacity-100', 'mt-4');
-                    leaveAttachmentWrapper.classList.add('max-h-0', 'opacity-0', 'm-0');
+                    leaveAttachmentWrapper?.classList.remove('max-h-[500px]', 'opacity-100', 'mt-4');
+                    leaveAttachmentWrapper?.classList.add('max-h-0', 'opacity-0', 'm-0');
                     
-                    normalDatesWrapper.classList.remove('max-h-[500px]', 'opacity-100', 'mt-4');
-                    normalDatesWrapper.classList.add('max-h-0', 'opacity-0', 'm-0');
+                    normalDatesWrapper?.classList.remove('max-h-[500px]', 'opacity-100', 'mt-4');
+                    normalDatesWrapper?.classList.add('max-h-0', 'opacity-0', 'm-0');
                     
-                    leaveReason.required = false;
-                    leaveFrom.required = false;
-                    leaveTo.required = false;
-                    leaveSingleDate.required = true;
+                    if (leaveReason) leaveReason.required = false;
+                    if (leaveFrom) leaveFrom.required = false;
+                    if (leaveTo) leaveTo.required = false;
+                    if (leaveSingleDate) leaveSingleDate.required = true;
                     
                     // Initialize the days if not done yet
                     if(!window.compDaysInitialized) {
@@ -4011,26 +4011,26 @@ async function autoDeleteOldAttendance() {
                     
                 } else {
                     // Hide compensatory UI
-                    compDateWrapper.classList.remove('max-h-[500px]', 'opacity-100', 'mt-4');
-                    compDateWrapper.classList.add('max-h-0', 'opacity-0', 'm-0');
+                    compDateWrapper?.classList.remove('max-h-[500px]', 'opacity-100', 'mt-4');
+                    compDateWrapper?.classList.add('max-h-0', 'opacity-0', 'm-0');
                     
-                    singleDateWrapper.classList.remove('max-h-[500px]', 'opacity-100', 'mt-4');
-                    singleDateWrapper.classList.add('max-h-0', 'opacity-0', 'm-0');
+                    singleDateWrapper?.classList.remove('max-h-[500px]', 'opacity-100', 'mt-4');
+                    singleDateWrapper?.classList.add('max-h-0', 'opacity-0', 'm-0');
                     
                     // Show normal UI
-                    leaveReasonWrapper.classList.remove('max-h-0', 'opacity-0', 'm-0');
-                    leaveReasonWrapper.classList.add('max-h-[500px]', 'opacity-100', 'mt-4');
+                    leaveReasonWrapper?.classList.remove('max-h-0', 'opacity-0', 'm-0');
+                    leaveReasonWrapper?.classList.add('max-h-[500px]', 'opacity-100', 'mt-4');
                     
-                    leaveAttachmentWrapper.classList.remove('max-h-0', 'opacity-0', 'm-0');
-                    leaveAttachmentWrapper.classList.add('max-h-[500px]', 'opacity-100', 'mt-4');
+                    leaveAttachmentWrapper?.classList.remove('max-h-0', 'opacity-0', 'm-0');
+                    leaveAttachmentWrapper?.classList.add('max-h-[500px]', 'opacity-100', 'mt-4');
                     
-                    normalDatesWrapper.classList.remove('max-h-0', 'opacity-0', 'm-0');
-                    normalDatesWrapper.classList.add('max-h-[500px]', 'opacity-100', 'mt-4');
+                    normalDatesWrapper?.classList.remove('max-h-0', 'opacity-0', 'm-0');
+                    normalDatesWrapper?.classList.add('max-h-[500px]', 'opacity-100', 'mt-4');
                     
-                    leaveReason.required = true;
-                    leaveFrom.required = true;
-                    leaveTo.required = true;
-                    leaveSingleDate.required = false;
+                    if (leaveReason) leaveReason.required = true;
+                    if (leaveFrom) leaveFrom.required = true;
+                    if (leaveTo) leaveTo.required = true;
+                    if (leaveSingleDate) leaveSingleDate.required = false;
                 }
             }
             
