@@ -8268,10 +8268,7 @@ window.handleChecklistEnter = (e) => {
                             const notifBody = isHighPriority ? `عاجل جداً: تم إسناد مهمة جديدة بأولوية قصوى لك: ${title}` : `تم إسناد مهمة جديدة لك: ${title}`;
                             window.sendSystemNotification(assignee.uid, notifTitle, notifBody, 'tasks', 'tasks');
                             
-                            // NEW: Send email notification to assignee
-                            if(assignee.email) {
-                                window.sendEmailNotification(assignee.email, assignee.name, title, desc);
-                            }
+                            // Backend Cloud Function (ontaskassigned) will automatically send the email
                         }
                     });
 
