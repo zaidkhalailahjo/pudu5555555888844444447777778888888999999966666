@@ -3043,14 +3043,14 @@ window.verifyOTP = async () => {
                     if(fileUrl !== "#") {
                         try {
                             await addDoc(getDriveDbRef('files'), {
-                                name: file.name,
+                                name: file.name || 'بدون اسم',
                                 type: file.type || 'unknown',
-                                size: file.size, 
-                                sizeStr: sizeStr,
-                                data: fileUrl, 
-                                uploaderName: currentUserData.name,
-                                uploaderId: currentUserData.uid,
-                                folderId: targetFolderId,
+                                size: file.size || 0, 
+                                sizeStr: sizeStr || '0 Bytes',
+                                data: fileUrl || '', 
+                                uploaderName: (currentUserData && currentUserData.name) ? currentUserData.name : 'مجهول',
+                                uploaderId: (currentUserData && currentUserData.uid) ? currentUserData.uid : 'مجهول',
+                                folderId: targetFolderId || null,
                                 pinned: false,
                                 timestamp: Date.now()
                             });
@@ -3059,7 +3059,8 @@ window.verifyOTP = async () => {
                             window.logAction('رفع ملف', `تم رفع ملف جديد: ${file.name} إلى المستندات`);
                         } catch (dbError) {
                             console.error(dbError);
-                            showToast(`حدث خطأ في قاعدة البيانات للملف ${file.name}`, 'error');
+                            showToast(`حدث خطأ في قاعدة البيانات: ${dbError.message}`, 'error');
+                            alert(`حدث خطأ في قاعدة البيانات: ${dbError.message}`);
                         }
                     }
                     
