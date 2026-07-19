@@ -5431,7 +5431,7 @@ async function autoDeleteOldAttendance() {
                 window.closeModal('traineeSessionModal');
                 showToast(isFinished ? 'تم إنهاء فترة التدريب للمتدرب بنجاح وتقييمه' : 'تم تسجيل الموعد بنجاح', 'success');
             } catch(e) { console.error(e); }
-        };
+        });
 
         window.deleteTrainee = async (id) => {
             if(!window.isAdmin()) return;
