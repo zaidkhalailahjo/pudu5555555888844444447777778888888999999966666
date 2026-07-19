@@ -37,7 +37,7 @@
     isTokenAutoRefreshEnabled: true
    });
 
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxc5eAxJwRM2zdNSU0ppuF0-OqYgRCaabLrhg22iJRO0_wAbN0CDqKDmZvbw_yuVq_gCw/exec";
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzcMYdabovbgPo7iZpkej5jmghU7QjMDUTXRpLZk3pJxVn5agHU0Cfu-K_gPqtFphTqiw/exec";
 
         const i18nDict = {
             "الخدمات والمستندات": "Services & Documents",
