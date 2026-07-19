@@ -37,7 +37,7 @@
     isTokenAutoRefreshEnabled: true
    });
 
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxguN9VsqcYj-S0kXxg9hwMHkQNm7N5Ou2V3ghuwV0ggS2kdmcAfnKmcRyUagNkKIyxfg/exec";
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz7Ilr0PWRwb6DxVVGjaqSklMPwwm5TVhfJDNmBaTFQigqCNO7w4LzwTLAcfJlLMw6FPw/exec";
 
         const i18nDict = {
             "الخدمات والمستندات": "Services & Documents",
@@ -4009,6 +4009,13 @@ async function autoDeleteOldAttendance() {
                         window.initCompDays();
                     }
                     
+                    // Init Flatpickr for single date
+                    if (leaveSingleDate && !leaveSingleDate._flatpickr && typeof flatpickr !== 'undefined') {
+                        flatpickr(leaveSingleDate, {
+                            dateFormat: "Y-m-d"
+                        });
+                    }
+                    
                 } else {
                     // Hide compensatory UI
                     compDateWrapper?.classList.remove('max-h-[500px]', 'opacity-100', 'mt-4');
@@ -4069,51 +4076,34 @@ async function autoDeleteOldAttendance() {
             // Add active to current
             btnElement.classList.add('bg-pink-100', 'dark:bg-gray-600', 'ring-2', 'ring-pink-500');
             
-            // Generate past 4 occurrences of this day
-            const datesGrid = document.getElementById('compPastDatesGrid');
-            const header = document.getElementById('compPastDatesHeader');
-            const container = document.getElementById('compPastDatesContainer');
+            const compInput = document.getElementById('compLeaveDate');
+            if(!compInput) return;
             
-            let html = '';
-            let d = new Date();
-            // Move backward until we hit the requested day
-            while (d.getDay() !== dayIndex) {
-                d.setDate(d.getDate() - 1);
+            if (compInput._flatpickr) {
+                compInput._flatpickr.destroy();
             }
             
-            const monthNames = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
-            header.innerText = monthNames[d.getMonth()] + ' ' + d.getFullYear();
-            
-            for(let i=0; i<4; i++) {
-                const dateStr = d.toISOString().split('T')[0]; // YYYY-MM-DD
-                const dayNum = d.getDate();
-                html += `
-                <button type="button" onclick="window.selectCompDate('${dateStr}', this, ${dayIndex})" class="comp-date-btn w-full py-2 border border-pink-200 dark:border-gray-600 rounded-lg hover:bg-pink-50 dark:hover:bg-gray-600 text-sm font-bold text-gray-700 dark:text-gray-200 transition-all">
-                    ${dayNum}
-                </button>`;
-                d.setDate(d.getDate() - 7);
+            if (typeof flatpickr !== 'undefined') {
+                flatpickr(compInput, {
+                    maxDate: "today",
+                    disable: [
+                        function(date) {
+                            return date.getDay() !== dayIndex;
+                        }
+                    ],
+                    dateFormat: "Y-m-d",
+                    onChange: function(selectedDates, dateStr, instance) {
+                        const dayNum = dateStr.split('-')[2];
+                        document.querySelectorAll('.selected-date-lbl').forEach(l => l.innerText = '');
+                        const activeLbl = document.querySelectorAll('.comp-day-btn')[dayIndex].querySelector('.selected-date-lbl');
+                        activeLbl.innerText = dayNum;
+                    }
+                });
+                
+                setTimeout(() => {
+                    compInput._flatpickr.open();
+                }, 50);
             }
-            
-            datesGrid.innerHTML = html;
-            container.classList.remove('hidden');
-        };
-
-        window.selectCompDate = (dateStr, btnElement, dayIndex) => {
-            document.getElementById('compLeaveDate').value = dateStr;
-            
-            // Highlight selected button
-            document.querySelectorAll('.comp-date-btn').forEach(b => {
-                b.classList.remove('bg-pink-500', 'text-white', 'border-transparent');
-                b.classList.add('border-pink-200', 'dark:border-gray-600', 'text-gray-700', 'dark:text-gray-200');
-            });
-            btnElement.classList.remove('border-pink-200', 'dark:border-gray-600', 'text-gray-700', 'dark:text-gray-200');
-            btnElement.classList.add('bg-pink-500', 'text-white', 'border-transparent');
-            
-            // Show number under the day
-            const dayNum = dateStr.split('-')[2];
-            document.querySelectorAll('.selected-date-lbl').forEach(l => l.innerText = '');
-            const activeLbl = document.querySelectorAll('.comp-day-btn')[dayIndex].querySelector('.selected-date-lbl');
-            activeLbl.innerText = dayNum;
         };
 
         function getUserLeaveBalances(uid) {
