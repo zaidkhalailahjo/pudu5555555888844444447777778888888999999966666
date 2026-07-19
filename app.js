@@ -37,7 +37,7 @@
     isTokenAutoRefreshEnabled: true
    });
 
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzcMYdabovbgPo7iZpkej5jmghU7QjMDUTXRpLZk3pJxVn5agHU0Cfu-K_gPqtFphTqiw/exec";
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwLJzMel9AXYdEqpUKcJdaiHIN3y6MDVNH-MgtSBt0mSaUsyIJiiJ_xlQ0-4SrkxQVL2w/exec";
 
         const i18nDict = {
             "الخدمات والمستندات": "Services & Documents",
@@ -4105,21 +4105,23 @@ async function autoDeleteOldAttendance() {
                 });
                 window.closeModal('leaveModal');
                 
-                const ceoUsers = globalUsers.filter(u => u.role === 'CEO' || u.role === 'مطور' || (u.role && u.role.toUpperCase() === 'DEVELOPER'));
-                ceoUsers.forEach(ceo => {
+                const hrUsers = globalUsers.filter(u => u.role === 'CEO' || u.role === 'مطور' || (u.role && u.role.toUpperCase() === 'DEVELOPER') || (u.permissions && u.permissions.canManageLeaves));
+                hrUsers.forEach(hr => {
                     const msgText = attachmentBase64 ? `طلب إجازة جديد (مرفق) من: ${currentUserData.name}` : `طلب جديد من: ${currentUserData.name}`;
-                    window.sendSystemNotification(ceo.uid, 'طلب إجازة جديد', msgText, 'leaves', 'leaves');
+                    window.sendSystemNotification(hr.uid, 'طلب إجازة جديد', msgText, 'leaves', 'leaves');
                     
-                    // إرسال إيميل للمدير
-                    if(ceo.email) {
+                    // إرسال إيميل لمن يملك الصلاحية
+                    if(hr.email) {
                         fetch(GOOGLE_SCRIPT_URL, {
                             method: 'POST',
                             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                             body: JSON.stringify({
                                 action: 'sendLeaveRequest',
-                                manager_email: ceo.email,
+                                manager_email: hr.email,
                                 employee_name: currentUserData.name,
-                                leave_details: leaveReason
+                                leave_details: leaveReason,
+                                from_date: fromVal,
+                                to_date: toVal
                             })
                         }).catch(e => console.error(e));
                     }
