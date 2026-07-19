@@ -37,7 +37,7 @@
     isTokenAutoRefreshEnabled: true
    });
 
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwLJzMel9AXYdEqpUKcJdaiHIN3y6MDVNH-MgtSBt0mSaUsyIJiiJ_xlQ0-4SrkxQVL2w/exec";
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzv_9Gzkq8rFJhLPBsqSp_yBrbHdBiXVCcqivRWT6oCu57SgmOc1yCmXm6Z-Hm-vnRl0Q/exec";
 
         const i18nDict = {
             "الخدمات والمستندات": "Services & Documents",
@@ -3018,9 +3018,24 @@ window.verifyOTP = async () => {
                     let fileUrl = "";
                     
                     try {
-                        fileUrl = await window.uploadToFirebase(file, 'drive_files');
+                        const response = await fetch(GOOGLE_SCRIPT_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify({
+                                action: 'uploadToDrive',
+                                base64: base64Data,
+                                fileName: file.name,
+                                mimeType: file.type || 'application/octet-stream'
+                            })
+                        });
+                        const resData = await response.json();
+                        if (resData.success) {
+                            fileUrl = resData.url;
+                        } else {
+                            throw new Error(resData.error || 'Upload failed');
+                        }
                     } catch(uploadError) {
-                        console.error("Firebase Storage Error:", uploadError);
+                        console.error("Drive Upload Error:", uploadError);
                         showToast(`فشل رفع الملف ${file.name}`, 'error');
                         fileUrl = "#";
                     }
