@@ -3974,18 +3974,63 @@ async function autoDeleteOldAttendance() {
             const leaveReasonWrapper = document.getElementById('leaveReasonWrapper');
             const leaveAttachmentWrapper = document.getElementById('leaveAttachmentWrapper');
             const leaveReason = document.getElementById('leaveReason');
+            const normalDatesWrapper = document.getElementById('normalDatesWrapper');
+            const singleDateWrapper = document.getElementById('singleDateWrapper');
+            const leaveFrom = document.getElementById('leaveFrom');
+            const leaveTo = document.getElementById('leaveTo');
+            const leaveSingleDate = document.getElementById('leaveSingleDate');
             
             if (compDateWrapper) {
                 if (val === 'إجازة تعويضية') {
-                    compDateWrapper.classList.remove('hidden');
-                    leaveReasonWrapper.classList.add('hidden');
-                    leaveAttachmentWrapper.classList.add('hidden');
+                    // Show compensatory UI
+                    compDateWrapper.classList.remove('max-h-0', 'opacity-0', 'm-0');
+                    compDateWrapper.classList.add('max-h-[500px]', 'opacity-100', 'mt-4');
+                    
+                    singleDateWrapper.classList.remove('max-h-0', 'opacity-0', 'm-0');
+                    singleDateWrapper.classList.add('max-h-[500px]', 'opacity-100', 'mt-4');
+                    
+                    // Hide reason, attachment, and normal dates
+                    leaveReasonWrapper.classList.remove('max-h-[500px]', 'opacity-100', 'mt-4');
+                    leaveReasonWrapper.classList.add('max-h-0', 'opacity-0', 'm-0');
+                    
+                    leaveAttachmentWrapper.classList.remove('max-h-[500px]', 'opacity-100', 'mt-4');
+                    leaveAttachmentWrapper.classList.add('max-h-0', 'opacity-0', 'm-0');
+                    
+                    normalDatesWrapper.classList.remove('max-h-[500px]', 'opacity-100', 'mt-4');
+                    normalDatesWrapper.classList.add('max-h-0', 'opacity-0', 'm-0');
+                    
                     leaveReason.required = false;
+                    leaveFrom.required = false;
+                    leaveTo.required = false;
+                    leaveSingleDate.required = true;
+                    
+                    // Initialize the days if not done yet
+                    if(!window.compDaysInitialized) {
+                        window.initCompDays();
+                    }
+                    
                 } else {
-                    compDateWrapper.classList.add('hidden');
-                    leaveReasonWrapper.classList.remove('hidden');
-                    leaveAttachmentWrapper.classList.remove('hidden');
+                    // Hide compensatory UI
+                    compDateWrapper.classList.remove('max-h-[500px]', 'opacity-100', 'mt-4');
+                    compDateWrapper.classList.add('max-h-0', 'opacity-0', 'm-0');
+                    
+                    singleDateWrapper.classList.remove('max-h-[500px]', 'opacity-100', 'mt-4');
+                    singleDateWrapper.classList.add('max-h-0', 'opacity-0', 'm-0');
+                    
+                    // Show normal UI
+                    leaveReasonWrapper.classList.remove('max-h-0', 'opacity-0', 'm-0');
+                    leaveReasonWrapper.classList.add('max-h-[500px]', 'opacity-100', 'mt-4');
+                    
+                    leaveAttachmentWrapper.classList.remove('max-h-0', 'opacity-0', 'm-0');
+                    leaveAttachmentWrapper.classList.add('max-h-[500px]', 'opacity-100', 'mt-4');
+                    
+                    normalDatesWrapper.classList.remove('max-h-0', 'opacity-0', 'm-0');
+                    normalDatesWrapper.classList.add('max-h-[500px]', 'opacity-100', 'mt-4');
+                    
                     leaveReason.required = true;
+                    leaveFrom.required = true;
+                    leaveTo.required = true;
+                    leaveSingleDate.required = false;
                 }
             }
             
@@ -3996,10 +4041,79 @@ async function autoDeleteOldAttendance() {
                 lblTo.innerText = 'إلى تاريخ / وقت';
             } else {
                 fromInput.type = 'date';
-                toInput.type = 'date';
-                lblFrom.innerText = 'من تاريخ';
-                lblTo.innerText = 'إلى تاريخ';
             }
+        };
+
+        window.initCompDays = () => {
+            const container = document.getElementById('compDaysContainer');
+            if(!container) return;
+            const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+            
+            let html = '';
+            days.forEach((day, index) => {
+                html += `
+                <button type="button" onclick="window.selectCompDay(${index}, this)" class="comp-day-btn flex-1 flex flex-col items-center justify-center py-2 rounded-lg hover:bg-pink-100 dark:hover:bg-gray-600 transition-colors">
+                    <span class="text-[11px] font-bold text-gray-600 dark:text-gray-300 pointer-events-none">${day}</span>
+                    <span class="selected-date-lbl text-[10px] text-pink-500 font-bold h-3 mt-1 pointer-events-none"></span>
+                </button>`;
+            });
+            container.innerHTML = html;
+            window.compDaysInitialized = true;
+        };
+
+        window.selectCompDay = (dayIndex, btnElement) => {
+            // Remove active classes
+            document.querySelectorAll('.comp-day-btn').forEach(b => {
+                b.classList.remove('bg-pink-100', 'dark:bg-gray-600', 'ring-2', 'ring-pink-500');
+            });
+            // Add active to current
+            btnElement.classList.add('bg-pink-100', 'dark:bg-gray-600', 'ring-2', 'ring-pink-500');
+            
+            // Generate past 4 occurrences of this day
+            const datesGrid = document.getElementById('compPastDatesGrid');
+            const header = document.getElementById('compPastDatesHeader');
+            const container = document.getElementById('compPastDatesContainer');
+            
+            let html = '';
+            let d = new Date();
+            // Move backward until we hit the requested day
+            while (d.getDay() !== dayIndex) {
+                d.setDate(d.getDate() - 1);
+            }
+            
+            const monthNames = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+            header.innerText = monthNames[d.getMonth()] + ' ' + d.getFullYear();
+            
+            for(let i=0; i<4; i++) {
+                const dateStr = d.toISOString().split('T')[0]; // YYYY-MM-DD
+                const dayNum = d.getDate();
+                html += `
+                <button type="button" onclick="window.selectCompDate('${dateStr}', this, ${dayIndex})" class="comp-date-btn w-full py-2 border border-pink-200 dark:border-gray-600 rounded-lg hover:bg-pink-50 dark:hover:bg-gray-600 text-sm font-bold text-gray-700 dark:text-gray-200 transition-all">
+                    ${dayNum}
+                </button>`;
+                d.setDate(d.getDate() - 7);
+            }
+            
+            datesGrid.innerHTML = html;
+            container.classList.remove('hidden');
+        };
+
+        window.selectCompDate = (dateStr, btnElement, dayIndex) => {
+            document.getElementById('compLeaveDate').value = dateStr;
+            
+            // Highlight selected button
+            document.querySelectorAll('.comp-date-btn').forEach(b => {
+                b.classList.remove('bg-pink-500', 'text-white', 'border-transparent');
+                b.classList.add('border-pink-200', 'dark:border-gray-600', 'text-gray-700', 'dark:text-gray-200');
+            });
+            btnElement.classList.remove('border-pink-200', 'dark:border-gray-600', 'text-gray-700', 'dark:text-gray-200');
+            btnElement.classList.add('bg-pink-500', 'text-white', 'border-transparent');
+            
+            // Show number under the day
+            const dayNum = dateStr.split('-')[2];
+            document.querySelectorAll('.selected-date-lbl').forEach(l => l.innerText = '');
+            const activeLbl = document.querySelectorAll('.comp-day-btn')[dayIndex].querySelector('.selected-date-lbl');
+            activeLbl.innerText = dayNum;
         };
 
         function getUserLeaveBalances(uid) {
@@ -4101,12 +4215,30 @@ async function autoDeleteOldAttendance() {
             e.preventDefault();
             if(!currentUserData) return;
             
-            const fromVal = document.getElementById('leaveFrom').value;
-            const toVal = document.getElementById('leaveTo').value;
-
-            if(!fromVal || !toVal) {
-                showToast('يرجى التأكد من تعبئة التواريخ', 'warning');
-                return;
+            const leaveType = document.getElementById('leaveType').value;
+            let fromVal, toVal;
+            
+            if (leaveType === 'إجازة تعويضية') {
+                const singleVal = document.getElementById('leaveSingleDate').value;
+                if(!singleVal) {
+                    showToast('يرجى تحديد أي يوم تريد هذا التعويض', 'warning');
+                    return;
+                }
+                fromVal = singleVal;
+                toVal = singleVal;
+                
+                const compDateElement = document.getElementById('compLeaveDate');
+                if(!compDateElement || !compDateElement.value) {
+                    showToast('يرجى اختيار بدل أي يوم وتاريخ أولاً!', 'warning');
+                    return;
+                }
+            } else {
+                fromVal = document.getElementById('leaveFrom').value;
+                toVal = document.getElementById('leaveTo').value;
+                if(!fromVal || !toVal) {
+                    showToast('يرجى التأكد من تعبئة التواريخ', 'warning');
+                    return;
+                }
             }
 
             const fromDate = new Date(fromVal).getTime();
@@ -4119,8 +4251,8 @@ async function autoDeleteOldAttendance() {
 
             const attachmentBase64 = document.getElementById('leaveAttachmentBase64').value;
             
-            if(toDate <= fromDate) {
-                showToast('تاريخ الانتهاء يجب أن يكون بعد تاريخ البدء', 'warning');
+            if(toDate < fromDate) {
+                showToast('تاريخ الانتهاء يجب أن يكون مساوياً أو بعد تاريخ البدء', 'warning');
                 return;
             }
 
