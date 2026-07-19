@@ -37,7 +37,7 @@
     isTokenAutoRefreshEnabled: true
    });
 
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzv_9Gzkq8rFJhLPBsqSp_yBrbHdBiXVCcqivRWT6oCu57SgmOc1yCmXm6Z-Hm-vnRl0Q/exec";
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxguN9VsqcYj-S0kXxg9hwMHkQNm7N5Ou2V3ghuwV0ggS2kdmcAfnKmcRyUagNkKIyxfg/exec";
 
         const i18nDict = {
             "الخدمات والمستندات": "Services & Documents",
@@ -3970,6 +3970,25 @@ async function autoDeleteOldAttendance() {
             const lblFrom = document.getElementById('lblLeaveFrom');
             const lblTo = document.getElementById('lblLeaveTo');
             
+            const compDateWrapper = document.getElementById('compDateWrapper');
+            const leaveReasonWrapper = document.getElementById('leaveReasonWrapper');
+            const leaveAttachmentWrapper = document.getElementById('leaveAttachmentWrapper');
+            const leaveReason = document.getElementById('leaveReason');
+            
+            if (compDateWrapper) {
+                if (val === 'إجازة تعويضية') {
+                    compDateWrapper.classList.remove('hidden');
+                    leaveReasonWrapper.classList.add('hidden');
+                    leaveAttachmentWrapper.classList.add('hidden');
+                    leaveReason.required = false;
+                } else {
+                    compDateWrapper.classList.add('hidden');
+                    leaveReasonWrapper.classList.remove('hidden');
+                    leaveAttachmentWrapper.classList.remove('hidden');
+                    leaveReason.required = true;
+                }
+            }
+            
             if (val.includes('مبكرة')) {
                 fromInput.type = 'datetime-local';
                 toInput.type = 'datetime-local';
@@ -4106,17 +4125,24 @@ async function autoDeleteOldAttendance() {
             }
 
             try {
-                const leaveReason = document.getElementById('leaveReason').value;
-                await addDoc(getColRef('leaves'), {
+                const leaveType = document.getElementById('leaveType').value;
+                const leaveReason = document.getElementById('leaveReason').value || (leaveType === 'إجازة تعويضية' ? 'إجازة تعويضية' : '');
+                const compDateElement = document.getElementById('compLeaveDate');
+                const compDate = compDateElement && compDateElement.value ? compDateElement.value : null;
+                const actionToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                
+                const newDocRef = await addDoc(getColRef('leaves'), {
                     uid: currentUserData.uid, 
                     name: currentUserData.name, 
-                    type: document.getElementById('leaveType').value,
+                    type: leaveType,
                     from: fromDate, 
                     to: toDate,
+                    compDate: compDate,
                     reason: leaveReason, 
-                    attachment: attachmentBase64 || null,
+                    attachment: leaveType === 'إجازة تعويضية' ? null : (attachmentBase64 || null),
                     comments: [],
                     status: 'pending', 
+                    actionToken: actionToken,
                     timestamp: Date.now()
                 });
                 window.closeModal('leaveModal');
@@ -4133,6 +4159,10 @@ async function autoDeleteOldAttendance() {
                             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                             body: JSON.stringify({
                                 action: 'sendLeaveRequest',
+                                leave_id: newDocRef.id,
+                                action_token: actionToken,
+                                leave_type: leaveType,
+                                comp_date: compDate,
                                 manager_email: hr.email,
                                 employee_name: currentUserData.name,
                                 leave_details: leaveReason,
