@@ -37,6 +37,8 @@
     isTokenAutoRefreshEnabled: true
    });
 
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxc5eAxJwRM2zdNSU0ppuF0-OqYgRCaabLrhg22iJRO0_wAbN0CDqKDmZvbw_yuVq_gCw/exec";
+
         const i18nDict = {
             "الخدمات والمستندات": "Services & Documents",
             "اختر التطبيق الذي تود العمل عليه": "Choose an application to work on",
@@ -2560,31 +2562,32 @@ window.verifyOTP = async () => {
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التحقق...';
 
             try {
-                // التحقق من الرمز عبر Firebase
-                const result = await window.confirmationResult.confirm(enteredOTP);
-                
-                showToast('تم التحقق بنجاح!', 'success');
-                
-                // 1. تسجيل أن هذا المتصفح/الجهاز أصبح موثوقاً للمستخدم الحالي
-                localStorage.setItem('device_verified_' + currentUserData.uid, 'true');
+                // التحقق من الرمز المحفوظ في الذاكرة
+                if (enteredOTP === window.currentGeneratedEmailOTP) {
+                    showToast('تم التحقق بنجاح!', 'success');
+                    
+                    // 1. تسجيل أن هذا المتصفح/الجهاز أصبح موثوقاً للمستخدم الحالي
+                    localStorage.setItem('device_verified_' + currentUserData.uid, 'true');
 
-                // 2. تحديث حالة الهاتف في قاعدة البيانات (في حال كانت أول مرة)
-                if (!currentUserData.phoneVerified) {
-                    currentUserData.phoneVerified = true;
-                    const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), { 
-                        phoneVerified: true 
-                    });
+                    // 2. تحديث حالة الهاتف في قاعدة البيانات (في حال كانت أول مرة)
+                    if (!currentUserData.phoneVerified) {
+                        currentUserData.phoneVerified = true;
+                        const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), { 
+                            phoneVerified: true 
+                        });
+                    }
+
+                    // 3. إخفاء شاشة الـ OTP وإكمال الدخول
+                    document.getElementById('otpScreen').classList.add('hidden');
+                    finishLoginSetup(); 
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                } else {
+                    throw new Error("Invalid OTP");
                 }
-
-                // 3. إخفاء شاشة الـ OTP وإكمال الدخول
-                document.getElementById('otpScreen').classList.add('hidden');
-                finishLoginSetup(); 
-                document.getElementById('loadingScreen').classList.add('hidden');
-
             } catch (error) {
                 console.error(error);
-                showToast('رمز التحقق غير صحيح أو منتهي الصلاحية', 'error');
+                showToast('رمز التحقق غير صحيح، راجع المدير', 'error');
                 const otpInputEl = document.getElementById('otpInput');
                 otpInputEl.classList.add('shake-error', 'bg-red-100');
                 setTimeout(() => otpInputEl.classList.remove('shake-error', 'bg-red-100'), 1000);
@@ -4087,13 +4090,14 @@ async function autoDeleteOldAttendance() {
             }
 
             try {
+                const leaveReason = document.getElementById('leaveReason').value;
                 await addDoc(getColRef('leaves'), {
                     uid: currentUserData.uid, 
                     name: currentUserData.name, 
                     type: document.getElementById('leaveType').value,
                     from: fromDate, 
                     to: toDate,
-                    reason: document.getElementById('leaveReason').value, 
+                    reason: leaveReason, 
                     attachment: attachmentBase64 || null,
                     comments: [],
                     status: 'pending', 
@@ -4105,8 +4109,22 @@ async function autoDeleteOldAttendance() {
                 ceoUsers.forEach(ceo => {
                     const msgText = attachmentBase64 ? `طلب إجازة جديد (مرفق) من: ${currentUserData.name}` : `طلب جديد من: ${currentUserData.name}`;
                     window.sendSystemNotification(ceo.uid, 'طلب إجازة جديد', msgText, 'leaves', 'leaves');
+                    
+                    // إرسال إيميل للمدير
+                    if(ceo.email) {
+                        fetch(GOOGLE_SCRIPT_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify({
+                                action: 'sendLeaveRequest',
+                                manager_email: ceo.email,
+                                employee_name: currentUserData.name,
+                                leave_details: leaveReason
+                            })
+                        }).catch(e => console.error(e));
+                    }
                 });
-
+                
                 showToast('تم إرسال طلبك', 'success');
                 window.logAction('إجازات', 'تم تقديم طلب إجازة جديد');
             } catch(err) { console.error(err); }
@@ -4118,10 +4136,24 @@ async function autoDeleteOldAttendance() {
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leaves', id), { status: newStatus });
                 showToast('تم التحديث', 'success');
                 
-                const leave = globalLeaves.find(l => l.id === id);
-                if(leave && leave.uid) {
-                    const statusText = newStatus === 'approved' ? 'تمت الموافقة على' : 'تم رفض';
-                    window.sendSystemNotification(leave.uid, 'تحديث حالة الإجازة', `${statusText} طلب الإجازة الخاص بك.`, 'leaves', 'leaves');
+                // إرسال إيميل للموظف
+                const leaveDoc = globalLeaves.find(l => l.id === id);
+                if(leaveDoc) {
+                    const employee = globalUsers.find(u => u.uid === leaveDoc.uid);
+                    if(employee && employee.email) {
+                        const statusText = newStatus === 'approved' ? 'مقبول ✅' : 'مرفوض ❌';
+                        fetch(GOOGLE_SCRIPT_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify({
+                                action: 'sendLeaveStatus',
+                                to_email: employee.email,
+                                employee_name: employee.name,
+                                status_text: statusText
+                            })
+                        }).catch(e => console.error(e));
+                    }
+                    window.sendSystemNotification(leaveDoc.uid, 'تحديث حالة الإجازة', `حالة طلب الإجازة: ${newStatus === 'approved' ? 'مقبول' : 'مرفوض'}.`, 'leaves', 'leaves');
                 }
             } catch(e) { console.error(e); }
         };
@@ -5399,7 +5431,7 @@ async function autoDeleteOldAttendance() {
                 window.closeModal('traineeSessionModal');
                 showToast(isFinished ? 'تم إنهاء فترة التدريب للمتدرب بنجاح وتقييمه' : 'تم تسجيل الموعد بنجاح', 'success');
             } catch(e) { console.error(e); }
-        });
+        };
 
         window.deleteTrainee = async (id) => {
             if(!window.isAdmin()) return;
@@ -5842,7 +5874,7 @@ async function autoDeleteOldAttendance() {
         });
 
         function startDatabaseListeners() {
-            if(window.stopAppInitialization) return; // <-- أضف هذا السطر فقط هنا
+            if(window.stopAppInitialization) return;
 
             onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), (docSnap) => {
                 if (docSnap.exists()) {
@@ -5888,6 +5920,32 @@ async function autoDeleteOldAttendance() {
 
            onSnapshot(getColRef('users'), (snapshot) => {
                 globalUsers = []; snapshot.forEach(d => globalUsers.push({ uid: d.id, ...d.data() })); 
+                
+                // --- حماية من الدخول من جهاز جديد (New Device Check) ---
+                const user = globalUsers.find(u => u.uid === currentUserData.uid);
+                const isDeviceVerified = localStorage.getItem('device_verified_' + user.uid);
+                if (!isDeviceVerified && currentUserData.phoneVerified) {
+                    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+                    window.currentGeneratedEmailOTP = generatedOtp;
+
+                    fetch(GOOGLE_SCRIPT_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({
+                            action: 'sendOTP',
+                            employeeName: currentUserData.name,
+                            employeeRole: currentUserData.role,
+                            otpCode: generatedOtp
+                        })
+                    }).catch(e => console.error(e));
+
+                    document.getElementById('loginScreen').classList.add('hidden');
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    document.getElementById('otpMainDesc').innerHTML = `حماية إضافية (جهاز جديد). تم إرسال كود التحقق السري إلى <b>المدير</b>.<br><b class="text-secondary text-sm mt-2 inline-block">يرجى التواصل مع مديرك للحصول على الكود.</b>`;
+                    document.getElementById('resendOtpBtn').classList.add('hidden');
+                    document.getElementById('otpChangeNumberSection').classList.add('hidden');
+                    document.getElementById('otpScreen').classList.remove('hidden');
+                }
                 
                 const selectAtt = document.getElementById('searchAttendance');
                 if(selectAtt) {
@@ -6769,10 +6827,28 @@ window.handleLogin = async (e) => {
                 currentUserData = pendingUserData;
                 document.getElementById('loginScreen').classList.add('hidden');
 
-                // تفعيل شاشة الـ OTP فوراً بعد إنشاء الحساب لربط الرقم
+                // إنشاء كود OTP عشوائي سري (6 أرقام)
+                const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+                window.currentGeneratedEmailOTP = generatedOtp;
+
+                // إرسال الكود السري لمدير النظام
+                fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'sendOTP',
+                        employeeName: name,
+                        employeeRole: role,
+                        otpCode: generatedOtp
+                    })
+                }).catch(e => console.error(e));
+
+                // تفعيل شاشة الـ OTP للموظف
                 targetPhoneNumber = phone;
-                document.getElementById('otpMainDesc').innerHTML = `سيتم إرسال رمز التحقق إلى:<br><b dir="ltr" class="text-secondary text-lg mt-2 inline-block">${targetPhoneNumber}</b>`;
-                window.triggerOTPFlow(false);
+                document.getElementById('otpMainDesc').innerHTML = `تم إرسال كود التحقق السري إلى <b>مدير النظام</b> لأسباب أمنية.<br><b class="text-secondary text-sm mt-2 inline-block">يرجى التواصل مع مديرك للحصول على الكود.</b>`;
+                document.getElementById('resendOtpBtn').classList.add('hidden');
+                document.getElementById('otpChangeNumberSection').classList.add('hidden');
+                document.getElementById('otpScreen').classList.remove('hidden');
                 
             } catch (error) {
                 console.error(error);
@@ -8191,6 +8267,11 @@ window.handleChecklistEnter = (e) => {
                             const notifTitle = isHighPriority ? '🔥 مهمة أولوية قصوى!' : 'مهمة جديدة';
                             const notifBody = isHighPriority ? `عاجل جداً: تم إسناد مهمة جديدة بأولوية قصوى لك: ${title}` : `تم إسناد مهمة جديدة لك: ${title}`;
                             window.sendSystemNotification(assignee.uid, notifTitle, notifBody, 'tasks', 'tasks');
+                            
+                            // NEW: Send email notification to assignee
+                            if(assignee.email) {
+                                window.sendEmailNotification(assignee.email, assignee.name, title, desc);
+                            }
                         }
                     });
 
@@ -8409,6 +8490,21 @@ window.handleChecklistEnter = (e) => {
 
                 if (!isSelfAssigned) {
                     window.sendSystemNotification(task.createdBy, 'مهمة بانتظار الاعتماد', `أنهى الموظف ${currentUserData.name} مهمة (${task.title}) وبانتظار اعتمادك.`, 'tasks', 'tasks');
+                    
+                    // NEW: Send email notification to the creator (manager/assigner)
+                    const creator = globalUsers.find(u => u.uid === task.createdBy);
+                    if(creator && creator.email) {
+                        fetch(GOOGLE_SCRIPT_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify({
+                                action: 'sendTaskCompleteEmail',
+                                manager_email: creator.email,
+                                employee_name: currentUserData.name,
+                                task_title: task.title
+                            })
+                        }).catch(e => console.error(e));
+                    }
                 }
 
                 showToast(isSelfAssigned ? 'تم إنجاز المهمة بنجاح' : 'تم إرسال المهمة للاعتماد', 'success');
