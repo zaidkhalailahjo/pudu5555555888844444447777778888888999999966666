@@ -2326,6 +2326,13 @@ document.getElementById('rentalForm').addEventListener('submit', async (e) => {
         function showToast(message, type = 'info') {
             const container = document.getElementById('toastContainer');
             if(!container) return;
+            
+            // Prevent duplicate stacked toasts
+            const existingToasts = container.querySelectorAll('.toast-enter span, .toast-leave span');
+            for (let span of existingToasts) {
+                if (span.innerText === message) return;
+            }
+
             const toast = document.createElement('div');
             let colorClass = type === 'success' ? 'bg-green-600' : (type === 'warning' ? 'bg-yellow-500' : (type === 'error' ? 'bg-red-600' : 'bg-blue-600'));
             let icon = type === 'success' ? 'fa-check-circle' : (type === 'warning' ? 'fa-exclamation-triangle' : (type === 'error' ? 'fa-times-circle' : 'fa-info-circle'));
