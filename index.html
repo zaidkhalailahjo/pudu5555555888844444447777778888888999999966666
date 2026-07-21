@@ -2172,10 +2172,40 @@
                             <button onclick="window.saveProfileInfo()" id="saveProfileBtn" class="w-full bg-secondary hover:bg-primary text-white font-bold py-3.5 px-4 rounded-xl transition-colors shadow-lg mt-6 flex justify-center items-center gap-2">
                                 <i class="fa-solid fa-shield-check"></i> حفظ البيانات وتأمين الحساب
                             </button>
+                            
+                            <!-- زر المقلب - يظهر فقط للمطور -->
+                            <div id="devPrankSection" class="hidden mt-6 pt-6 border-t border-dashed border-gray-300 dark:border-gray-600">
+                                <button onclick="window.openPrankModal()" class="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-lg flex justify-center items-center gap-2 hover:scale-[1.02] active:scale-95">
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i> 🪄 إرسال رسالة الأوساخ
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </section>
+
+    <!-- مودال اختيار الموظف للمقلب -->
+    <div id="prankSelectModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[9999] p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in">
+            <div class="bg-gradient-to-r from-purple-500 to-pink-500 p-4 text-center">
+                <h3 class="text-white font-bold text-lg flex items-center justify-center gap-2">🪄 اختر الموظف المستهدف</h3>
+                <p class="text-purple-100 text-xs mt-1">عندما يدخل الموظف النظام سيظهر له المقلب 😈</p>
+            </div>
+            <div class="p-6">
+                <select id="prankTargetSelect" class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-white rounded-lg px-3 py-3 mb-4 focus:border-purple-500 focus:outline-none font-bold">
+                    <option value="">-- اختر الموظف --</option>
+                </select>
+                <div class="flex gap-3">
+                    <button onclick="window.confirmPrank()" class="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-paper-plane"></i> تأكيد الإرسال
+                    </button>
+                    <button onclick="document.getElementById('prankSelectModal').classList.add('hidden'); document.getElementById('prankSelectModal').classList.remove('flex');" class="flex-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-white font-bold py-3 rounded-xl transition-all">
+                        إلغاء
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- نافذة إضافة مهمة -->
     <div id="taskModal" class="fixed inset-0 bg-black/40 hidden flex items-center justify-center z-50 p-4 transition-opacity">
@@ -3717,6 +3747,56 @@
             </div>
         </div>
     </div>
+
+    <!-- ====== Omnie Bot Prank Overlay ====== -->
+    <div id="prankOverlay" class="fixed inset-0 z-[99999] hidden" style="pointer-events:none;">
+        <!-- Dirt particles container -->
+        <div id="prankDirtLayer" class="absolute inset-0" style="pointer-events:none;"></div>
+        
+        <!-- Message: يرجى تنظيف الأوساخ -->
+        <div id="prankMessage" class="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-500" style="pointer-events:none;">
+            <div class="bg-black/70 backdrop-blur-md text-white text-2xl md:text-4xl font-bold px-10 py-6 rounded-2xl shadow-2xl border border-white/20 text-center">
+                🧹 يرجى تنظيف الأوساخ
+            </div>
+        </div>
+
+        <!-- Two boxes to choose -->
+        <div id="prankBoxes" class="absolute inset-0 flex items-center justify-center gap-6 opacity-0 transition-opacity duration-500" style="pointer-events:none;">
+            <button onclick="window.startOmnieCleaning()" class="prank-box bg-gradient-to-br from-green-400 to-emerald-600 text-white font-bold text-lg px-8 py-6 rounded-2xl shadow-2xl hover:scale-110 transition-all duration-300 flex flex-col items-center gap-2 border-2 border-white/30" style="pointer-events:auto;">
+                <i class="fa-solid fa-broom text-3xl"></i>
+                تنظيف الآن
+            </button>
+            <button onclick="window.startOmnieCleaning()" class="prank-box bg-gradient-to-br from-blue-400 to-indigo-600 text-white font-bold text-lg px-8 py-6 rounded-2xl shadow-2xl hover:scale-110 transition-all duration-300 flex flex-col items-center gap-2 border-2 border-white/30" style="pointer-events:auto;">
+                <i class="fa-solid fa-robot text-3xl"></i>
+                استدعاء Omnie
+            </button>
+        </div>
+
+        <!-- Omnie Bot -->
+        <div id="omnieBot" class="absolute transition-all duration-[800ms] ease-in-out" style="bottom:-220px; left:50%; transform:translateX(-50%); width:180px; pointer-events:none; z-index:100000;">
+            <div id="omnieSpeech" class="absolute -top-20 left-1/2 -translate-x-1/2 bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-sm font-bold px-4 py-2 rounded-xl shadow-xl opacity-0 transition-opacity duration-500 whitespace-nowrap border border-gray-200 dark:border-gray-600" style="min-width:220px; text-align:center;">
+                💬 لماذا تركت السيستم ولم تفعل به شيء؟
+                <div class="absolute bottom-[-6px] left-1/2 -translate-x-1/2 w-3 h-3 bg-white dark:bg-gray-800 rotate-45 border-b border-r border-gray-200 dark:border-gray-600"></div>
+            </div>
+            <img src="https://uploads.onecompiler.io/44krdug5q/1784626849027/image-removebg-preview%20(7).png" alt="Omnie Bot" class="w-full h-auto drop-shadow-2xl" id="omnieImg">
+        </div>
+    </div>
+
+    <style>
+        .dirt-spot {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            transition: opacity 1s ease-out, transform 1s ease-out;
+        }
+        @keyframes omnieWiggle {
+            0%, 100% { transform: translateX(-50%) rotate(-3deg); }
+            50% { transform: translateX(-50%) rotate(3deg); }
+        }
+        .omnie-cleaning {
+            animation: omnieWiggle 0.4s ease-in-out infinite;
+        }
+    </style>
 
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script type="module" src="app.js"></script>
