@@ -10099,8 +10099,16 @@ window.handleChecklistEnter = (e) => {
                         ${ceoBadge}
                         ${legacyBadge}
                         ${blockedBadge}
-                        <p class="text-[10px] text-gray-400 mt-2 mb-4 w-full truncate border-t dark:border-gray-700 pt-2"><i class="fa-solid fa-envelope mx-1"></i>${escapeHTML(u.email || 'لا يوجد إيميل')}</p>
+                        <p class="text-[10px] text-gray-400 mt-2 mb-2 w-full truncate border-t dark:border-gray-700 pt-2"><i class="fa-solid fa-envelope mx-1"></i>${escapeHTML(u.email || 'لا يوجد إيميل')}</p>
                         
+                        <!-- اختبار الـ SMS -->
+                        ${u.notificationPhone ? `
+                        <div class="w-full flex gap-1 mb-4 bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg border border-blue-100 dark:border-blue-800">
+                            <button onclick="window.sendTestSms('${u.notificationPhone}', '${escapeHTML(u.name.replace(/'/g, "\'"))}')" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-[10px] py-1.5 rounded font-bold transition shadow-sm">إرسال تجريبي</button>
+                            <button onclick="window.reportSmsFailure()" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white text-[10px] py-1.5 rounded font-bold transition shadow-sm">لم تصل الرسالة؟</button>
+                        </div>
+                        ` : '<div class="w-full text-center text-[10px] text-orange-500 mb-4 bg-orange-50 dark:bg-orange-900/20 p-1 rounded font-bold border border-orange-100 dark:border-orange-800">لا يوجد رقم محفوظ للرسائل</div>'}
+
                         <!-- أزرار الإبقاء للحسابات القديمة -->
                         ${(amICEO && isLegacyGoogle && !isMe) ? `
                         <div class="w-full flex gap-2 mb-3 bg-red-50 p-2 rounded-lg border border-red-100">
@@ -10124,6 +10132,34 @@ window.handleChecklistEnter = (e) => {
                         </div>
                     </div>
                 `;
+            });
+        };
+
+        
+        window.sendTestSms = (phone, name) => {
+            const smsMsg = `QuillSMS: مرحباً ${name}، هذه رسالة تجريبية من النظام للتأكد من وصول الإشعارات إليك بنجاح.`;
+            window.queueSmsMessage(phone, smsMsg);
+            showToast('تم إرسال المهمة لهاتف الشركة، راقب الهاتف الآن...', 'info');
+        };
+
+        window.reportSmsFailure = () => {
+            Swal.fire({
+                title: 'لماذا لم تصل الرسالة؟',
+                html: `
+                    <div style="text-align: right; font-size: 14px; line-height: 1.6;" dir="rtl">
+                        <p class="font-bold text-red-600 mb-2">إذا لم تصل الرسالة للموظف، يرجى التحقق مما يلي في (هاتف الشركة) الذي عليه التطبيق:</p>
+                        <ul class="list-disc pr-5">
+                            <li>هل هاتف الشركة <b>متصل بالإنترنت</b> حالياً؟</li>
+                            <li>هل يوجد <b>رصيد SMS</b> كافي في شريحة هاتف الشركة؟</li>
+                            <li>هل أعطيت التطبيق <b>صلاحية إرسال الرسائل (SEND_SMS)</b> عند فتحه أول مرة؟</li>
+                            <li>هل التطبيق <b>مفتوح أو يعمل في الخلفية</b> (الإشعار الثابت موجود في شريط الإشعارات)؟</li>
+                            <li>هل <b>رقم الموظف</b> صحيح ومكتوب بالصيغة الدولية إذا لزم الأمر؟</li>
+                        </ul>
+                    </div>
+                `,
+                icon: 'warning',
+                confirmButtonText: 'حسناً، سأتحقق',
+                confirmButtonColor: '#3085d6'
             });
         };
 
