@@ -1,4 +1,4 @@
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+﻿        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, RecaptchaVerifier, signInWithPhoneNumber, linkWithPhoneNumber } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, getDoc, setDoc, arrayUnion, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL, uploadString } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
@@ -2533,82 +2533,38 @@ window.changePhoneNumber = () => {
 };
 
 window.triggerOTPFlow = async (isResend = false) => {
-    // 1. إعداد الـ RecaptchaVerifier (مطلوب لـ Firebase Phone Auth)
-    if (!window.recaptchaVerifier) {
-        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-            'size': 'invisible'
-        });
-    }
-
     document.getElementById('loadingScreen').classList.remove('hidden');
     window.otpGeneratedTime = Date.now();
     if (!window.otpAttempts) window.otpAttempts = 0;
     if (!window.otpResendCount) window.otpResendCount = 0;
 
     try {
-        const formattedPhone = window.formatPhone(targetPhoneNumber);
-        
-        // 2. استخدام دالة Firebase لإرسال الـ SMS
-        const confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, window.recaptchaVerifier);
-        window.confirmationResult = confirmationResult; // حفظ النتيجة للتحقق لاحقاً
+        const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+        window.currentGeneratedEmailOTP = generatedOtp;
+
+        let userEmail = currentUserData ? currentUserData.email : (auth.currentUser ? auth.currentUser.email : '');
+        let userName = currentUserData ? currentUserData.name : 'مستخدم';
+
+        await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+                action: 'sendVerificationOTP',
+                employeeName: userName,
+                to_email: userEmail,
+                otpCode: generatedOtp
+            })
+        });
 
         document.getElementById('loadingScreen').classList.add('hidden');
         document.getElementById('otpScreen').classList.remove('hidden');
-        showToast('تم إرسال رمز التحقق إلى هاتفك', 'success');
+        showToast('تم إرسال كود التحقق إلى بريدك الإلكتروني بنجاح', 'success');
     } catch (error) {
         document.getElementById('loadingScreen').classList.add('hidden');
-        console.error("Firebase OTP Error:", error);
-        showToast('حدث خطأ في إرسال الرسالة: ' + error.message, 'error');
+        console.error("Email OTP Error:", error);
+        showToast('حدث خطأ في إرسال كود التحقق: ' + error.message, 'error');
     }
 };
-
-window.verifyOTP = async () => {
-            const enteredOTP = document.getElementById('otpInput').value.trim();
-            if (!enteredOTP) return;
-
-            const btn = document.getElementById('verifyOtpBtn');
-            const oldBtnText = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التحقق...';
-
-            try {
-                // التحقق من الرمز المحفوظ في الذاكرة
-                if (enteredOTP === window.currentGeneratedEmailOTP) {
-                    showToast('تم التحقق بنجاح!', 'success');
-                    
-                    // 1. تسجيل أن هذا المتصفح/الجهاز أصبح موثوقاً للمستخدم الحالي
-                    localStorage.setItem('device_verified_' + currentUserData.uid, 'true');
-
-                    // 2. تحديث حالة الهاتف في قاعدة البيانات (في حال كانت أول مرة)
-                    // 2. تحديث حالة الموظف في قاعدة البيانات (توثيق الهاتف + ترقية تلقائية)
-                    if (!currentUserData.phoneVerified || currentUserData.role === 'pending') {
-                        currentUserData.phoneVerified = true;
-                        currentUserData.role = 'Employee';
-                        const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), { 
-                            phoneVerified: true,
-                            role: 'Employee'
-                        });
-                    }
-
-                    // 3. إخفاء شاشة الـ OTP وإكمال الدخول
-                    document.getElementById('otpScreen').classList.add('hidden');
-                    finishLoginSetup(); 
-                    document.getElementById('loadingScreen').classList.add('hidden');
-                } else {
-                    throw new Error("Invalid OTP");
-                }
-            } catch (error) {
-                console.error(error);
-                showToast('رمز التحقق غير صحيح، راجع المدير', 'error');
-                const otpInputEl = document.getElementById('otpInput');
-                otpInputEl.classList.add('shake-error', 'bg-red-100');
-                setTimeout(() => otpInputEl.classList.remove('shake-error', 'bg-red-100'), 1000);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = oldBtnText;
-            }
-        };
 
         // دالة مساعدة لإخفاء عناصر واجهة الـ OTP عند الحظر
         function hideOtpControls(errorElement) {
@@ -11490,3 +11446,4 @@ window.showRejectReason = (reason) => {
                 overlay.classList.add('hidden');
             }, 300);
         };
+
