@@ -2567,6 +2567,80 @@ window.triggerOTPFlow = async (isResend = false) => {
 };
 
         // دالة مساعدة لإخفاء عناصر واجهة الـ OTP عند الحظر
+window.verifyOTP = async () => {
+    const enteredOTP = document.getElementById('otpInput').value.trim();
+    if (!enteredOTP) return;
+
+    const btn = document.getElementById('verifyOtpBtn');
+    const oldBtnText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التحقق...';
+
+    try {
+        const timeElapsed = Date.now() - (window.otpGeneratedTime || 0);
+        if (timeElapsed > 5 * 60 * 1000) {
+            throw new Error("EXPIRED");
+        }
+
+        if (enteredOTP === window.currentGeneratedEmailOTP) {
+            showToast('تم التحقق بنجاح!', 'success');
+            
+            if (currentUserData) {
+                localStorage.setItem('device_verified_' + currentUserData.uid, 'true');
+
+                if (!currentUserData.phoneVerified || currentUserData.role === 'pending') {
+                    currentUserData.phoneVerified = true;
+                    currentUserData.role = 'Employee';
+                    const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), { 
+                        phoneVerified: true,
+                        role: 'Employee'
+                    });
+                }
+            }
+
+            document.getElementById('otpScreen').classList.add('hidden');
+            finishLoginSetup(); 
+            document.getElementById('loadingScreen').classList.add('hidden');
+        } else {
+            throw new Error("INVALID");
+        }
+    } catch (error) {
+        console.error(error);
+        if (error.message === "EXPIRED") {
+            showToast('الرمز المدخل انتهت صلاحيته (تجاوز 5 دقائق). يرجى طلب رمز جديد', 'error');
+        } else {
+            showToast('الرمز المدخل غير صحيح', 'error');
+        }
+        
+        window.otpAttempts++;
+
+        if (window.otpAttempts >= 5) {
+            if (currentUserData) {
+                try {
+                    const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), { 
+                        isBlocked: true,
+                        blockReason: 'إدخال رمز التحقق بشكل خاطئ 5 مرات'
+                    });
+                    showToast('تم حظر حسابك بسبب محاولات خاطئة متكررة', 'error');
+                    hideOtpControls(document.getElementById('otpErrorText'));
+                    
+                    if(window.sendSystemNotification && typeof globalUsers !== 'undefined') {
+                        const managers = globalUsers.filter(u => u.role && ['ceo', 'مدير', 'مدير عام'].includes(u.role.toLowerCase()));
+                        managers.forEach(m => {
+                            window.sendSystemNotification(m.uid, 'حظر أمني', `تم حظر الموظف ${currentUserData.name} بسبب المحاولات الخاطئة.`, 'security', 'security');
+                        });
+                    }
+                } catch(e) { console.error(e); }
+            }
+        }
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = oldBtnText;
+    }
+};
+
         function hideOtpControls(errorElement) {
             document.getElementById('otpInput').classList.add('hidden');
             document.getElementById('verifyOtpBtn').classList.add('hidden');
@@ -11446,4 +11520,3 @@ window.showRejectReason = (reason) => {
                 overlay.classList.add('hidden');
             }, 300);
         };
-
