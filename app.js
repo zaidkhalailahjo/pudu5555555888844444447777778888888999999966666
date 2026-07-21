@@ -2455,6 +2455,7 @@ document.getElementById('rentalForm').addEventListener('submit', async (e) => {
     try {
         const newName = document.getElementById('settingsName').value.trim(); const newEmail = document.getElementById('settingsEmail').value.trim().toLowerCase();
         const newPassword = document.getElementById('settingsPassword').value;
+        const newPhone = document.getElementById('settingsNotificationPhone') ? document.getElementById('settingsNotificationPhone').value.trim() : '';
 
         // استدعاء دوال الـ Auth لتحديث البيانات الحساسة
         const { updateEmail, updatePassword } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
@@ -2477,11 +2478,12 @@ document.getElementById('rentalForm').addEventListener('submit', async (e) => {
 
         // 3. تحديث البيانات في قاعدة البيانات
         await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), {
-            name: newName, email: newEmail || currentUserAuth.email
+            name: newName, email: newEmail || currentUserAuth.email, notificationPhone: newPhone
         });
 
         // تحديث البيانات المحلية لكي لا يضطر لعمل ريفريش
         currentUserData.name = newName; if(newEmail) currentUserData.email = newEmail;
+        currentUserData.notificationPhone = newPhone;
         
         document.getElementById('userName').innerText = newName;
         document.getElementById('settingsPassword').value = ''; // تصفير الباسوورد بعد النجاح
@@ -7158,6 +7160,7 @@ window.handleLogin = async (e) => {
             document.getElementById('userAvatar').src = currentUserData.photoURL;
             document.getElementById('settingsAvatarPreview').src = currentUserData.photoURL;
             if(document.getElementById('settingsName')) document.getElementById('settingsName').value = currentUserData.name;
+            if(document.getElementById('settingsNotificationPhone')) document.getElementById('settingsNotificationPhone').value = currentUserData.notificationPhone || '';
             if(document.getElementById('settingsRole')) document.getElementById('settingsRole').value = currentUserData.role === 'pending' ? (currentUserData.requestedRole || 'قيد الانتظار') : currentUserData.role; // التحقق من البريد الإلكتروني وإظهار النقطة ورابط التفعيل
             if (currentUserData.emailVerified) {
                 document.getElementById('emailVerificationSection').classList.add('hidden');
