@@ -37,7 +37,7 @@
     isTokenAutoRefreshEnabled: true
    });
 
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz7Ilr0PWRwb6DxVVGjaqSklMPwwm5TVhfJDNmBaTFQigqCNO7w4LzwTLAcfJlLMw6FPw/exec";
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwW72T5rXoMDaEB0S3twWsQvZfLpjvr4i-P6YJF5RR5g9DJqouEM9N-27xRRQqU9No6/exec";
 
         const i18nDict = {
             "الخدمات والمستندات": "Services & Documents",
@@ -7074,17 +7074,18 @@ window.handleLogin = async (e) => {
             if(document.getElementById('settingsName')) document.getElementById('settingsName').value = currentUserData.name;
             if(document.getElementById('settingsRole')) document.getElementById('settingsRole').value = currentUserData.role === 'pending' ? (currentUserData.requestedRole || 'قيد الانتظار') : currentUserData.role;
             if(document.getElementById('settingsPhone')) document.getElementById('settingsPhone').value = currentUserData.phone || '';
-            // التحقق من رقم الهاتف وإظهار النقطة ورابط التفعيل
-            if (currentUserData.phoneVerified) {
-                document.getElementById('phoneVerificationSection').classList.add('hidden');
-                document.getElementById('phoneVerifiedBadge').classList.remove('hidden');
+            // التحقق من البريد الإلكتروني وإظهار النقطة ورابط التفعيل
+            if (currentUserData.emailVerified) {
+                document.getElementById('emailVerificationSection').classList.add('hidden');
+                document.getElementById('emailVerifiedBadge').classList.remove('hidden');
                 document.getElementById('settingsNotifDot').classList.add('hidden');
             } else {
-                document.getElementById('phoneVerificationSection').classList.remove('hidden');
-                document.getElementById('phoneVerifiedBadge').classList.add('hidden');
+                document.getElementById('emailVerificationSection').classList.remove('hidden');
+                document.getElementById('emailVerifiedBadge').classList.add('hidden');
                 document.getElementById('settingsNotifDot').classList.remove('hidden');
             }
             if(document.getElementById('settingsEmail')) document.getElementById('settingsEmail').value = currentUserData.email || currentUserAuth.email || '';
+
             
             // التحكم بظهور أقسام المدير والموظفين بصلاحيات
             const hasEmpPerm = currentUserData.permissions && currentUserData.permissions.canManageEmployees;
@@ -10965,11 +10966,10 @@ window.openSpecificReEntryLog = async (recordId, entryIndex) => {
 
 // ================== نظام الـ OTP التفاعلي داخل الإعدادات ==================
         
-        window.startSettingsPhoneVerification = async () => {
-    let phone = document.getElementById('settingsPhone').value.trim();
-    phone = window.formatPhone(phone);
-    if(phone.length < 10) { 
-        showToast('يرجى إدخال رقم هاتف صالح أولاً', 'error'); 
+        window.startSettingsEmailVerification = async () => {
+    let email = document.getElementById('settingsEmail').value.trim();
+    if(!email) { 
+        showToast('لا يوجد بريد إلكتروني للتحقق منه', 'error'); 
         return; 
     }
 
@@ -10985,27 +10985,24 @@ window.openSpecificReEntryLog = async (recordId, entryIndex) => {
     boxes[0].focus();
 
     try {
-        // إنشاء RecaptchaVerifier إذا لم يكن موجوداً
-        if (!window.settingsRecaptchaVerifier) {
-            window.settingsRecaptchaVerifier = new RecaptchaVerifier(auth, 'settings-recaptcha-container', {
-                'size': 'invisible'
-            });
-        }
+        const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+        window.settingsEmailOTP = generatedOtp;
 
-        const confirmationResult = await signInWithPhoneNumber(auth, phone, window.settingsRecaptchaVerifier);
-        window.settingsConfirmationResult = confirmationResult;
-        showToast('تم إرسال رمز التحقق (OTP) إلى هاتفك عبر SMS', 'success');
+        fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+                action: 'sendVerificationOTP',
+                employeeName: currentUserData.name,
+                to_email: email,
+                otpCode: generatedOtp
+            })
+        }).catch(e => console.error(e));
+
+        showToast('تم إرسال رمز التحقق (OTP) إلى بريدك الإلكتروني', 'success');
     } catch (err) {
         console.error(err);
-        // إعادة تهيئة الـ recaptcha عند الخطأ
-        window.settingsRecaptchaVerifier = null;
-        if (err.code === 'auth/too-many-requests') {
-            showToast('طلبات كثيرة جداً، يرجى الانتظار قبل المحاولة مجدداً', 'error');
-        } else if (err.code === 'auth/invalid-phone-number') {
-            showToast('رقم الهاتف غير صالح، تأكد من الصيغة الصحيحة (+962...)', 'error');
-        } else {
-            showToast('حدث خطأ في الإرسال: ' + err.message, 'error');
-        }
+        showToast('حدث خطأ في الإرسال: ' + err.message, 'error');
     }
 };
 
@@ -11025,13 +11022,15 @@ window.openSpecificReEntryLog = async (recordId, entryIndex) => {
         };
 
         window.verifySettingsOtpCode = async (enteredOtp, boxes) => {
-    if (!window.settingsConfirmationResult) {
+    if (!window.settingsEmailOTP) {
         showToast('يرجى طلب رمز OTP أولاً', 'warning');
         return;
     }
 
     try {
-        await window.settingsConfirmationResult.confirm(enteredOtp);
+        if (enteredOtp !== window.settingsEmailOTP) {
+            throw new Error('invalid-otp');
+        }
         
         // نجاح التحقق
         boxes.forEach(b => b.disabled = true);
@@ -11046,7 +11045,7 @@ window.openSpecificReEntryLog = async (recordId, entryIndex) => {
         if(fw) {
             fw.classList.remove('hidden', 'opacity-0');
             fw.classList.add('opacity-100');
-            fw.querySelector('p').innerText = "تم التحقق من رقم الهاتف بنجاح 📱✨";
+            fw.querySelector('p').innerText = "تم التحقق من البريد الإلكتروني بنجاح 📧✨";
             if(sound) { sound.currentTime = 0; sound.play().catch(()=>{}); }
             if(window.confetti) {
                 confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ['#22c55e', '#ffffff', '#00839b'] });
@@ -11057,26 +11056,21 @@ window.openSpecificReEntryLog = async (recordId, entryIndex) => {
             }, 3000);
         }
 
-        let phone = document.getElementById('settingsPhone').value.trim();
-        phone = window.formatPhone(phone);
-        
         await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), {
-            phoneVerified: true,
-            phone: phone
+            emailVerified: true
         });
         
-        currentUserData.phoneVerified = true;
-        currentUserData.phone = phone;
+        currentUserData.emailVerified = true;
         localStorage.setItem('quill_user_cache_services', JSON.stringify(currentUserData));
         
         setTimeout(() => {
             document.getElementById('settingsOtpUI').classList.add('hidden');
-            document.getElementById('phoneVerificationSection').classList.add('hidden');
-            document.getElementById('phoneVerifiedBadge').classList.remove('hidden');
+            document.getElementById('emailVerificationSection').classList.add('hidden');
+            document.getElementById('emailVerifiedBadge').classList.remove('hidden');
             document.getElementById('settingsNotifDot').classList.add('hidden');
         }, 1500);
 
-        window.settingsConfirmationResult = null;
+        window.settingsEmailOTP = null;
 
     } catch (err) {
         console.error(err);
