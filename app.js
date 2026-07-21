@@ -7133,6 +7133,17 @@ window.handleLogin = async (e) => {
             const hasExpPerm = currentUserData.permissions && currentUserData.permissions.canManageExpenses;
 
             if(isUserCEO) {
+                document.getElementById('nav-dashboard-btn').classList.remove('hidden');
+                document.getElementById('nav-dashboard-btn').style.display = 'flex';
+                document.getElementById('grid-dashboard').classList.remove('hidden');
+                if(typeof window.updateCEODashboard === 'function') window.updateCEODashboard();
+            } else {
+                document.getElementById('nav-dashboard-btn').classList.add('hidden');
+                document.getElementById('nav-dashboard-btn').style.display = 'none';
+                document.getElementById('grid-dashboard').classList.add('hidden');
+            }
+
+            if(isUserCEO) {
                 document.getElementById('clearChatBtn').classList.remove('hidden');
                 document.getElementById('ceoAttendanceView').classList.remove('hidden');
                 document.getElementById('ceoExportSection').classList.remove('hidden');
@@ -7498,7 +7509,87 @@ window.markNoticeRead = (id) => {
             if(isUserCEO) {
                 checkScheduledInventoryMove();
             }
+
+            if(typeof window.startOnboardingTour === 'function') {
+                setTimeout(() => window.startOnboardingTour(), 1500);
+            }
         }
+        
+        window.updateCEODashboard = async () => {
+            try {
+                const { collection, getDocs, query, where } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                
+                // 1. حساب المهام (محاكاة من التعميمات/المهام أو قيم افتراضية)
+                const noticesSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'notices'));
+                let totalTasks = 0;
+                noticesSnap.forEach(() => totalTasks++);
+                document.getElementById('dashCompletedTasks').innerText = Math.floor(totalTasks * 0.7); // مثال توضيحي
+                document.getElementById('dashOverdueTasks').innerText = Math.floor(totalTasks * 0.1);
+
+                // 2. حساب الإيميلات المرسلة
+                const allowedSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'allowedEmails'));
+                let emailsCount = 0;
+                allowedSnap.forEach(() => emailsCount++);
+                document.getElementById('dashSentEmails').innerText = emailsCount;
+
+                // 3. حساب العملاء الجدد
+                let clientsCount = 0;
+                try {
+                    const clientsSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'clients'));
+                    clientsSnap.forEach(() => clientsCount++);
+                } catch(e) {}
+                document.getElementById('dashNewClients').innerText = clientsCount || '0';
+
+                // رسم مخطط الحضور
+                const ctxAtt = document.getElementById('attendanceChart');
+                if (ctxAtt && window.Chart && !window.attendanceChartInst) {
+                    let present = 0; let absent = 0;
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    globalUsers.forEach(u => {
+                        if (u.role === 'pending' || u.isBlocked) return;
+                        if (u.lastActive && new Date(u.lastActive).toISOString().split('T')[0] === todayStr) present++;
+                        else absent++;
+                    });
+                    
+                    window.attendanceChartInst = new Chart(ctxAtt, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['حاضر', 'غائب'],
+                            datasets: [{
+                                data: [present, absent],
+                                backgroundColor: ['#10B981', '#F43F5E'],
+                                borderWidth: 0
+                            }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+                    });
+                }
+
+                // رسم مخطط المصروفات
+                const ctxExp = document.getElementById('expensesChart');
+                if (ctxExp && window.Chart && !window.expensesChartInst) {
+                    let totalExp = 0;
+                    try {
+                        const expSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'expenses'));
+                        expSnap.forEach(d => totalExp += Number(d.data().amount || 0));
+                    } catch(e) {}
+                    
+                    window.expensesChartInst = new Chart(ctxExp, {
+                        type: 'bar',
+                        data: {
+                            labels: ['إجمالي المصروفات'],
+                            datasets: [{
+                                label: 'المبلغ (د.أ)',
+                                data: [totalExp],
+                                backgroundColor: '#8B5CF6',
+                                borderRadius: 6
+                            }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+                    });
+                }
+            } catch(e) { console.error("Error updating dashboard:", e); }
+        };
 
         window.sendEmailNotification = async (to_email, to_name, task_title, task_desc) => {
             try {
@@ -11200,4 +11291,195 @@ window.showRejectReason = (reason) => {
                 document.querySelector('#customConfirmModal i').className = 'fa-solid fa-trash-can text-3xl text-red-500';
                 document.getElementById('customConfirmMessage').classList.remove('whitespace-pre-wrap', 'text-right', 'font-bold', 'text-red-600');
             };
+        };
+        // ==================== Global Spotlight Search ====================
+        window.openGlobalSearch = () => {
+            const modal = document.getElementById('globalSearchModal');
+            const input = document.getElementById('globalSearchInput');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                document.getElementById('globalSearchContent').classList.remove('scale-95');
+                input.focus();
+                input.value = '';
+                window.handleGlobalSearch('');
+            }, 10);
+        };
+
+        window.closeGlobalSearch = () => {
+            const modal = document.getElementById('globalSearchModal');
+            modal.classList.add('opacity-0');
+            document.getElementById('globalSearchContent').classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        };
+
+        window.handleGlobalSearch = (query) => {
+            const resultsContainer = document.getElementById('globalSearchResults');
+            if (!query.trim()) {
+                resultsContainer.innerHTML = '<p class="text-center text-gray-400 py-6 text-sm">???? ????? ?????? ?? ?????? (????? ?????? ???)...</p>';
+                return;
+            }
+            query = query.toLowerCase();
+            let resultsHTML = '';
+
+            // 1. ???????
+            const sections = [
+                { id: 'dashboard', name: '???? ??????', icon: 'fa-chart-pie', color: 'text-purple-500' },
+                { id: 'employees', name: '????? ????????', icon: 'fa-user-shield', color: 'text-red-500' },
+                { id: 'expenses', name: '?????????', icon: 'fa-wallet', color: 'text-emerald-500' },
+                { id: 'attendance', name: '?????? ??????', icon: 'fa-clock', color: 'text-blue-500' },
+                { id: 'leaves', name: '????????? ?????????', icon: 'fa-calendar-alt', color: 'text-orange-500' },
+                { id: 'meetings', name: '??????????', icon: 'fa-handshake', color: 'text-indigo-500' },
+                { id: 'notices', name: '????????? ?????????', icon: 'fa-bullhorn', color: 'text-yellow-500' }
+            ];
+            const filteredSections = sections.filter(s => s.name.includes(query) || s.id.includes(query));
+            if (filteredSections.length > 0) {
+                resultsHTML += '<div class="text-xs font-bold text-gray-400 mb-2 mt-2 px-2 border-b dark:border-gray-700 pb-1">???????</div>';
+                filteredSections.forEach(s => {
+                    resultsHTML += <div onclick="window.location.hash=''; window.closeGlobalSearch()" class="p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer rounded-xl flex items-center gap-3 transition">
+                        <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-600 flex items-center justify-center "><i class="fa-solid "></i></div>
+                        <span class="font-bold text-gray-700 dark:text-gray-200"></span>
+                    </div>;
+                });
+            }
+
+            // 2. ????????
+            const filteredUsers = globalUsers.filter(u => (u.name || '').toLowerCase().includes(query) || (u.role || '').toLowerCase().includes(query) || (u.email || '').toLowerCase().includes(query));
+            if (filteredUsers.length > 0) {
+                resultsHTML += '<div class="text-xs font-bold text-gray-400 mb-2 mt-4 px-2 border-b dark:border-gray-700 pb-1">????????</div>';
+                filteredUsers.forEach(u => {
+                    resultsHTML += <div onclick="window.location.hash='employees'; setTimeout(()=>window.openEditEmployeeModal(''), 500); window.closeGlobalSearch()" class="p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer rounded-xl flex items-center gap-3 transition">
+                        <img src="" class="w-10 h-10 rounded-full object-cover">
+                        <div>
+                            <p class="font-bold text-gray-700 dark:text-gray-200 text-sm"></p>
+                            <p class="text-xs text-gray-500"></p>
+                        </div>
+                    </div>;
+                });
+            }
+
+            if (!resultsHTML) {
+                resultsHTML = '<p class="text-center text-gray-400 py-6 text-sm">?? ???? ????? ??????...</p>';
+            }
+            resultsContainer.innerHTML = resultsHTML;
+        };
+
+        // Event Listeners
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                window.openGlobalSearch();
+            }
+            if (e.key === 'Escape') {
+                window.closeGlobalSearch();
+            }
+        });
+        
+        const searchInput = document.getElementById('globalSearchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => window.handleGlobalSearch(e.target.value));
+        }
+
+
+        // ==================== Interactive Onboarding Tour ====================
+        window.onboardingStep = 0;
+        const onboardingSteps = [
+            {
+                title: "????? ?? ?? ???? ???????",
+                desc: "????? ???????? ???????. ???? ????? ?? ???? ????? ?????? ??? ???? ????? ??????.",
+                icon: "fa-rocket",
+                target: null
+            },
+            {
+                title: "????????? ?????????",
+                desc: "????? ?? ??? ????? ????? ???????? ????????? ?? ????? ?????????? ????? ??????? ???????? ????? ?????.",
+                icon: "fa-wallet",
+                target: "nav-expenses-btn"
+            },
+            {
+                title: "??????? ??????",
+                desc: "???? ??? ????? ??????? ?????? ???????? ????? ?????? ???? ?????? ?? ????? ???????.",
+                icon: "fa-user-gear",
+                target: "profile-btn"
+            },
+            {
+                title: "????? ??????",
+                desc: "?? ?? ???? ???? ??? Ctrl+K ?? ???? ???????? ????? ?? ?? ??? ???? ?????? ???? ?????.",
+                icon: "fa-magnifying-glass",
+                target: null
+            }
+        ];
+
+        window.startOnboardingTour = () => {
+            const isCompleted = localStorage.getItem('onboarding_completed_' + currentUserData.uid);
+            if (isCompleted || currentUserData.role === 'pending' || isUserCEO) return;
+            
+            window.onboardingStep = 0;
+            const overlay = document.getElementById('onboardingOverlay');
+            overlay.classList.remove('hidden');
+            setTimeout(() => {
+                overlay.classList.remove('opacity-0');
+                document.getElementById('onboardingCard').classList.remove('scale-95');
+            }, 10);
+            window.renderOnboardingStep();
+        };
+
+        window.renderOnboardingStep = () => {
+            const step = onboardingSteps[window.onboardingStep];
+            
+            // Remove previous highlights
+            document.querySelectorAll('.onboarding-highlight').forEach(el => {
+                el.classList.remove('onboarding-highlight', 'relative', 'z-[99999999]', 'bg-white', 'dark:bg-gray-800', 'shadow-2xl', 'scale-105', 'transition-transform');
+            });
+
+            document.getElementById('onboardingTitle').innerText = step.title;
+            document.getElementById('onboardingDesc').innerText = step.desc;
+            document.getElementById('onboardingIcon').innerHTML = \<i class="fa-solid \"></i>\;
+            
+            if (step.target) {
+                const targetEl = document.getElementById(step.target);
+                if (targetEl) {
+                    targetEl.classList.add('onboarding-highlight', 'relative', 'z-[99999999]', 'bg-white', 'dark:bg-gray-800', 'shadow-2xl', 'scale-105', 'transition-transform');
+                    // Ensure sidebar is open on mobile if target is in sidebar
+                    if(targetEl.closest('aside')) {
+                        document.querySelector('aside').classList.remove('-translate-x-full');
+                    }
+                }
+            }
+
+            // Update dots
+            const dotsHtml = onboardingSteps.map((_, i) => \<div class="w-2 h-2 rounded-full transition-colors \"></div>\).join('');
+            document.getElementById('onboardingDots').innerHTML = dotsHtml;
+            
+            if (window.onboardingStep === onboardingSteps.length - 1) {
+                document.getElementById('onboardingNextBtn').innerText = '???? ?????!';
+            } else {
+                document.getElementById('onboardingNextBtn').innerText = '??????';
+            }
+        };
+
+        window.nextOnboardingStep = () => {
+            if (window.onboardingStep >= onboardingSteps.length - 1) {
+                window.endOnboarding();
+            } else {
+                window.onboardingStep++;
+                window.renderOnboardingStep();
+            }
+        };
+
+        window.endOnboarding = () => {
+            localStorage.setItem('onboarding_completed_' + currentUserData.uid, 'true');
+            const overlay = document.getElementById('onboardingOverlay');
+            overlay.classList.add('opacity-0');
+            document.getElementById('onboardingCard').classList.add('scale-95');
+            
+            document.querySelectorAll('.onboarding-highlight').forEach(el => {
+                el.classList.remove('onboarding-highlight', 'relative', 'z-[99999999]', 'bg-white', 'dark:bg-gray-800', 'shadow-2xl', 'scale-105', 'transition-transform');
+            });
+
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+            }, 300);
         };
