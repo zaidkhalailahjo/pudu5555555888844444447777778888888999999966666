@@ -6082,6 +6082,15 @@ async function autoDeleteOldAttendance() {
                     const gridRobBtn = document.querySelector('div[onclick="window.location.hash=\'robots\'"]');
                     if(navRobBtn) navRobBtn.style.display = (isCEO || perms.permViewRobots) ? 'flex' : 'none';
                     if(gridRobBtn) gridRobBtn.style.display = (isCEO || perms.permViewRobots) ? 'flex' : 'none';
+                    
+                    // Show other items for all active employees
+                    const sections = ['rentals', 'custody', 'clients_mgmt'];
+                    sections.forEach(sec => {
+                        const navBtn = document.querySelector(`[data-section="${sec}"]`);
+                        const gridBtn = document.querySelector(`div[onclick="window.location.hash='${sec}'"]`);
+                        if(navBtn) navBtn.style.display = 'flex';
+                        if(gridBtn) gridBtn.style.display = 'flex';
+                    });
 
                     renderNotifications(currentUserData.notifications);
                     checkBackgroundNotifications(currentUserData.notifications);
@@ -7083,6 +7092,28 @@ window.handleLogin = async (e) => {
                 document.getElementById('emailVerificationSection').classList.remove('hidden');
                 document.getElementById('emailVerifiedBadge').classList.add('hidden');
                 document.getElementById('settingsNotifDot').classList.remove('hidden');
+                
+                // Add notification for email verification if it doesn't exist
+                if (!currentUserData.notifications) currentUserData.notifications = [];
+                const hasEmailNotif = currentUserData.notifications.some(n => n.title === 'تأكيد البريد الإلكتروني');
+                if (!hasEmailNotif) {
+                    currentUserData.notifications.unshift({
+                        id: 'email_verif_' + Date.now(),
+                        title: 'تأكيد البريد الإلكتروني',
+                        body: 'يرجى الانتقال إلى الإعدادات وتأكيد بريدك الإلكتروني لضمان أمان حسابك.',
+                        date: Date.now(),
+                        isRead: false,
+                        type: 'system'
+                    });
+                    import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(({doc, updateDoc}) => {
+                        updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), {
+                            notifications: currentUserData.notifications
+                        });
+                        localStorage.setItem('quill_user_cache_services', JSON.stringify(currentUserData));
+                        if(typeof renderNotifications === 'function') renderNotifications(currentUserData.notifications);
+                        if(typeof updateNotificationBadge === 'function') updateNotificationBadge(currentUserData.notifications);
+                    }).catch(e => console.error(e));
+                }
             }
             if(document.getElementById('settingsEmail')) document.getElementById('settingsEmail').value = currentUserData.email || currentUserAuth.email || '';
 
@@ -11005,6 +11036,22 @@ window.openSpecificReEntryLog = async (recordId, entryIndex) => {
         showToast('حدث خطأ في الإرسال: ' + err.message, 'error');
     }
 };
+
+        document.addEventListener('paste', (e) => {
+            if(e.target && e.target.classList && e.target.classList.contains('otp-box')) {
+                e.preventDefault();
+                let pasteData = (e.clipboardData || window.clipboardData).getData('text').trim();
+                // Extract only numbers
+                pasteData = pasteData.replace(/\D/g, '');
+                if (pasteData.length >= 6) {
+                    const boxes = document.querySelectorAll('.otp-box');
+                    for(let i = 0; i < 6; i++) {
+                        if(boxes[i]) boxes[i].value = pasteData[i];
+                    }
+                    window.verifySettingsOtpCode(pasteData.substring(0, 6), boxes);
+                }
+            }
+        });
 
         window.moveOtpFocus = (input, index) => {
             // الانتقال للمربع التالي
