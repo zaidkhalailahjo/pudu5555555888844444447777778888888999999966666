@@ -11250,4 +11250,3 @@ window.showRejectReason = (reason) => {
                 document.getElementById('customConfirmMessage').classList.remove('whitespace-pre-wrap', 'text-right', 'font-bold', 'text-red-600');
             };
         };
-
