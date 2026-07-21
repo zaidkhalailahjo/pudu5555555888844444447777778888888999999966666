@@ -1,4 +1,4 @@
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+﻿        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, RecaptchaVerifier, signInWithPhoneNumber, linkWithPhoneNumber } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, getDoc, setDoc, arrayUnion, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL, uploadString } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
@@ -2453,9 +2453,7 @@ document.getElementById('rentalForm').addEventListener('submit', async (e) => {
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري تأمين وحفظ البيانات...';
     
     try {
-        const newName = document.getElementById('settingsName').value.trim();
-        const newPhone = document.getElementById('settingsPhone').value.trim();
-        const newEmail = document.getElementById('settingsEmail').value.trim().toLowerCase();
+        const newName = document.getElementById('settingsName').value.trim(); const newEmail = document.getElementById('settingsEmail').value.trim().toLowerCase();
         const newPassword = document.getElementById('settingsPassword').value;
 
         // استدعاء دوال الـ Auth لتحديث البيانات الحساسة
@@ -2479,15 +2477,11 @@ document.getElementById('rentalForm').addEventListener('submit', async (e) => {
 
         // 3. تحديث البيانات في قاعدة البيانات
         await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), {
-            name: newName,
-            phone: newPhone,
-            email: newEmail || currentUserAuth.email
+            name: newName, email: newEmail || currentUserAuth.email
         });
 
         // تحديث البيانات المحلية لكي لا يضطر لعمل ريفريش
-        currentUserData.name = newName;
-        currentUserData.phone = newPhone;
-        if(newEmail) currentUserData.email = newEmail;
+        currentUserData.name = newName; if(newEmail) currentUserData.email = newEmail;
         
         document.getElementById('userName').innerText = newName;
         document.getElementById('settingsPassword').value = ''; // تصفير الباسوورد بعد النجاح
@@ -2520,45 +2514,113 @@ document.getElementById('rentalForm').addEventListener('submit', async (e) => {
     return p;
 };
 
-window.changePhoneNumber = () => {
-    let newPhone = document.getElementById('newPhoneInput').value.trim();
-    newPhone = window.formatPhone(newPhone);
-    if(newPhone.length < 10) { 
-        showToast('رقم الهاتف غير صالح، تأكد من الرقم', 'error'); 
-        return; 
-    }
-    targetPhoneNumber = newPhone;
-    document.getElementById('otpMainDesc').innerHTML = `سيتم إرسال رمز التحقق إلى:<br><b dir="ltr" class="text-secondary text-lg mt-2 inline-block">${targetPhoneNumber}</b>`;
-    window.triggerOTPFlow(true);
-};
-
 window.triggerOTPFlow = async (isResend = false) => {
-    // 1. إعداد الـ RecaptchaVerifier (مطلوب لـ Firebase Phone Auth)
-    if (!window.recaptchaVerifier) {
-        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-            'size': 'invisible'
-        });
-    }
-
     document.getElementById('loadingScreen').classList.remove('hidden');
     window.otpGeneratedTime = Date.now();
     if (!window.otpAttempts) window.otpAttempts = 0;
     if (!window.otpResendCount) window.otpResendCount = 0;
 
     try {
-        const formattedPhone = window.formatPhone(targetPhoneNumber);
-        
-        // 2. استخدام دالة Firebase لإرسال الـ SMS
-        const confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, window.recaptchaVerifier);
-        window.confirmationResult = confirmationResult; // حفظ النتيجة للتحقق لاحقاً
+        const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+        window.currentGeneratedEmailOTP = generatedOtp;
+
+        let userEmail = currentUserData ? currentUserData.email : (auth.currentUser ? auth.currentUser.email : '');
+        let userName = currentUserData ? currentUserData.name : 'مستخدم';
+
+        await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+                action: 'sendVerificationOTP',
+                employeeName: userName,
+                to_email: userEmail,
+                otpCode: generatedOtp
+            })
+        });
 
         document.getElementById('loadingScreen').classList.add('hidden');
         document.getElementById('otpScreen').classList.remove('hidden');
-        showToast('تم إرسال رمز التحقق إلى هاتفك', 'success');
+        showToast('تم إرسال كود التحقق إلى بريدك الإلكتروني بنجاح', 'success');
     } catch (error) {
         document.getElementById('loadingScreen').classList.add('hidden');
-        console.error("Firebase OTP Error:", error);
-        showToast('حدث خطأ في إرسال الرسالة: ' + error.message, 'error');
+        console.error("Email OTP Error:", error);
+        showToast('حدث خطأ في إرسال كود التحقق: ' + error.message, 'error');
+    }
+};
+
+window.verifyOTP = async () => {
+    const enteredOTP = document.getElementById('otpInput').value.trim();
+    if (!enteredOTP) return;
+
+    const btn = document.getElementById('verifyOtpBtn');
+    const oldBtnText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التحقق...';
+
+    try {
+        const timeElapsed = Date.now() - (window.otpGeneratedTime || 0);
+        if (timeElapsed > 5 * 60 * 1000) {
+            throw new Error("EXPIRED");
+        }
+
+        if (enteredOTP === window.currentGeneratedEmailOTP) {
+            showToast('تم التحقق بنجاح!', 'success');
+            
+            if (currentUserData) {
+                localStorage.setItem('device_verified_' + currentUserData.uid, 'true');
+
+                if (currentUserData.role === 'pending') {
+                    currentUserData.role = 'Employee';
+                    const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), { 
+                        role: 'Employee'
+                    });
+                }
+            }
+
+            document.getElementById('otpScreen').classList.add('hidden');
+            finishLoginSetup(); 
+            document.getElementById('loadingScreen').classList.add('hidden');
+        } else {
+            throw new Error("INVALID");
+        }
+    } catch (error) {
+        console.error(error);
+        if (error.message === "EXPIRED") {
+            showToast('الرمز المدخل انتهت صلاحيته (تجاوز 5 دقائق). يرجى طلب رمز جديد', 'error');
+        } else {
+            showToast('الرمز المدخل غير صحيح', 'error');
+        }
+        
+        const otpInputEl = document.getElementById('otpInput');
+        otpInputEl.classList.add('shake-error', 'bg-red-100');
+        setTimeout(() => otpInputEl.classList.remove('shake-error', 'bg-red-100'), 1000);
+        
+        window.otpAttempts++;
+
+        if (window.otpAttempts >= 5) {
+            if (currentUserData) {
+                try {
+                    const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), { 
+                        isBlocked: true,
+                        blockReason: 'إدخال رمز التحقق بشكل خاطئ 5 مرات'
+                    });
+                    showToast('تم حظر حسابك بسبب محاولات خاطئة متكررة', 'error');
+                    hideOtpControls(document.getElementById('otpErrorText'));
+                    
+                    if(window.sendSystemNotification && typeof globalUsers !== 'undefined') {
+                        const managers = globalUsers.filter(u => u.role && ['ceo', 'مدير', 'مدير عام'].includes(u.role.toLowerCase()));
+                        managers.forEach(m => {
+                            window.sendSystemNotification(m.uid, 'حظر أمني', `تم حظر الموظف ${currentUserData.name} بسبب المحاولات الخاطئة.`, 'security', 'security');
+                        });
+                    }
+                } catch(e) { console.error(e); }
+            }
+        }
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = oldBtnText;
     }
 };
 
@@ -6509,15 +6571,13 @@ if (t.createdBy !== t.assigneeId) {
                 const now = Date.now();
                 // === نهاية شروط الـ OTP ===
 
-                    // --- التحقق من الدخول من جهاز جديد (New Device Check) ---
                 const isDeviceVerified = localStorage.getItem('device_verified_' + user.uid);
-                if (!isDeviceVerified && currentUserData.phoneVerified) {
-                    targetPhoneNumber = currentUserData.phone;
+                if (!isDeviceVerified) {
                     document.getElementById('loginScreen').classList.add('hidden');
                     document.getElementById('loadingScreen').classList.add('hidden');
-                    document.getElementById('otpMainDesc').innerHTML = `لأسباب أمنية، يبدو أنك تدخل من جهاز جديد. سيتم إرسال رمز التحقق إلى:<br><b dir="ltr" class="text-secondary text-lg mt-2 inline-block">${targetPhoneNumber}</b>`;
+                    document.getElementById('otpMainDesc').innerHTML = `لأسباب أمنية (دخول من جهاز جديد)، نرجو التحقق من هويتك. سيتم إرسال كود تحقق إلى بريدك الإلكتروني المعتمد:<br><b dir="ltr" class="text-secondary text-lg mt-2 inline-block">${user.email}</b>`;
                     window.triggerOTPFlow(false);
-                    return; // إيقاف إكمال الدخول حتى يتم التحقق من الهاتف
+                    return; 
                 }
 
                 // --- استكمال منطقك الأصلي ---
@@ -6973,10 +7033,7 @@ window.handleLogin = async (e) => {
             const forbiddenRoles = ['ceo', 'مدير', 'مدير عام', 'مدير النظام', 'manager'];
             if (forbiddenRoles.includes(role.toLowerCase())) {
                role = 'Employee'; // منع أخذ رتبة الإدارة من التسجيل العادي وتحويله لموظف
-           }
-            const phone = document.getElementById('regPhone').value.trim();
-
-            const btn = document.getElementById('registerBtn');
+           } const btn = document.getElementById('registerBtn');
             btn.disabled = true;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التحقق من التصريح...';
 
@@ -6999,9 +7056,7 @@ window.handleLogin = async (e) => {
                 
                 // تجهيز بيانات المستخدم الجديد
                 pendingUserData = {
-                    name: name, 
-                    phone: phone,
-                    role: 'pending', 
+                    name: name, role: 'pending', 
                     requestedRole: role, 
                     uid: currentUserAuth.uid, 
                     email: currentUserAuth.email,
@@ -7059,13 +7114,9 @@ window.handleLogin = async (e) => {
             const forbiddenRoles = ['ceo', 'مدير', 'مدير عام', 'مدير النظام', 'manager'];
             if (forbiddenRoles.includes(role.toLowerCase())) {
                   role = 'Employee';
-            }
-            const phone = document.getElementById('setupPhone').value.trim(); 
-            
-            // نجهز البيانات ولا نحفظها في القاعدة حتى ينجح في الـ OTP
+            } // نجهز البيانات ولا نحفظها في القاعدة حتى ينجح في الـ OTP
             pendingUserData = {
-                name: name, 
-                phone: phone, // تم حفظ رقم الهاتف
+                name: name, // تم حفظ رقم الهاتف
                 role: 'pending', 
                 requestedRole: role, 
                 uid: currentUserAuth.uid, email: currentUserAuth.email || 'no-email@company.com',
@@ -7091,9 +7142,7 @@ window.handleLogin = async (e) => {
             document.getElementById('userAvatar').src = currentUserData.photoURL;
             document.getElementById('settingsAvatarPreview').src = currentUserData.photoURL;
             if(document.getElementById('settingsName')) document.getElementById('settingsName').value = currentUserData.name;
-            if(document.getElementById('settingsRole')) document.getElementById('settingsRole').value = currentUserData.role === 'pending' ? (currentUserData.requestedRole || 'قيد الانتظار') : currentUserData.role;
-            if(document.getElementById('settingsPhone')) document.getElementById('settingsPhone').value = currentUserData.phone || '';
-            // التحقق من البريد الإلكتروني وإظهار النقطة ورابط التفعيل
+            if(document.getElementById('settingsRole')) document.getElementById('settingsRole').value = currentUserData.role === 'pending' ? (currentUserData.requestedRole || 'قيد الانتظار') : currentUserData.role; // التحقق من البريد الإلكتروني وإظهار النقطة ورابط التفعيل
             if (currentUserData.emailVerified) {
                 document.getElementById('emailVerificationSection').classList.add('hidden');
                 document.getElementById('emailVerifiedBadge').classList.remove('hidden');
@@ -11201,3 +11250,4 @@ window.showRejectReason = (reason) => {
                 document.getElementById('customConfirmMessage').classList.remove('whitespace-pre-wrap', 'text-right', 'font-bold', 'text-red-600');
             };
         };
+
