@@ -2541,6 +2541,9 @@ window.triggerOTPFlow = async (isResend = false) => {
     }
 
     document.getElementById('loadingScreen').classList.remove('hidden');
+    window.otpGeneratedTime = Date.now();
+    if (!window.otpAttempts) window.otpAttempts = 0;
+    if (!window.otpResendCount) window.otpResendCount = 0;
 
     try {
         const formattedPhone = window.formatPhone(targetPhoneNumber);
