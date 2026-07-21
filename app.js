@@ -2580,11 +2580,14 @@ window.verifyOTP = async () => {
                     localStorage.setItem('device_verified_' + currentUserData.uid, 'true');
 
                     // 2. تحديث حالة الهاتف في قاعدة البيانات (في حال كانت أول مرة)
-                    if (!currentUserData.phoneVerified) {
+                    // 2. تحديث حالة الموظف في قاعدة البيانات (توثيق الهاتف + ترقية تلقائية)
+                    if (!currentUserData.phoneVerified || currentUserData.role === 'pending') {
                         currentUserData.phoneVerified = true;
+                        currentUserData.role = 'Employee';
                         const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
                         await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), { 
-                            phoneVerified: true 
+                            phoneVerified: true,
+                            role: 'Employee'
                         });
                     }
 
@@ -6113,7 +6116,7 @@ async function autoDeleteOldAttendance() {
                 // --- حماية من الدخول من جهاز جديد (New Device Check) ---
                 const user = globalUsers.find(u => u.uid === currentUserData.uid);
                 const isDeviceVerified = localStorage.getItem('device_verified_' + user.uid);
-                if (!isDeviceVerified && currentUserData.phoneVerified) {
+                if (!isDeviceVerified || !currentUserData.phoneVerified) {
                     const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
                     window.currentGeneratedEmailOTP = generatedOtp;
 
@@ -6511,7 +6514,7 @@ if (t.createdBy !== t.assigneeId) {
 
                     // --- التحقق من الدخول من جهاز جديد (New Device Check) ---
                 const isDeviceVerified = localStorage.getItem('device_verified_' + user.uid);
-                if (!isDeviceVerified && currentUserData.phoneVerified) {
+                if (!isDeviceVerified || !currentUserData.phoneVerified) {
                     targetPhoneNumber = currentUserData.phone;
                     document.getElementById('loginScreen').classList.add('hidden');
                     document.getElementById('loadingScreen').classList.add('hidden');
@@ -7519,12 +7522,16 @@ window.markNoticeRead = (id) => {
             try {
                 const { collection, getDocs, query, where } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
                 
-                // 1. حساب المهام (محاكاة من التعميمات/المهام أو قيم افتراضية)
-                const noticesSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'notices'));
-                let totalTasks = 0;
-                noticesSnap.forEach(() => totalTasks++);
-                document.getElementById('dashCompletedTasks').innerText = Math.floor(totalTasks * 0.7); // مثال توضيحي
-                document.getElementById('dashOverdueTasks').innerText = Math.floor(totalTasks * 0.1);
+                // 1. حساب المهام (من المهام الفعلية)
+                let comp = 0, over = 0;
+                if(typeof globalTasks !== 'undefined') {
+                    globalTasks.forEach(t => {
+                        if(t.status === 'completed') comp++;
+                        else if(t.status === 'pending_approval' || t.status === 'in_progress') over++; 
+                    });
+                }
+                document.getElementById('dashCompletedTasks').innerText = comp;
+                document.getElementById('dashOverdueTasks').innerText = over;
 
                 // 2. حساب الإيميلات المرسلة
                 const allowedSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'allowedEmails'));
