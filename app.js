@@ -4780,7 +4780,7 @@ async function autoDeleteOldAttendance() {
             activeList.innerHTML = '';let hasPast = false, hasActive = false;
 
             globalMeetings.forEach(meeting => {
-                const isInvited = meeting.invitedUsers.includes(currentUserData.uid) || window.isAdmin();
+                const isInvited = (meeting.invitedUsers || []).includes(currentUserData.uid) || window.isAdmin();
                 if(!isInvited) return;
                 
                 if(!meeting.title.toLowerCase().includes(searchTerm)) return;
@@ -8553,7 +8553,8 @@ window.handleChecklistEnter = (e) => {
                             // SMS Feature Check
                             const sendSms = document.getElementById('sendSmsCheckbox');
                             if (sendSms && sendSms.checked && assignee.notificationPhone) {
-                                const smsMsg = `QuillSMS: مرحباً ${assignee.name.split(' ')[0]}، لديك مهمة جديدة: ${title}.\nالأولوية: ${isHighPriority ? 'قصوى' : 'عادية'}`;
+                                const priorityText = isHighPriority ? 'عاجلة جداً 🚨' : 'عادية 📅';
+                                const smsMsg = `مرحباً ${assignee.name.split(' ')[0]} 👋\nتم إسناد مهمة جديدة لك:\n📌 "${title}"\nالأولوية: ${priorityText}\n\nلمشاهدة التفاصيل:\nhttps://taske.farah-snacks.store/#tasks`;
                                 window.queueSmsMessage(assignee.notificationPhone, smsMsg);
                             }
                         }
