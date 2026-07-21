@@ -10242,6 +10242,7 @@ window.handleChecklistEnter = (e) => {
             document.getElementById('editEmpUid').value = u.uid;
             document.getElementById('editEmpName').value = u.name || '';
             document.getElementById('editEmpRole').value = (u.role === 'pending' ? u.requestedRole : u.role) || '';
+            if(document.getElementById('editEmpPhone')) document.getElementById('editEmpPhone').value = u.notificationPhone || u.phone || '';
             document.getElementById('editEmpPhotoPreview').src = u.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=00839b&color=fff`;
             document.getElementById('editEmpPhotoUrl').value = u.photoURL || '';
 
