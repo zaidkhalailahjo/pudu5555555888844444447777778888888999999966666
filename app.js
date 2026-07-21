@@ -9857,6 +9857,27 @@ window.handleChecklistEnter = (e) => {
                 const newList = [...new Set([...globalAllowedEmails, email])];
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'security'), { allowedEmails: newList }, { merge: true });
                 
+                // جلب كلمة مرور النظام وإرسال بريد الدعوة
+                try {
+                    const passDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'systemPass'));
+                    let sysPass = 'تواصل مع الإدارة لمعرفة الرمز';
+                    if (passDoc.exists() && passDoc.data().password) {
+                        sysPass = passDoc.data().password;
+                    }
+                    
+                    await fetch('https://script.google.com/macros/s/AKfycbwW72T5rXoMDaEB0S3twWsQvZfLpjvr4i-P6YJF5RR5g9DJqouEM9N-27xRRQqU9No6/exec', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            action: 'sendInvitation',
+                            to_email: email,
+                            systemPassword: sysPass
+                        })
+                    });
+                } catch(emailErr) {
+                    console.error("Failed to send invitation email:", emailErr);
+                    // لا نوقف الإضافة إذا فشل الإيميل
+                }
+
                 input.value = '';
                 showToast('تم إضافة الإيميل بنجاح (سيتم إرسال الدعوة تلقائياً بعد 20 ثانية)', 'success');
 
