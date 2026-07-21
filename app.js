@@ -1,4 +1,4 @@
-﻿        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, RecaptchaVerifier, signInWithPhoneNumber, linkWithPhoneNumber } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, getDoc, setDoc, arrayUnion, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL, uploadString } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
@@ -2533,114 +2533,81 @@ window.changePhoneNumber = () => {
 };
 
 window.triggerOTPFlow = async (isResend = false) => {
+    // 1. إعداد الـ RecaptchaVerifier (مطلوب لـ Firebase Phone Auth)
+    if (!window.recaptchaVerifier) {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+            'size': 'invisible'
+        });
+    }
+
     document.getElementById('loadingScreen').classList.remove('hidden');
     window.otpGeneratedTime = Date.now();
     if (!window.otpAttempts) window.otpAttempts = 0;
     if (!window.otpResendCount) window.otpResendCount = 0;
 
     try {
-        const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-        window.currentGeneratedEmailOTP = generatedOtp;
-
-        let userEmail = currentUserData ? currentUserData.email : (auth.currentUser ? auth.currentUser.email : '');
-        let userName = currentUserData ? currentUserData.name : 'مستخدم';
-
-        await fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({
-                action: 'sendVerificationOTP',
-                employeeName: userName,
-                to_email: userEmail,
-                otpCode: generatedOtp
-            })
-        });
+        const formattedPhone = window.formatPhone(targetPhoneNumber);
+        
+        // 2. استخدام دالة Firebase لإرسال الـ SMS
+        const confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, window.recaptchaVerifier);
+        window.confirmationResult = confirmationResult; // حفظ النتيجة للتحقق لاحقاً
 
         document.getElementById('loadingScreen').classList.add('hidden');
         document.getElementById('otpScreen').classList.remove('hidden');
-        showToast('تم إرسال كود التحقق إلى بريدك الإلكتروني بنجاح', 'success');
+        showToast('تم إرسال رمز التحقق إلى هاتفك', 'success');
     } catch (error) {
         document.getElementById('loadingScreen').classList.add('hidden');
-        console.error("Email OTP Error:", error);
-        showToast('حدث خطأ في إرسال كود التحقق: ' + error.message, 'error');
+        console.error("Firebase OTP Error:", error);
+        showToast('حدث خطأ في إرسال الرسالة: ' + error.message, 'error');
     }
 };
 
-        // دالة مساعدة لإخفاء عناصر واجهة الـ OTP عند الحظر
 window.verifyOTP = async () => {
-    const enteredOTP = document.getElementById('otpInput').value.trim();
-    if (!enteredOTP) return;
+            const enteredOTP = document.getElementById('otpInput').value.trim();
+            if (!enteredOTP) return;
 
-    const btn = document.getElementById('verifyOtpBtn');
-    const oldBtnText = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التحقق...';
+            const btn = document.getElementById('verifyOtpBtn');
+            const oldBtnText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التحقق...';
 
-    try {
-        const timeElapsed = Date.now() - (window.otpGeneratedTime || 0);
-        if (timeElapsed > 5 * 60 * 1000) {
-            throw new Error("EXPIRED");
-        }
-
-        if (enteredOTP === window.currentGeneratedEmailOTP) {
-            showToast('تم التحقق بنجاح!', 'success');
-            
-            if (currentUserData) {
-                localStorage.setItem('device_verified_' + currentUserData.uid, 'true');
-
-                if (!currentUserData.phoneVerified || currentUserData.role === 'pending') {
-                    currentUserData.phoneVerified = true;
-                    currentUserData.role = 'Employee';
-                    const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), { 
-                        phoneVerified: true,
-                        role: 'Employee'
-                    });
-                }
-            }
-
-            document.getElementById('otpScreen').classList.add('hidden');
-            finishLoginSetup(); 
-            document.getElementById('loadingScreen').classList.add('hidden');
-        } else {
-            throw new Error("INVALID");
-        }
-    } catch (error) {
-        console.error(error);
-        if (error.message === "EXPIRED") {
-            showToast('الرمز المدخل انتهت صلاحيته (تجاوز 5 دقائق). يرجى طلب رمز جديد', 'error');
-        } else {
-            showToast('الرمز المدخل غير صحيح', 'error');
-        }
-        
-        window.otpAttempts++;
-
-        if (window.otpAttempts >= 5) {
-            if (currentUserData) {
-                try {
-                    const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), { 
-                        isBlocked: true,
-                        blockReason: 'إدخال رمز التحقق بشكل خاطئ 5 مرات'
-                    });
-                    showToast('تم حظر حسابك بسبب محاولات خاطئة متكررة', 'error');
-                    hideOtpControls(document.getElementById('otpErrorText'));
+            try {
+                // التحقق من الرمز المحفوظ في الذاكرة
+                if (enteredOTP === window.currentGeneratedEmailOTP) {
+                    showToast('تم التحقق بنجاح!', 'success');
                     
-                    if(window.sendSystemNotification && typeof globalUsers !== 'undefined') {
-                        const managers = globalUsers.filter(u => u.role && ['ceo', 'مدير', 'مدير عام'].includes(u.role.toLowerCase()));
-                        managers.forEach(m => {
-                            window.sendSystemNotification(m.uid, 'حظر أمني', `تم حظر الموظف ${currentUserData.name} بسبب المحاولات الخاطئة.`, 'security', 'security');
+                    // 1. تسجيل أن هذا المتصفح/الجهاز أصبح موثوقاً للمستخدم الحالي
+                    localStorage.setItem('device_verified_' + currentUserData.uid, 'true');
+
+                    // 2. تحديث حالة الهاتف في قاعدة البيانات (في حال كانت أول مرة)
+                    if (!currentUserData.phoneVerified) {
+                        currentUserData.phoneVerified = true;
+                        const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), { 
+                            phoneVerified: true 
                         });
                     }
-                } catch(e) { console.error(e); }
-            }
-        }
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = oldBtnText;
-    }
-};
 
+                    // 3. إخفاء شاشة الـ OTP وإكمال الدخول
+                    document.getElementById('otpScreen').classList.add('hidden');
+                    finishLoginSetup(); 
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                } else {
+                    throw new Error("Invalid OTP");
+                }
+            } catch (error) {
+                console.error(error);
+                showToast('رمز التحقق غير صحيح، راجع المدير', 'error');
+                const otpInputEl = document.getElementById('otpInput');
+                otpInputEl.classList.add('shake-error', 'bg-red-100');
+                setTimeout(() => otpInputEl.classList.remove('shake-error', 'bg-red-100'), 1000);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = oldBtnText;
+            }
+        };
+
+        // دالة مساعدة لإخفاء عناصر واجهة الـ OTP عند الحظر
         function hideOtpControls(errorElement) {
             document.getElementById('otpInput').classList.add('hidden');
             document.getElementById('verifyOtpBtn').classList.add('hidden');
@@ -6146,7 +6113,7 @@ async function autoDeleteOldAttendance() {
                 // --- حماية من الدخول من جهاز جديد (New Device Check) ---
                 const user = globalUsers.find(u => u.uid === currentUserData.uid);
                 const isDeviceVerified = localStorage.getItem('device_verified_' + user.uid);
-                if (!isDeviceVerified || !currentUserData.phoneVerified) {
+                if (!isDeviceVerified && currentUserData.phoneVerified) {
                     const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
                     window.currentGeneratedEmailOTP = generatedOtp;
 
@@ -6544,7 +6511,7 @@ if (t.createdBy !== t.assigneeId) {
 
                     // --- التحقق من الدخول من جهاز جديد (New Device Check) ---
                 const isDeviceVerified = localStorage.getItem('device_verified_' + user.uid);
-                if (!isDeviceVerified || !currentUserData.phoneVerified) {
+                if (!isDeviceVerified && currentUserData.phoneVerified) {
                     targetPhoneNumber = currentUserData.phone;
                     document.getElementById('loginScreen').classList.add('hidden');
                     document.getElementById('loadingScreen').classList.add('hidden');
@@ -7166,17 +7133,6 @@ window.handleLogin = async (e) => {
             const hasExpPerm = currentUserData.permissions && currentUserData.permissions.canManageExpenses;
 
             if(isUserCEO) {
-                document.getElementById('nav-dashboard-btn').classList.remove('hidden');
-                document.getElementById('nav-dashboard-btn').style.display = 'flex';
-                document.getElementById('grid-dashboard').classList.remove('hidden');
-                if(typeof window.updateCEODashboard === 'function') window.updateCEODashboard();
-            } else {
-                document.getElementById('nav-dashboard-btn').classList.add('hidden');
-                document.getElementById('nav-dashboard-btn').style.display = 'none';
-                document.getElementById('grid-dashboard').classList.add('hidden');
-            }
-
-            if(isUserCEO) {
                 document.getElementById('clearChatBtn').classList.remove('hidden');
                 document.getElementById('ceoAttendanceView').classList.remove('hidden');
                 document.getElementById('ceoExportSection').classList.remove('hidden');
@@ -7542,91 +7498,7 @@ window.markNoticeRead = (id) => {
             if(isUserCEO) {
                 checkScheduledInventoryMove();
             }
-
-            if(typeof window.startOnboardingTour === 'function') {
-                setTimeout(() => window.startOnboardingTour(), 1500);
-            }
         }
-        
-        window.updateCEODashboard = async () => {
-            try {
-                const { collection, getDocs, query, where } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-                
-                // 1. حساب المهام (من المهام الفعلية)
-                let comp = 0, over = 0;
-                if(typeof globalTasks !== 'undefined') {
-                    globalTasks.forEach(t => {
-                        if(t.status === 'completed') comp++;
-                        else if(t.status === 'pending_approval' || t.status === 'in_progress') over++; 
-                    });
-                }
-                document.getElementById('dashCompletedTasks').innerText = comp;
-                document.getElementById('dashOverdueTasks').innerText = over;
-
-                // 2. حساب الإيميلات المرسلة
-                const allowedSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'allowedEmails'));
-                let emailsCount = 0;
-                allowedSnap.forEach(() => emailsCount++);
-                document.getElementById('dashSentEmails').innerText = emailsCount;
-
-                // 3. حساب العملاء الجدد
-                let clientsCount = 0;
-                try {
-                    const clientsSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'clients'));
-                    clientsSnap.forEach(() => clientsCount++);
-                } catch(e) {}
-                document.getElementById('dashNewClients').innerText = clientsCount || '0';
-
-                // رسم مخطط الحضور
-                const ctxAtt = document.getElementById('attendanceChart');
-                if (ctxAtt && window.Chart && !window.attendanceChartInst) {
-                    let present = 0; let absent = 0;
-                    const todayStr = new Date().toISOString().split('T')[0];
-                    globalUsers.forEach(u => {
-                        if (u.role === 'pending' || u.isBlocked) return;
-                        if (u.lastActive && new Date(u.lastActive).toISOString().split('T')[0] === todayStr) present++;
-                        else absent++;
-                    });
-                    
-                    window.attendanceChartInst = new Chart(ctxAtt, {
-                        type: 'doughnut',
-                        data: {
-                            labels: ['حاضر', 'غائب'],
-                            datasets: [{
-                                data: [present, absent],
-                                backgroundColor: ['#10B981', '#F43F5E'],
-                                borderWidth: 0
-                            }]
-                        },
-                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
-                    });
-                }
-
-                // رسم مخطط المصروفات
-                const ctxExp = document.getElementById('expensesChart');
-                if (ctxExp && window.Chart && !window.expensesChartInst) {
-                    let totalExp = 0;
-                    try {
-                        const expSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'expenses'));
-                        expSnap.forEach(d => totalExp += Number(d.data().amount || 0));
-                    } catch(e) {}
-                    
-                    window.expensesChartInst = new Chart(ctxExp, {
-                        type: 'bar',
-                        data: {
-                            labels: ['إجمالي المصروفات'],
-                            datasets: [{
-                                label: 'المبلغ (د.أ)',
-                                data: [totalExp],
-                                backgroundColor: '#8B5CF6',
-                                borderRadius: 6
-                            }]
-                        },
-                        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
-                    });
-                }
-            } catch(e) { console.error("Error updating dashboard:", e); }
-        };
 
         window.sendEmailNotification = async (to_email, to_name, task_title, task_desc) => {
             try {
@@ -11328,195 +11200,4 @@ window.showRejectReason = (reason) => {
                 document.querySelector('#customConfirmModal i').className = 'fa-solid fa-trash-can text-3xl text-red-500';
                 document.getElementById('customConfirmMessage').classList.remove('whitespace-pre-wrap', 'text-right', 'font-bold', 'text-red-600');
             };
-        };
-        // ==================== Global Spotlight Search ====================
-        window.openGlobalSearch = () => {
-            const modal = document.getElementById('globalSearchModal');
-            const input = document.getElementById('globalSearchInput');
-            modal.classList.remove('hidden');
-            setTimeout(() => {
-                modal.classList.remove('opacity-0');
-                document.getElementById('globalSearchContent').classList.remove('scale-95');
-                input.focus();
-                input.value = '';
-                window.handleGlobalSearch('');
-            }, 10);
-        };
-
-        window.closeGlobalSearch = () => {
-            const modal = document.getElementById('globalSearchModal');
-            modal.classList.add('opacity-0');
-            document.getElementById('globalSearchContent').classList.add('scale-95');
-            setTimeout(() => {
-                modal.classList.add('hidden');
-            }, 300);
-        };
-
-        window.handleGlobalSearch = (query) => {
-            const resultsContainer = document.getElementById('globalSearchResults');
-            if (!query.trim()) {
-                resultsContainer.innerHTML = '<p class="text-center text-gray-400 py-6 text-sm">???? ????? ?????? ?? ?????? (????? ?????? ???)...</p>';
-                return;
-            }
-            query = query.toLowerCase();
-            let resultsHTML = '';
-
-            // 1. ???????
-            const sections = [
-                { id: 'dashboard', name: '???? ??????', icon: 'fa-chart-pie', color: 'text-purple-500' },
-                { id: 'employees', name: '????? ????????', icon: 'fa-user-shield', color: 'text-red-500' },
-                { id: 'expenses', name: '?????????', icon: 'fa-wallet', color: 'text-emerald-500' },
-                { id: 'attendance', name: '?????? ??????', icon: 'fa-clock', color: 'text-blue-500' },
-                { id: 'leaves', name: '????????? ?????????', icon: 'fa-calendar-alt', color: 'text-orange-500' },
-                { id: 'meetings', name: '??????????', icon: 'fa-handshake', color: 'text-indigo-500' },
-                { id: 'notices', name: '????????? ?????????', icon: 'fa-bullhorn', color: 'text-yellow-500' }
-            ];
-            const filteredSections = sections.filter(s => s.name.includes(query) || s.id.includes(query));
-            if (filteredSections.length > 0) {
-                resultsHTML += '<div class="text-xs font-bold text-gray-400 mb-2 mt-2 px-2 border-b dark:border-gray-700 pb-1">???????</div>';
-                filteredSections.forEach(s => {
-                    resultsHTML += `<div onclick="window.location.hash='${s.id}'; window.closeGlobalSearch()" class="p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer rounded-xl flex items-center gap-3 transition">
-                        <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-600 flex items-center justify-center ${s.color}"><i class="fa-solid ${s.icon}"></i></div>
-                        <span class="font-bold text-gray-700 dark:text-gray-200">${s.name}</span>
-                    </div>`;
-                });
-            }
-
-            // 2. ????????
-            const filteredUsers = globalUsers.filter(u => (u.name || '').toLowerCase().includes(query) || (u.role || '').toLowerCase().includes(query) || (u.email || '').toLowerCase().includes(query));
-            if (filteredUsers.length > 0) {
-                resultsHTML += '<div class="text-xs font-bold text-gray-400 mb-2 mt-4 px-2 border-b dark:border-gray-700 pb-1">????????</div>';
-                filteredUsers.forEach(u => {
-                    resultsHTML += `<div onclick="window.location.hash='employees'; setTimeout(()=>window.openEditEmployeeModal('${u.uid}'), 500); window.closeGlobalSearch()" class="p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer rounded-xl flex items-center gap-3 transition">
-                        <img src="${u.photoURL || 'https://ui-avatars.com/api/?name=' + u.name}" class="w-10 h-10 rounded-full object-cover">
-                        <div>
-                            <p class="font-bold text-gray-700 dark:text-gray-200 text-sm">${u.name}</p>
-                            <p class="text-xs text-gray-500">${u.role}</p>
-                        </div>
-                    </div>`;
-                });
-            }
-
-            if (!resultsHTML) {
-                resultsHTML = '<p class="text-center text-gray-400 py-6 text-sm">?? ???? ????? ??????...</p>';
-            }
-            resultsContainer.innerHTML = resultsHTML;
-        };
-
-        // Event Listeners
-        document.addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-                e.preventDefault();
-                window.openGlobalSearch();
-            }
-            if (e.key === 'Escape') {
-                window.closeGlobalSearch();
-            }
-        });
-        
-        const searchInput = document.getElementById('globalSearchInput');
-        if (searchInput) {
-            searchInput.addEventListener('input', (e) => window.handleGlobalSearch(e.target.value));
-        }
-
-
-        // ==================== Interactive Onboarding Tour ====================
-        window.onboardingStep = 0;
-        const onboardingSteps = [
-            {
-                title: "????? ?? ?? ???? ???????",
-                desc: "????? ???????? ???????. ???? ????? ?? ???? ????? ?????? ??? ???? ????? ??????.",
-                icon: "fa-rocket",
-                target: null
-            },
-            {
-                title: "????????? ?????????",
-                desc: "????? ?? ??? ????? ????? ???????? ????????? ?? ????? ?????????? ????? ??????? ???????? ????? ?????.",
-                icon: "fa-wallet",
-                target: "nav-expenses-btn"
-            },
-            {
-                title: "??????? ??????",
-                desc: "???? ??? ????? ??????? ?????? ???????? ????? ?????? ???? ?????? ?? ????? ???????.",
-                icon: "fa-user-gear",
-                target: "profile-btn"
-            },
-            {
-                title: "????? ??????",
-                desc: "?? ?? ???? ???? ??? Ctrl+K ?? ???? ???????? ????? ?? ?? ??? ???? ?????? ???? ?????.",
-                icon: "fa-magnifying-glass",
-                target: null
-            }
-        ];
-
-        window.startOnboardingTour = () => {
-            const isCompleted = localStorage.getItem('onboarding_completed_' + currentUserData.uid);
-            if (isCompleted || currentUserData.role === 'pending' || isUserCEO) return;
-            
-            window.onboardingStep = 0;
-            const overlay = document.getElementById('onboardingOverlay');
-            overlay.classList.remove('hidden');
-            setTimeout(() => {
-                overlay.classList.remove('opacity-0');
-                document.getElementById('onboardingCard').classList.remove('scale-95');
-            }, 10);
-            window.renderOnboardingStep();
-        };
-
-        window.renderOnboardingStep = () => {
-            const step = onboardingSteps[window.onboardingStep];
-            
-            // Remove previous highlights
-            document.querySelectorAll('.onboarding-highlight').forEach(el => {
-                el.classList.remove('onboarding-highlight', 'relative', 'z-[99999999]', 'bg-white', 'dark:bg-gray-800', 'shadow-2xl', 'scale-105', 'transition-transform');
-            });
-
-            document.getElementById('onboardingTitle').innerText = step.title;
-            document.getElementById('onboardingDesc').innerText = step.desc;
-            document.getElementById('onboardingIcon').innerHTML = `<i class="fa-solid ${step.icon}"></i>`;
-            
-            if (step.target) {
-                const targetEl = document.getElementById(step.target);
-                if (targetEl) {
-                    targetEl.classList.add('onboarding-highlight', 'relative', 'z-[99999999]', 'bg-white', 'dark:bg-gray-800', 'shadow-2xl', 'scale-105', 'transition-transform');
-                    // Ensure sidebar is open on mobile if target is in sidebar
-                    if(targetEl.closest('aside')) {
-                        document.querySelector('aside').classList.remove('-translate-x-full');
-                    }
-                }
-            }
-
-            // Update dots
-            const dotsHtml = onboardingSteps.map((_, i) => `<div class="w-2 h-2 rounded-full transition-colors ${i === window.onboardingStep ? 'bg-secondary' : 'bg-gray-200 dark:bg-gray-700'}"></div>`).join('');
-            document.getElementById('onboardingDots').innerHTML = dotsHtml;
-            
-            if (window.onboardingStep === onboardingSteps.length - 1) {
-                document.getElementById('onboardingNextBtn').innerText = '???? ?????!';
-            } else {
-                document.getElementById('onboardingNextBtn').innerText = '??????';
-            }
-        };
-
-        window.nextOnboardingStep = () => {
-            if (window.onboardingStep >= onboardingSteps.length - 1) {
-                window.endOnboarding();
-            } else {
-                window.onboardingStep++;
-                window.renderOnboardingStep();
-            }
-        };
-
-        window.endOnboarding = () => {
-            localStorage.setItem('onboarding_completed_' + currentUserData.uid, 'true');
-            const overlay = document.getElementById('onboardingOverlay');
-            overlay.classList.add('opacity-0');
-            document.getElementById('onboardingCard').classList.add('scale-95');
-            
-            document.querySelectorAll('.onboarding-highlight').forEach(el => {
-                el.classList.remove('onboarding-highlight', 'relative', 'z-[99999999]', 'bg-white', 'dark:bg-gray-800', 'shadow-2xl', 'scale-105', 'transition-transform');
-            });
-
-            setTimeout(() => {
-                overlay.classList.add('hidden');
-            }, 300);
         };
