@@ -676,12 +676,10 @@
     <div id="otpScreen" class="fixed inset-0 bg-primary z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white dark:bg-gray-800 p-6 md:p-8 rounded-xl shadow-2xl w-full max-w-md text-center relative">
             <div id="recaptcha-container"></div>
-            <i id="otpMainIcon" class="fa-solid fa-envelope-circle-check text-5xl text-secondary mb-4"></i>
+            <i id="otpMainIcon" class="fa-solid fa-shield-halved text-5xl text-secondary mb-4"></i>
             <h2 id="otpMainTitle" class="text-xl md:text-2xl font-bold text-gray-800 dark:text-white mb-2">التحقق الأمني (البريد الإلكتروني)</h2>
             <p id="otpMainDesc" class="text-gray-500 dark:text-gray-400 mb-3 text-sm leading-relaxed"></p>
             
-
-
             <p id="otpTimerDisplay" class="text-red-500 font-bold mb-4 text-sm bg-red-50 dark:bg-red-900/30 py-1 rounded">صالح لمدة: 30:00</p>
 
             <input type="text" id="otpInput" maxlength="6" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-3 focus:outline-none focus:border-secondary mb-4 text-center text-2xl font-bold tracking-[0.5em]" placeholder="XXXXXX" dir="ltr">
@@ -705,7 +703,9 @@
                     <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1" data-i18n="الاسم الكامل">الاسم الكامل</label>
                     <input type="text" id="setupName" required class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 focus:outline-none focus:border-secondary">
                 </div>
-
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">رقم الهاتف (للواتساب)</label>
+                </div>
                 <div>
                     <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1" data-i18n="الوظيفة (الدور)">الوظيفة (الدور)</label>
                     <select id="setupRole" required class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 focus:outline-none focus:border-secondary">
@@ -2093,7 +2093,51 @@
                         </div>
 
                         <div class="space-y-4">
-                            
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">الاسم الكامل</label>
+                                <div class="relative">
+                                    <i class="fa-solid fa-user absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                                    <input type="text" id="settingsName" class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg pr-10 pl-3 py-3 text-gray-800 dark:text-white font-bold outline-none focus:border-secondary shadow-sm">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">الوظيفة (الدور)</label>
+                                <div class="relative">
+                                    <i class="fa-solid fa-briefcase absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                                    <input type="text" id="settingsRole" readonly class="w-full border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 rounded-lg pr-10 pl-3 py-3 text-gray-500 dark:text-gray-400 font-medium cursor-not-allowed outline-none shadow-inner">
+                                </div>
+                            </div>
+                            <div>
+                              <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">البريد الإلكتروني (المرتبط بالدخول)</label>
+                               <div class="relative">
+                                     <i class="fa-solid fa-envelope absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                                    <input type="email" id="settingsEmail" dir="ltr" readonly class="w-full border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 rounded-lg pr-10 pl-3 py-3 text-gray-500 dark:text-gray-400 font-medium cursor-not-allowed outline-none shadow-inner text-right">
+                                </div>
+                                <div id="emailVerificationSection" class="mt-2 hidden">
+                                    <p class="text-xs font-bold text-gray-500 flex items-center gap-1">
+                                        <i class="fa-solid fa-circle-exclamation text-red-500"></i> هذا البريد لم يتم التحقق منه 
+                                        <span onclick="window.startSettingsEmailVerification()" class="text-blue-600 underline cursor-pointer hover:text-blue-800 transition mr-2">تحقق الآن</span>
+                                    </p>
+                                </div>
+                                <div id="emailVerifiedBadge" class="mt-2 hidden">
+                                    <p class="text-xs font-bold text-green-600 flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> تم التحقق من البريد الإلكتروني</p>
+                                </div>
+
+                                <div id="settingsOtpUI" class="hidden mt-4 bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700 text-center relative overflow-hidden transition-all duration-500">
+                                    <p class="text-xs font-bold text-gray-600 dark:text-gray-300 mb-3" id="otpInstructionText">تم إرسال رمز التوثيق إلى بريدك، أدخله هنا:</p>
+                                    
+                                    <div id="otpBoxesContainer" class="flex justify-center gap-2 mb-3" dir="ltr">
+                                        <input type="text" maxlength="1" class="otp-box w-10 h-12 text-center text-xl font-bold border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-blue-500 outline-none bg-white dark:bg-gray-800 dark:text-white transition-all duration-500" onkeyup="window.moveOtpFocus(this, 1)">
+                                        <input type="text" maxlength="1" class="otp-box w-10 h-12 text-center text-xl font-bold border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-blue-500 outline-none bg-white dark:bg-gray-800 dark:text-white transition-all duration-500" onkeyup="window.moveOtpFocus(this, 2)">
+                                        <input type="text" maxlength="1" class="otp-box w-10 h-12 text-center text-xl font-bold border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-blue-500 outline-none bg-white dark:bg-gray-800 dark:text-white transition-all duration-500" onkeyup="window.moveOtpFocus(this, 3)">
+                                        <input type="text" maxlength="1" class="otp-box w-10 h-12 text-center text-xl font-bold border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-blue-500 outline-none bg-white dark:bg-gray-800 dark:text-white transition-all duration-500" onkeyup="window.moveOtpFocus(this, 4)">
+                                        <input type="text" maxlength="1" class="otp-box w-10 h-12 text-center text-xl font-bold border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-blue-500 outline-none bg-white dark:bg-gray-800 dark:text-white transition-all duration-500" onkeyup="window.moveOtpFocus(this, 5)">
+                                        <input type="text" maxlength="1" class="otp-box w-10 h-12 text-center text-xl font-bold border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-blue-500 outline-none bg-white dark:bg-gray-800 dark:text-white transition-all duration-500" onkeyup="window.moveOtpFocus(this, 6)">
+                                    </div>
+                                    <div id="otpStatusIcon" class="absolute inset-0 flex items-center justify-center bg-white/90 dark:bg-gray-800/90 z-10 hidden opacity-0 transition-opacity duration-300"></div>
+                                </div>
+                              </div>
+
                             <div>
                                 <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">كلمة المرور الجديدة <span class="text-[10px] text-red-500">(اتركها فارغة إذا لم ترد التغيير)</span></label>
                                 <div class="relative">
