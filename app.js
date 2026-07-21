@@ -4364,6 +4364,11 @@ async function autoDeleteOldAttendance() {
                     const msgText = attachmentBase64 ? `طلب إجازة جديد (مرفق) من: ${currentUserData.name}` : `طلب جديد من: ${currentUserData.name}`;
                     window.sendSystemNotification(hr.uid, 'طلب إجازة جديد', msgText, 'leaves', 'leaves');
                     
+                    if (hr.notificationPhone) {
+                        const leaveSms = `QuillSMS: طلب إجازة جديد 📅\nلقد قام الموظف (${currentUserData.name}) بتقديم طلب إجازة.\nيرجى مراجعة الطلب:\nhttps://taske.farah-snacks.store/#leaves`;
+                        window.queueSmsMessage(hr.notificationPhone, leaveSms);
+                    }
+                    
                     // إرسال إيميل لمن يملك الصلاحية
                     if(hr.email) {
                         fetch(GOOGLE_SCRIPT_URL, {
@@ -4414,6 +4419,11 @@ async function autoDeleteOldAttendance() {
                         }).catch(e => console.error(e));
                     }
                     window.sendSystemNotification(leaveDoc.uid, 'تحديث حالة الإجازة', `حالة طلب الإجازة: ${newStatus === 'approved' ? 'مقبول' : 'مرفوض'}.`, 'leaves', 'leaves');
+                    
+                    if (employee && employee.notificationPhone) {
+                        const statusSms = `QuillSMS: حالة طلب الإجازة 🏖️\nمرحباً ${employee.name.split(' ')[0]}، تم ${newStatus === 'approved' ? 'قبول ✅' : 'رفض ❌'} طلب الإجازة الخاص بك.`;
+                        window.queueSmsMessage(employee.notificationPhone, statusSms);
+                    }
                 }
             } catch(e) { console.error(e); }
         };
@@ -6521,9 +6531,20 @@ onSnapshot(getColRef('tasks'), (snapshot) => {
                 // إشعار للموظف المتأخر
 window.sendSystemNotification(t.assigneeId, 'تنبيه: مهمة متأخرة!', `لقد تأخرت في تسليم المهمة: ${t.title}`, 'tasks', 'tasks');
 
+const assigneeUser = globalUsers.find(u => u.uid === t.assigneeId);
+if (assigneeUser && assigneeUser.notificationPhone) {
+    const sms = `QuillSMS: تنبيه مهمة متأخرة ⚠️\nمرحباً ${assigneeUser.name.split(' ')[0]}، لقد تأخرت في تسليم المهمة:\n"${t.title}"\nيرجى إنجازها بأسرع وقت.`;
+    window.queueSmsMessage(assigneeUser.notificationPhone, sms);
+}
+
 // إشعار لمدير/منشئ المهمة
 if (t.createdBy !== t.assigneeId) {
     window.sendSystemNotification(t.createdBy, 'تأخير في تسليم مهمة', `تأخر الموظف ${t.assigneeName} في تسليم المهمة: ${t.title}`, 'tasks', 'tasks');
+    const creatorUser = globalUsers.find(u => u.uid === t.createdBy);
+    if (creatorUser && creatorUser.notificationPhone) {
+        const sms2 = `QuillSMS: تنبيه تأخير موظف ⚠️\nتأخر الموظف ${t.assigneeName} في تسليم المهمة:\n"${t.title}"`;
+        window.queueSmsMessage(creatorUser.notificationPhone, sms2);
+    }
 }
             }
         }
@@ -8556,7 +8577,12 @@ window.handleChecklistEnter = (e) => {
                             const phoneToSend = fullUserData ? fullUserData.notificationPhone : null;
                             if (sendSms && sendSms.checked && phoneToSend) {
                                 const priorityText = isHighPriority ? 'عاجلة جداً 🚨' : 'عادية 📅';
-                                const smsMsg = `مرحباً ${assignee.name.split(' ')[0]} 👋\nتم إسناد مهمة جديدة لك:\n📌 "${title}"\nالأولوية: ${priorityText}\n\nلمشاهدة التفاصيل:\nhttps://taske.farah-snacks.store/#tasks`;
+                                let smsMsg = `مرحباً ${assignee.name.split(' ')[0]}\nتم إسناد مهمة جديدة لك :\n"${title}"`;
+                                if (desc.trim() !== '') {
+                                    smsMsg += `\n\nالتفاصيل : ${desc.trim()}`;
+                                }
+                                const dateStr = new Date(deadlineTimestamp).toLocaleString('ar-EG', {month: 'short', day: 'numeric', hour:'2-digit', minute:'2-digit', hour12: true});
+                                smsMsg += `\nتاريخ التسليم : ${dateStr}\n\nلمشاهدة المهمة :\nhttps://taske.farah-snacks.store/#tasks`;
                                 window.queueSmsMessage(phoneToSend, smsMsg);
                             }
                         }
@@ -8777,6 +8803,12 @@ window.handleChecklistEnter = (e) => {
 
                 if (!isSelfAssigned) {
                     window.sendSystemNotification(task.createdBy, 'مهمة بانتظار الاعتماد', `أنهى الموظف ${currentUserData.name} مهمة (${task.title}) وبانتظار اعتمادك.`, 'tasks', 'tasks');
+                    
+                    const creatorUser = globalUsers.find(u => u.uid === task.createdBy);
+                    if (creatorUser && creatorUser.notificationPhone) {
+                        const smsMsg = `QuillSMS: إنجاز مهمة ✅\nمرحباً ${creatorUser.name.split(' ')[0]}\nأنهى الموظف (${currentUserData.name}) المهمة المسندة إليه:\n"${task.title}"\nوبانتظار مراجعتك.`;
+                        window.queueSmsMessage(creatorUser.notificationPhone, smsMsg);
+                    }
                     
                     // NEW: Send email notification to the creator (manager/assigner)
                     const creator = globalUsers.find(u => u.uid === task.createdBy);
