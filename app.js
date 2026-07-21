@@ -11345,10 +11345,10 @@ window.showRejectReason = (reason) => {
             if (filteredSections.length > 0) {
                 resultsHTML += '<div class="text-xs font-bold text-gray-400 mb-2 mt-2 px-2 border-b dark:border-gray-700 pb-1">???????</div>';
                 filteredSections.forEach(s => {
-                    resultsHTML += <div onclick="window.location.hash=''; window.closeGlobalSearch()" class="p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer rounded-xl flex items-center gap-3 transition">
-                        <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-600 flex items-center justify-center "><i class="fa-solid "></i></div>
-                        <span class="font-bold text-gray-700 dark:text-gray-200"></span>
-                    </div>;
+                    resultsHTML += `<div onclick="window.location.hash='${s.id}'; window.closeGlobalSearch()" class="p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer rounded-xl flex items-center gap-3 transition">
+                        <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-600 flex items-center justify-center ${s.color}"><i class="fa-solid ${s.icon}"></i></div>
+                        <span class="font-bold text-gray-700 dark:text-gray-200">${s.name}</span>
+                    </div>`;
                 });
             }
 
@@ -11357,13 +11357,13 @@ window.showRejectReason = (reason) => {
             if (filteredUsers.length > 0) {
                 resultsHTML += '<div class="text-xs font-bold text-gray-400 mb-2 mt-4 px-2 border-b dark:border-gray-700 pb-1">????????</div>';
                 filteredUsers.forEach(u => {
-                    resultsHTML += <div onclick="window.location.hash='employees'; setTimeout(()=>window.openEditEmployeeModal(''), 500); window.closeGlobalSearch()" class="p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer rounded-xl flex items-center gap-3 transition">
-                        <img src="" class="w-10 h-10 rounded-full object-cover">
+                    resultsHTML += `<div onclick="window.location.hash='employees'; setTimeout(()=>window.openEditEmployeeModal('${u.uid}'), 500); window.closeGlobalSearch()" class="p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer rounded-xl flex items-center gap-3 transition">
+                        <img src="${u.photoURL || 'https://ui-avatars.com/api/?name=' + u.name}" class="w-10 h-10 rounded-full object-cover">
                         <div>
-                            <p class="font-bold text-gray-700 dark:text-gray-200 text-sm"></p>
-                            <p class="text-xs text-gray-500"></p>
+                            <p class="font-bold text-gray-700 dark:text-gray-200 text-sm">${u.name}</p>
+                            <p class="text-xs text-gray-500">${u.role}</p>
                         </div>
-                    </div>;
+                    </div>`;
                 });
             }
 
