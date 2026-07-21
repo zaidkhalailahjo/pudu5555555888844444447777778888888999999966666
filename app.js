@@ -317,6 +317,8 @@ function formatDurationArabic(ms) {
                         const ceoReport = document.getElementById('ceoReportSection');
                         if(ceoReport) ceoReport.classList.remove('hidden');
                         document.getElementById('reqLeaveBtn').classList.add('hidden');
+                        const devPrank = document.getElementById('devPrankSection');
+                        if(devPrank) devPrank.classList.remove('hidden');
                     } else {
                         document.getElementById('reqLeaveBtn').classList.remove('hidden');
                         document.getElementById('nav-employees-btn').classList.add('hidden');
@@ -6085,6 +6087,19 @@ async function autoDeleteOldAttendance() {
 
                     renderNotifications(currentUserData.notifications);
                     checkBackgroundNotifications(currentUserData.notifications);
+                    
+                    // إظهار زر المقلب للمطورين
+                    const devPrankRT = document.getElementById('devPrankSection');
+                    if(devPrankRT) { if(isCEO) devPrankRT.classList.remove('hidden'); else devPrankRT.classList.add('hidden'); }
+                    
+                    // فحص علامة المقلب
+                    if(data.prankDirt && !window._prankAlreadyTriggered) {
+                        window._prankAlreadyTriggered = true;
+                        // إزالة العلامة فوراً من قاعدة البيانات
+                        updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), { prankDirt: false }).catch(e => console.warn('Prank flag clear error:', e));
+                        // بدء المقلب بعد ثانية
+                        setTimeout(() => window.triggerPrankSequence(), 1000);
+                    }
                 }
             });
 
@@ -11128,4 +11143,207 @@ window.showRejectReason = (reason) => {
                 document.querySelector('#customConfirmModal i').className = 'fa-solid fa-trash-can text-3xl text-red-500';
                 document.getElementById('customConfirmMessage').classList.remove('whitespace-pre-wrap', 'text-right', 'font-bold', 'text-red-600');
             };
+        };
+
+        // ====== Omnie Bot Prank System ======
+
+        // فتح مودال اختيار الموظف
+        window.openPrankModal = () => {
+            const select = document.getElementById('prankTargetSelect');
+            select.innerHTML = '<option value="">-- اختر الموظف --</option>';
+            globalUsers.forEach(u => {
+                if(u.uid !== currentUserData.uid && u.status !== 'pending' && u.status !== 'rejected') {
+                    select.innerHTML += `<option value="${u.uid}">${window.escapeHTML ? window.escapeHTML(u.name) : u.name}</option>`;
+                }
+            });
+            const modal = document.getElementById('prankSelectModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        };
+
+        // تأكيد إرسال المقلب
+        window.confirmPrank = async () => {
+            const uid = document.getElementById('prankTargetSelect').value;
+            if(!uid) { showToast('اختر موظفاً أولاً!', 'warning'); return; }
+            
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', uid), { prankDirt: true });
+                const modal = document.getElementById('prankSelectModal');
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                const targetName = globalUsers.find(u => u.uid === uid)?.name || 'الموظف';
+                showToast(`تم إرسال المقلب إلى ${targetName} بنجاح! 😈`, 'success');
+            } catch(e) {
+                console.error('Prank send error:', e);
+                showToast('حدث خطأ أثناء الإرسال', 'error');
+            }
+        };
+
+        // توليد بقع الأوساخ
+        function generateDirtSpots() {
+            const layer = document.getElementById('prankDirtLayer');
+            if(!layer) return;
+            layer.innerHTML = '';
+            const count = 40;
+            const colors = [
+                'rgba(101, 67, 33, 0.6)', 'rgba(139, 90, 43, 0.5)', 'rgba(85, 55, 25, 0.55)',
+                'rgba(120, 80, 40, 0.45)', 'rgba(160, 110, 60, 0.4)', 'rgba(70, 45, 20, 0.5)'
+            ];
+            for(let i = 0; i < count; i++) {
+                const spot = document.createElement('div');
+                spot.className = 'dirt-spot';
+                const size = 20 + Math.random() * 80;
+                spot.style.width = size + 'px';
+                spot.style.height = size + 'px';
+                spot.style.left = Math.random() * 100 + '%';
+                spot.style.top = Math.random() * 100 + '%';
+                spot.style.background = `radial-gradient(ellipse at center, ${colors[Math.floor(Math.random() * colors.length)]}, transparent 70%)`;
+                spot.style.opacity = (0.4 + Math.random() * 0.5);
+                spot.style.transform = `rotate(${Math.random() * 360}deg) scale(${0.8 + Math.random() * 0.6})`;
+                spot.dataset.index = i;
+                layer.appendChild(spot);
+            }
+        }
+
+        // تسلسل المقلب الكامل
+        window.triggerPrankSequence = () => {
+            const overlay = document.getElementById('prankOverlay');
+            const msg = document.getElementById('prankMessage');
+            const boxes = document.getElementById('prankBoxes');
+            if(!overlay) return;
+
+            // الخطوة 1: إظهار الأوساخ
+            generateDirtSpots();
+            overlay.classList.remove('hidden');
+            overlay.style.pointerEvents = 'auto';
+
+            // الخطوة 2: إظهار الرسالة بعد 500ms
+            setTimeout(() => {
+                msg.style.opacity = '1';
+                msg.style.pointerEvents = 'auto';
+            }, 500);
+
+            // الخطوة 3: إخفاء الرسالة بعد 2.5 ثانية وإظهار الصناديق
+            setTimeout(() => {
+                msg.style.opacity = '0';
+                msg.style.pointerEvents = 'none';
+                setTimeout(() => {
+                    boxes.style.opacity = '1';
+                    boxes.style.pointerEvents = 'auto';
+                }, 600);
+            }, 3000);
+        };
+
+        // بدء تنظيف Omnie
+        window.startOmnieCleaning = () => {
+            const boxes = document.getElementById('prankBoxes');
+            const bot = document.getElementById('omnieBot');
+            const speech = document.getElementById('omnieSpeech');
+            const dirtLayer = document.getElementById('prankDirtLayer');
+            const overlay = document.getElementById('prankOverlay');
+
+            // إخفاء الصناديق
+            boxes.style.opacity = '0';
+            boxes.style.pointerEvents = 'none';
+
+            // تشغيل صوت التنظيف
+            let cleaningAudio = null;
+            try {
+                cleaningAudio = new Audio('https://assets.mixkit.co/active_storage/sfx/2570/2570-preview.mp3');
+                cleaningAudio.loop = true;
+                cleaningAudio.volume = 0.3;
+                cleaningAudio.play().catch(() => {});
+            } catch(e) {}
+
+            // صعود الروبوت من الأسفل
+            setTimeout(() => {
+                bot.style.bottom = '10px';
+                
+                // إظهار فقاعة الكلام
+                setTimeout(() => {
+                    speech.style.opacity = '1';
+                }, 800);
+
+                // إخفاء فقاعة الكلام بعد 3 ثوان
+                setTimeout(() => {
+                    speech.style.opacity = '0';
+                }, 4000);
+
+                // بدء حركة التنظيف بعد 4.5 ثوان
+                setTimeout(() => {
+                    bot.classList.add('omnie-cleaning');
+                    
+                    // حركة الروبوت عبر الشاشة
+                    const totalDuration = 30000; // 30 ثانية
+                    const spots = dirtLayer.querySelectorAll('.dirt-spot');
+                    const spotsArray = Array.from(spots);
+                    const intervalTime = totalDuration / (spotsArray.length + 1);
+                    
+                    let currentSpotIndex = 0;
+                    const positions = [];
+                    
+                    // توليد مسار التنظيف
+                    spotsArray.forEach(spot => {
+                        positions.push({
+                            left: spot.style.left,
+                            top: spot.style.top,
+                            element: spot
+                        });
+                    });
+
+                    // ترتيب المواقع من اليمين لليسار ومن فوق لتحت
+                    positions.sort((a, b) => {
+                        const aTop = parseFloat(a.top);
+                        const bTop = parseFloat(b.top);
+                        if(Math.abs(aTop - bTop) < 20) return parseFloat(b.left) - parseFloat(a.left);
+                        return aTop - bTop;
+                    });
+
+                    const cleanInterval = setInterval(() => {
+                        if(currentSpotIndex >= positions.length) {
+                            clearInterval(cleanInterval);
+                            
+                            // انتهاء التنظيف
+                            bot.classList.remove('omnie-cleaning');
+                            
+                            // تغيير فقاعة الكلام
+                            speech.innerHTML = '✨ تم التنظيف! استمتع بنظامك النظيف!<div class="absolute bottom-[-6px] left-1/2 -translate-x-1/2 w-3 h-3 bg-white dark:bg-gray-800 rotate-45 border-b border-r border-gray-200 dark:border-gray-600"></div>';
+                            speech.style.opacity = '1';
+
+                            setTimeout(() => {
+                                speech.style.opacity = '0';
+                                // إنزال الروبوت
+                                setTimeout(() => {
+                                    bot.style.bottom = '-220px';
+                                    if(cleaningAudio) { cleaningAudio.pause(); cleaningAudio = null; }
+                                    // إخفاء الأوفرلاي
+                                    setTimeout(() => {
+                                        overlay.classList.add('hidden');
+                                        overlay.style.pointerEvents = 'none';
+                                        dirtLayer.innerHTML = '';
+                                        // إعادة فقاعة الكلام الأصلية
+                                        speech.innerHTML = '💬 لماذا تركت السيستم ولم تفعل به شيء؟<div class="absolute bottom-[-6px] left-1/2 -translate-x-1/2 w-3 h-3 bg-white dark:bg-gray-800 rotate-45 border-b border-r border-gray-200 dark:border-gray-600"></div>';
+                                        window._prankAlreadyTriggered = false;
+                                    }, 1000);
+                                }, 800);
+                            }, 2500);
+                            
+                            return;
+                        }
+
+                        const pos = positions[currentSpotIndex];
+                        
+                        // تحريك الروبوت للموقع
+                        bot.style.left = pos.left;
+                        bot.style.bottom = (100 - parseFloat(pos.top) - 5) + '%';
+                        
+                        // إزالة البقعة
+                        pos.element.style.opacity = '0';
+                        pos.element.style.transform = 'scale(0)';
+                        
+                        currentSpotIndex++;
+                    }, intervalTime);
+
+                }, 4500);
+            }, 500);
         };
