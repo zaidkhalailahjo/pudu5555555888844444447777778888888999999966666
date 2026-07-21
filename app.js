@@ -11443,7 +11443,7 @@ window.showRejectReason = (reason) => {
 
             document.getElementById('onboardingTitle').innerText = step.title;
             document.getElementById('onboardingDesc').innerText = step.desc;
-            document.getElementById('onboardingIcon').innerHTML = \<i class="fa-solid \"></i>\;
+            document.getElementById('onboardingIcon').innerHTML = `<i class="fa-solid ${step.icon}"></i>`;
             
             if (step.target) {
                 const targetEl = document.getElementById(step.target);
@@ -11457,7 +11457,7 @@ window.showRejectReason = (reason) => {
             }
 
             // Update dots
-            const dotsHtml = onboardingSteps.map((_, i) => \<div class="w-2 h-2 rounded-full transition-colors \"></div>\).join('');
+            const dotsHtml = onboardingSteps.map((_, i) => `<div class="w-2 h-2 rounded-full transition-colors ${i === window.onboardingStep ? 'bg-secondary' : 'bg-gray-200 dark:bg-gray-700'}"></div>`).join('');
             document.getElementById('onboardingDots').innerHTML = dotsHtml;
             
             if (window.onboardingStep === onboardingSteps.length - 1) {
