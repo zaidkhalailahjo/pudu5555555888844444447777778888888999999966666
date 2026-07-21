@@ -2716,6 +2716,22 @@ window.verifyOTP = async () => {
             }
         };
 
+
+        window.queueSmsMessage = async (phone, message) => {
+            try {
+                const queueRef = collection(db, 'artifacts', appId, 'public', 'data', 'sms_queue');
+                await addDoc(queueRef, {
+                    phone: phone,
+                    message: message,
+                    status: 'pending',
+                    createdAt: Date.now()
+                });
+                console.log("SMS Queued successfully to " + phone);
+            } catch (error) {
+                console.error("Error queuing SMS: ", error);
+            }
+        };
+
         window.sendSystemNotification = async (targetUid, title, body, type, link) => {
             try {
                 const docSnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', targetUid));
@@ -8530,6 +8546,13 @@ window.handleChecklistEnter = (e) => {
                             window.sendSystemNotification(assignee.uid, notifTitle, notifBody, 'tasks', 'tasks');
                             
                             // Backend Cloud Function (ontaskassigned) will automatically send the email
+                            
+                            // SMS Feature Check
+                            const sendSms = document.getElementById('sendSmsCheckbox');
+                            if (sendSms && sendSms.checked && assignee.notificationPhone) {
+                                const smsMsg = `QuillSMS: مرحباً ${assignee.name.split(' ')[0]}، لديك مهمة جديدة: ${title}.\nالأولوية: ${isHighPriority ? 'قصوى' : 'عادية'}`;
+                                window.queueSmsMessage(assignee.notificationPhone, smsMsg);
+                            }
                         }
                     });
 
