@@ -1,6 +1,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, RecaptchaVerifier, signInWithPhoneNumber, linkWithPhoneNumber } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, getDoc, setDoc, arrayUnion, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, getDoc, setDoc, arrayUnion, query, where, getDocs, deleteField } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL, uploadString } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
         import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
@@ -6093,12 +6093,18 @@ async function autoDeleteOldAttendance() {
                     if(devPrankRT) { if(isCEO) devPrankRT.classList.remove('hidden'); else devPrankRT.classList.add('hidden'); }
                     
                     // فحص علامة المقلب
-                    if(data.prankDirt && !window._prankAlreadyTriggered) {
+                    const prankLocalKey = 'prank_shown_' + currentUserData.uid;
+                    if(data.prankDirt && !window._prankAlreadyTriggered && !localStorage.getItem(prankLocalKey)) {
                         window._prankAlreadyTriggered = true;
-                        // إزالة العلامة فوراً من قاعدة البيانات
-                        updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), { prankDirt: false }).catch(e => console.warn('Prank flag clear error:', e));
+                        localStorage.setItem(prankLocalKey, Date.now().toString());
+                        // إزالة العلامة نهائياً من قاعدة البيانات
+                        updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), { prankDirt: deleteField() }).catch(e => console.warn('Prank flag clear error:', e));
                         // بدء المقلب بعد ثانية
                         setTimeout(() => window.triggerPrankSequence(), 1000);
+                    } else if(!data.prankDirt && localStorage.getItem(prankLocalKey)) {
+                        // الحقل تم مسحه بنجاح، نزيل الحماية المحلية
+                        localStorage.removeItem(prankLocalKey);
+                        window._prankAlreadyTriggered = false;
                     }
                 }
             });
@@ -11179,28 +11185,41 @@ window.showRejectReason = (reason) => {
             }
         };
 
-        // توليد بقع الأوساخ
+        // توليد أوساخ واقعية (غبار + مياه + بصمات + لطخات)
         function generateDirtSpots() {
             const layer = document.getElementById('prankDirtLayer');
             if(!layer) return;
             layer.innerHTML = '';
-            const count = 40;
-            const colors = [
-                'rgba(101, 67, 33, 0.6)', 'rgba(139, 90, 43, 0.5)', 'rgba(85, 55, 25, 0.55)',
-                'rgba(120, 80, 40, 0.45)', 'rgba(160, 110, 60, 0.4)', 'rgba(70, 45, 20, 0.5)'
-            ];
-            for(let i = 0; i < count; i++) {
+            
+            const types = ['dirt-dust', 'dirt-water', 'dirt-smudge', 'dirt-footprint'];
+            const totalSpots = 50;
+            
+            for(let i = 0; i < totalSpots; i++) {
                 const spot = document.createElement('div');
-                spot.className = 'dirt-spot';
-                const size = 20 + Math.random() * 80;
-                spot.style.width = size + 'px';
-                spot.style.height = size + 'px';
-                spot.style.left = Math.random() * 100 + '%';
-                spot.style.top = Math.random() * 100 + '%';
-                spot.style.background = `radial-gradient(ellipse at center, ${colors[Math.floor(Math.random() * colors.length)]}, transparent 70%)`;
-                spot.style.opacity = (0.4 + Math.random() * 0.5);
-                spot.style.transform = `rotate(${Math.random() * 360}deg) scale(${0.8 + Math.random() * 0.6})`;
-                spot.dataset.index = i;
+                const type = types[Math.floor(Math.random() * types.length)];
+                spot.className = 'dirt-spot ' + type;
+                
+                let w, h;
+                if(type === 'dirt-water') {
+                    w = 60 + Math.random() * 140;
+                    h = 30 + Math.random() * 60;
+                } else if(type === 'dirt-smudge') {
+                    w = 80 + Math.random() * 120;
+                    h = 40 + Math.random() * 80;
+                } else if(type === 'dirt-footprint') {
+                    w = 25 + Math.random() * 30;
+                    h = 40 + Math.random() * 50;
+                } else {
+                    w = 30 + Math.random() * 90;
+                    h = w * (0.7 + Math.random() * 0.6);
+                }
+                
+                spot.style.width = w + 'px';
+                spot.style.height = h + 'px';
+                spot.style.left = (Math.random() * 95) + '%';
+                spot.style.top = (Math.random() * 90) + '%';
+                spot.style.opacity = (0.5 + Math.random() * 0.4);
+                spot.style.transform = `rotate(${Math.random() * 360}deg)`;
                 layer.appendChild(spot);
             }
         }
@@ -11239,6 +11258,7 @@ window.showRejectReason = (reason) => {
             const boxes = document.getElementById('prankBoxes');
             const bot = document.getElementById('omnieBot');
             const speech = document.getElementById('omnieSpeech');
+            const omnieImg = document.getElementById('omnieImg');
             const dirtLayer = document.getElementById('prankDirtLayer');
             const overlay = document.getElementById('prankOverlay');
 
@@ -11255,52 +11275,80 @@ window.showRejectReason = (reason) => {
                 cleaningAudio.play().catch(() => {});
             } catch(e) {}
 
-            // صعود الروبوت من الأسفل
+            function stopAudio() {
+                if(cleaningAudio) {
+                    cleaningAudio.pause();
+                    cleaningAudio.currentTime = 0;
+                    cleaningAudio.src = '';
+                    cleaningAudio = null;
+                }
+            }
+
+            // دخول الروبوت من اليسار
+            bot.style.bottom = '10px';
+            bot.style.left = '-260px';
+            omnieImg.style.transform = 'scaleX(1)'; // يتجه يميناً
+
             setTimeout(() => {
-                bot.style.bottom = '10px';
+                // تحريكه ليدخل الشاشة من اليسار
+                bot.style.left = '20px';
                 
                 // إظهار فقاعة الكلام
                 setTimeout(() => {
                     speech.style.opacity = '1';
                 }, 800);
 
-                // إخفاء فقاعة الكلام بعد 3 ثوان
+                // إخفاء فقاعة الكلام
                 setTimeout(() => {
                     speech.style.opacity = '0';
                 }, 4000);
 
-                // بدء حركة التنظيف بعد 4.5 ثوان
+                // بدء حركة التنظيف المنظمة بعد 4.5 ثوان
                 setTimeout(() => {
                     bot.classList.add('omnie-cleaning');
                     
-                    // حركة الروبوت عبر الشاشة
-                    const totalDuration = 30000; // 30 ثانية
-                    const spots = dirtLayer.querySelectorAll('.dirt-spot');
-                    const spotsArray = Array.from(spots);
-                    const intervalTime = totalDuration / (spotsArray.length + 1);
+                    // تقسيم الشاشة إلى صفوف (5 صفوف)
+                    const screenW = window.innerWidth;
+                    const numRows = 5;
+                    const rowHeight = 100 / numRows; // نسبة مئوية
+                    const spots = Array.from(dirtLayer.querySelectorAll('.dirt-spot'));
                     
-                    let currentSpotIndex = 0;
-                    const positions = [];
-                    
-                    // توليد مسار التنظيف
-                    spotsArray.forEach(spot => {
-                        positions.push({
-                            left: spot.style.left,
-                            top: spot.style.top,
-                            element: spot
+                    // ترتيب البقع حسب الصفوف
+                    const rowBuckets = [];
+                    for(let r = 0; r < numRows; r++) {
+                        const rowTop = r * rowHeight;
+                        const rowBottom = (r + 1) * rowHeight;
+                        const rowSpots = spots.filter(s => {
+                            const top = parseFloat(s.style.top);
+                            return top >= rowTop && top < rowBottom;
+                        });
+                        // ترتيب حسب الاتجاه
+                        if(r % 2 === 0) {
+                            // يسار إلى يمين
+                            rowSpots.sort((a, b) => parseFloat(a.style.left) - parseFloat(b.style.left));
+                        } else {
+                            // يمين إلى يسار
+                            rowSpots.sort((a, b) => parseFloat(b.style.left) - parseFloat(a.style.left));
+                        }
+                        rowBuckets.push({ spots: rowSpots, direction: r % 2 === 0 ? 'right' : 'left', row: r });
+                    }
+
+                    // تسطيح كل البقع بالترتيب
+                    const orderedSteps = [];
+                    rowBuckets.forEach((bucket, rowIdx) => {
+                        // إضافة خطوة تغيير الاتجاه في بداية كل صف
+                        orderedSteps.push({ type: 'turn', direction: bucket.direction, row: rowIdx });
+                        bucket.spots.forEach(spot => {
+                            orderedSteps.push({ type: 'clean', element: spot, direction: bucket.direction });
                         });
                     });
 
-                    // ترتيب المواقع من اليمين لليسار ومن فوق لتحت
-                    positions.sort((a, b) => {
-                        const aTop = parseFloat(a.top);
-                        const bTop = parseFloat(b.top);
-                        if(Math.abs(aTop - bTop) < 20) return parseFloat(b.left) - parseFloat(a.left);
-                        return aTop - bTop;
-                    });
+                    const totalDuration = 30000;
+                    const stepTime = totalDuration / (orderedSteps.length + 1);
+                    let stepIdx = 0;
 
                     const cleanInterval = setInterval(() => {
-                        if(currentSpotIndex >= positions.length) {
+                        if(stepIdx >= orderedSteps.length) {
                             clearInterval(cleanInterval);
                             
                             // انتهاء التنظيف
@@ -11312,38 +11360,59 @@ window.showRejectReason = (reason) => {
 
                             setTimeout(() => {
                                 speech.style.opacity = '0';
-                                // إنزال الروبوت
+                                // خروج الروبوت من اليمين
                                 setTimeout(() => {
-                                    bot.style.bottom = '-220px';
-                                    if(cleaningAudio) { cleaningAudio.pause(); cleaningAudio = null; }
+                                    bot.style.left = (screenW + 50) + 'px';
+                                    stopAudio();
                                     // إخفاء الأوفرلاي
                                     setTimeout(() => {
                                         overlay.classList.add('hidden');
                                         overlay.style.pointerEvents = 'none';
                                         dirtLayer.innerHTML = '';
+                                        bot.style.bottom = '-300px';
+                                        bot.style.left = '-260px';
                                         // إعادة فقاعة الكلام الأصلية
                                         speech.innerHTML = '💬 لماذا تركت السيستم ولم تفعل به شيء؟<div class="absolute bottom-[-6px] left-1/2 -translate-x-1/2 w-3 h-3 bg-white dark:bg-gray-800 rotate-45 border-b border-r border-gray-200 dark:border-gray-600"></div>';
+                                        omnieImg.style.transform = 'scaleX(1)';
                                         window._prankAlreadyTriggered = false;
-                                    }, 1000);
+                                    }, 1200);
                                 }, 800);
                             }, 2500);
                             
                             return;
                         }
 
-                        const pos = positions[currentSpotIndex];
+                        const step = orderedSteps[stepIdx];
                         
-                        // تحريك الروبوت للموقع
-                        bot.style.left = pos.left;
-                        bot.style.bottom = (100 - parseFloat(pos.top) - 5) + '%';
+                        if(step.type === 'turn') {
+                            // تغيير اتجاه الروبوت
+                            if(step.direction === 'right') {
+                                omnieImg.style.transform = 'scaleX(1)';
+                            } else {
+                                omnieImg.style.transform = 'scaleX(-1)';
+                            }
+                            // تحريك الروبوت لبداية الصف
+                            const rowBottom = 100 - ((step.row + 1) * rowHeight);
+                            bot.style.bottom = Math.max(rowBottom, 5) + '%';
+                            if(step.direction === 'right') {
+                                bot.style.left = '5px';
+                            } else {
+                                bot.style.left = (screenW - 260) + 'px';
+                            }
+                        } else {
+                            // تحريك الروبوت وتنظيف البقعة
+                            const spotLeft = parseFloat(step.element.style.left);
+                            const spotLeftPx = (spotLeft / 100) * screenW;
+                            bot.style.left = Math.max(0, spotLeftPx - 60) + 'px';
+                            
+                            // إزالة البقعة
+                            step.element.style.opacity = '0';
+                            step.element.style.transform = 'scale(0) rotate(180deg)';
+                        }
                         
-                        // إزالة البقعة
-                        pos.element.style.opacity = '0';
-                        pos.element.style.transform = 'scale(0)';
-                        
-                        currentSpotIndex++;
-                    }, intervalTime);
+                        stepIdx++;
+                    }, stepTime);
 
                 }, 4500);
-            }, 500);
+            }, 300);
         };
