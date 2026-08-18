@@ -11491,7 +11491,7 @@ window.fetchRobotMap = async () => {
     if(res && res.data && res.data.mapList && res.data.mapList.length > 0) {
         const points = res.data.mapList[0].standList || [];
         if(points.length === 0) {
-            tablesList.innerHTML = '<p class="col-span-2 text-center text-red-500 text-sm">??????? ????? ?? ???? ???? ?????</p>';
+            tablesList.innerHTML = '<p class="col-span-2 text-center text-red-500 text-sm">الخريطة فارغة لا توجد نقاط مسجلة</p>';
             return;
         }
         
@@ -11499,13 +11499,13 @@ window.fetchRobotMap = async () => {
         points.forEach(pt => {
             const btnColor = pt.type === 2 ? 'bg-yellow-600 hover:bg-yellow-700 text-black' : 'bg-green-600 hover:bg-green-700 text-white';
             const icon = pt.type === 2 ? '<i class="fa-solid fa-home"></i>' : '<i class="fa-solid fa-chair"></i>';
-            tablesList.innerHTML += \
-                <button onclick="window.sendRobotTo('\')" class="\ py-3 rounded font-bold transition text-sm flex items-center justify-center gap-2 shadow-sm">
-                    \ \
+            tablesList.innerHTML += `
+                <button onclick="window.sendRobotTo('${pt.name}')" class="${btnColor} py-3 rounded font-bold transition text-sm flex items-center justify-center gap-2 shadow-sm">
+                    ${icon} ${escapeHTML(pt.name)}
                 </button>
-            \;
+            `;
         });
     } else {
-        tablesList.innerHTML = '<p class="col-span-2 text-center text-red-500 text-sm font-bold">??? ??? ???????? ???? ?? ????? ???????.</p>';
+        tablesList.innerHTML = '<p class="col-span-2 text-center text-red-500 text-sm font-bold">فشل جلب الخريطة، تأكد من اتصال الروبوت.</p>';
     }
 };
