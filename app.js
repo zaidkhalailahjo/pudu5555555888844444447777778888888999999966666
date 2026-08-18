@@ -1689,10 +1689,11 @@ window.addClientRobotRow = (name='', serial='', date='', hasWarranty=false, warr
                 let actionBtnsHtml = '';
                 if(canManageRobots) {
                     actionBtnsHtml = `
-                        <div class="mt-auto pt-2 flex justify-between items-center border-t dark:border-gray-700">
-                            <button onclick="window.moveRobotLocation('${r.id}', 'warehouse')" class="text-blue-600 hover:bg-blue-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold mt-2 border border-blue-200"><i class="fa-solid fa-truck-moving mx-1"></i> نقل للمستودع</button>
-                            <button onclick="window.openEditRobotModal('${r.id}')" class="text-indigo-500 hover:bg-indigo-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold mt-2"><i class="fa-solid fa-pen mx-1"></i> تعديل</button>
-                            <button onclick="window.deleteRobot('${r.id}')" class="text-red-500 hover:bg-red-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold mt-2"><i class="fa-solid fa-trash mx-1"></i> حذف</button>
+                        <div class="mt-auto pt-2 flex justify-between items-center border-t dark:border-gray-700 flex-wrap gap-1">
+                            <button onclick="window.openRobotControlPanel('${r.id}')" class="text-green-600 hover:bg-green-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold border border-green-200"><i class="fa-solid fa-gamepad mx-1"></i> تحكم</button>
+                            <button onclick="window.moveRobotLocation('${r.id}', 'warehouse')" class="text-blue-600 hover:bg-blue-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold border border-blue-200"><i class="fa-solid fa-truck-moving mx-1"></i> للمستودع</button>
+                            <button onclick="window.openEditRobotModal('${r.id}')" class="text-indigo-500 hover:bg-indigo-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold"><i class="fa-solid fa-pen mx-1"></i> تعديل</button>
+                            <button onclick="window.deleteRobot('${r.id}')" class="text-red-500 hover:bg-red-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold"><i class="fa-solid fa-trash mx-1"></i> حذف</button>
                         </div>
                     `;
                 }
@@ -6526,6 +6527,7 @@ onSnapshot(getColRef('tasks'), (snapshot) => {
         if (t.status !== 'completed' && t.status !== 'pending_approval' && t.deadline && now > t.deadline) {
             // نجعل منشئ المهمة (المدير) هو من يتولى تحديث القاعدة وإرسال الإشعارات لمنع التكرار
             if (!t.lateNotified && t.createdBy === currentUserData.uid) { 
+                t.lateNotified = true; // منع التكرار محلياً فوراً
                 updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', t.id), { lateNotified: true }).catch(e=>console.log(e));
                 
                 // إشعار للموظف المتأخر
@@ -6533,7 +6535,8 @@ window.sendSystemNotification(t.assigneeId, 'تنبيه: مهمة متأخرة!'
 
 const assigneeUser = globalUsers.find(u => u.uid === t.assigneeId);
 if (assigneeUser && assigneeUser.notificationPhone) {
-    const sms = `QuillSMS: تنبيه مهمة متأخرة ⚠️\nمرحباً ${assigneeUser.name.split(' ')[0]}، لقد تأخرت في تسليم المهمة:\n"${t.title}"\nيرجى إنجازها بأسرع وقت.`;
+    // تقصير نص الرسالة لتوفير التكلفة (تحت 70 حرف إن أمكن)
+    const sms = `تنبيه تأخير ⚠️\nالمهمة: ${t.title.substring(0,30)}\nيرجى إنجازها فوراً`;
     window.queueSmsMessage(assigneeUser.notificationPhone, sms);
 }
 
@@ -6542,7 +6545,7 @@ if (t.createdBy !== t.assigneeId) {
     window.sendSystemNotification(t.createdBy, 'تأخير في تسليم مهمة', `تأخر الموظف ${t.assigneeName} في تسليم المهمة: ${t.title}`, 'tasks', 'tasks');
     const creatorUser = globalUsers.find(u => u.uid === t.createdBy);
     if (creatorUser && creatorUser.notificationPhone) {
-        const sms2 = `QuillSMS: تنبيه تأخير موظف ⚠️\nتأخر الموظف ${t.assigneeName} في تسليم المهمة:\n"${t.title}"`;
+        const sms2 = `تنبيه تأخير ⚠️\nالموظف: ${t.assigneeName.split(' ')[0]}\nالمهمة: ${t.title.substring(0,30)}`;
         window.queueSmsMessage(creatorUser.notificationPhone, sms2);
     }
 }
@@ -11348,3 +11351,115 @@ window.showRejectReason = (reason) => {
                 document.getElementById('customConfirmMessage').classList.remove('whitespace-pre-wrap', 'text-right', 'font-bold', 'text-red-600');
             };
         };
+// ==========================================
+// ??? ?????? ????????? ???????? ??? Firebase Functions
+// ==========================================
+
+window.openRobotControlPanel = (robotId) => {
+    const r = globalRobots.find(x => x.id === robotId);
+    if(!r) return;
+    
+    document.getElementById('rc-robotName').innerText = r.name;
+    document.getElementById('rc-activeSN').value = r.serialNumber;
+    
+    // ????? ????? ??????
+    document.getElementById('rc-bat').innerText = '--%';
+    document.getElementById('rc-state').innerText = '???? ??????...';
+    document.getElementById('rc-bat').className = 'font-bold text-gray-400 text-xl';
+    
+    document.getElementById('robotControlModal').classList.remove('hidden');
+    document.getElementById('robotControlModal').classList.add('flex');
+    
+    // ??? ?????? ?????
+    window.refreshRobotStatus();
+};
+
+window.closeRobotControlPanel = () => {
+    document.getElementById('robotControlModal').classList.add('hidden');
+    document.getElementById('robotControlModal').classList.remove('flex');
+};
+
+window.callPuduApi = async (action, payload = {}) => {
+    const sn = document.getElementById('rc-activeSN').value;
+    if(!sn) { showToast('????? ???????? ?????', 'error'); return null; }
+    
+    try {
+        const puduGateway = httpsCallable(cloudFunctions, 'puduGateway');
+        const result = await puduGateway({ action, sn, payload });
+        
+        if(result.data && result.data.success) {
+            return result.data.data; // ?????? Pudu ???????
+        } else {
+            console.error(result.data.error);
+            showToast('??? ?? ??????? ????????', 'error');
+            return null;
+        }
+    } catch(err) {
+        console.error(err);
+        showToast('??? ??????? ???????? ?????', 'error');
+        return null;
+    }
+};
+
+window.refreshRobotStatus = async () => {
+    const stateEl = document.getElementById('rc-state');
+    const batEl = document.getElementById('rc-bat');
+    
+    stateEl.innerText = '??? ???????...';
+    
+    const res = await window.callPuduApi('status');
+    if(res && res.data) {
+        const runState = res.data.runState;
+        const bat = res.data.power;
+        
+        batEl.innerText = bat + '%';
+        if(bat > 50) batEl.className = 'font-bold text-green-400 text-xl';
+        else if(bat > 20) batEl.className = 'font-bold text-yellow-400 text-xl';
+        else batEl.className = 'font-bold text-red-500 text-xl animate-pulse';
+        
+        stateEl.innerText = runState || '???? (?? ???? ????)';
+        stateEl.className = 'font-bold text-green-400';
+    } else {
+        stateEl.innerText = '??? ????';
+        stateEl.className = 'font-bold text-red-500';
+    }
+};
+
+window.sendRobotTo = async (pointName) => {
+    showToast('???? ????? ??????? ??? ' + pointName + '...', 'info');
+    
+    const payload = {
+        taskType: 'DELIVERY',
+        deliveryType: 'DIRECT',
+        pointName: pointName
+    };
+    
+    const res = await window.callPuduApi('call', payload);
+    if(res && (res.code === '0' || res.data === 'true')) {
+        showToast('?? ?????? ??????? ?????! ??', 'success');
+        window.refreshRobotStatus();
+    } else {
+        showToast('??????? ????? ?? ??? ?????', 'warning');
+    }
+};
+
+window.sendRobotVoice = async () => {
+    const text = document.getElementById('rc-voiceText').value;
+    if(!text) { showToast('???? ???? ?????!', 'warning'); return; }
+    
+    showToast('???? ???????...', 'info');
+    
+    const payload = {
+        callMode: 'TEXT',
+        message: text,
+        displayTime: 10
+    };
+    
+    const res = await window.callPuduApi('speak', payload);
+    if(res) {
+        showToast('?? ???/??? ??????? ????? ???', 'success');
+        document.getElementById('rc-voiceText').value = '';
+    } else {
+        showToast('??? ????? ?????', 'warning');
+    }
+};
