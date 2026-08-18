@@ -11536,3 +11536,120 @@ window.fetchRobotMap = async () => {
         tablesList.innerHTML = '<p class="col-span-2 text-center text-red-500 text-sm font-bold">فشل جلب الخريطة، تأكد من اتصال الروبوت.</p>';
     }
 };
+
+// ============================================================
+// دالة الاتصال الذكي بسيرفر Pudu
+// ============================================================
+window.connectRobotToPudu = async (robotId, sn, robotName) => {
+    const btn = document.getElementById('pudu-btn-' + robotId);
+    const badge = document.getElementById('pudu-badge-' + robotId);
+    const statusDiv = document.getElementById('pudu-status-' + robotId);
+
+    const setStatus = (icon, msg, color, badgeText, badgeColor) => {
+        if(statusDiv) {
+            statusDiv.className = 'mb-2 text-[10px] p-2 rounded-lg ' + color;
+            statusDiv.innerHTML = icon + ' ' + msg;
+            statusDiv.classList.remove('hidden');
+        }
+        if(badge) {
+            badge.textContent = badgeText;
+            badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold ' + badgeColor;
+        }
+    };
+
+    // --- فحص 1: هل الاسم مدعوم ---
+    const isSupported = robotName && (
+        robotName.toLowerCase().includes('bella') ||
+        robotName.toLowerCase().includes('ketty') ||
+        robotName.toLowerCase().includes('quill')
+    );
+    if (!isSupported) {
+        setStatus('⚠️', 'هذا الروبوت ليس من أنواع Pudu المدعومة (Bella / Ketty / Quill). لا يمكن الاتصال.', 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300', '⚠️ غير مدعوم', 'bg-yellow-100 text-yellow-700');
+        return;
+    }
+
+    // --- فحص 2: هل يوجد SN ---
+    if (!sn || sn === 'بدون رقم' || sn.trim() === '') {
+        setStatus('❌', 'الرقم التسلسلي (SN) مفقود! اضغط على "تعديل" وأدخل الرقم التسلسلي الصحيح للروبوت.', 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300', '❌ SN مفقود', 'bg-red-100 text-red-700');
+        return;
+    }
+
+    // --- فحص 3: هل SN يبدو صحيحاً (أقل من 5 أحرف مشبوه) ---
+    if (sn.trim().length < 5) {
+        setStatus('⚠️', 'الرقم التسلسلي (SN) قصير جداً ويبدو غير صحيح. تأكد منه واضغط "تعديل" لتصحيحه.', 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300', '⚠️ SN مشبوه', 'bg-yellow-100 text-yellow-700');
+        return;
+    }
+
+    // --- الاتصال الفعلي ---
+    if(btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الاتصال بسيرفر Pudu...';
+    }
+    setStatus('⏳', 'يتم الاتصال بسيرفرات Pudu Cloud عبر البوابة الآمنة...', 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300', '⏳ جاري الاتصال...', 'bg-blue-100 text-blue-700');
+
+    try {
+        const puduGateway = httpsCallable(cloudFunctions, 'puduGateway');
+        const result = await puduGateway({ action: 'status', sn: sn.trim(), payload: {} });
+
+        if(btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-plug-circle-bolt"></i> اتصال بسيرفر Pudu';
+        }
+
+        // --- تحليل الرد الذكي ---
+        if (!result.data) {
+            setStatus('❌', 'لا يوجد رد من السيرفر. تحقق من اتصالك بالإنترنت وأعد المحاولة.', 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300', '❌ لا يوجد رد', 'bg-red-100 text-red-700');
+            return;
+        }
+
+        if (!result.data.success) {
+            const errMsg = result.data.error || 'خطأ غير معروف';
+            let friendlyMsg = 'خطأ من سيرفر Pudu: ' + errMsg;
+            
+            if (errMsg.includes('404') || errMsg.toLowerCase().includes('not found')) {
+                friendlyMsg = 'الرقم التسلسلي (SN) غير موجود في سيرفر Pudu. تأكد أن الروبوت مسجل في منصة Pudu وأن الـ SN صحيح.';
+            } else if (errMsg.includes('401') || errMsg.toLowerCase().includes('unauthorized')) {
+                friendlyMsg = 'خطأ في مفاتيح API. تحقق من APP_KEY و APP_SECRET في Firebase Functions.';
+            } else if (errMsg.includes('403')) {
+                friendlyMsg = 'ليس لديك صلاحية الوصول لهذا الروبوت في سيرفر Pudu.';
+            } else if (errMsg.includes('timeout') || errMsg.includes('ECONNREFUSED')) {
+                friendlyMsg = 'انتهت مهلة الاتصال. الروبوت غير متصل بالإنترنت أو السيرفر بعيد.';
+            }
+            
+            setStatus('❌', friendlyMsg, 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300', '❌ فشل الاتصال', 'bg-red-100 text-red-700');
+            return;
+        }
+
+        // --- نجح الاتصال! ---
+        const data = result.data.data && result.data.data.data;
+        if (data) {
+            const bat = data.power !== undefined ? data.power + '%' : 'غير محدد';
+            const state = data.runState || 'متصل';
+            setStatus(
+                '✅',
+                `الروبوت متصل بنجاح بسيرفر Pudu! | البطارية: ${bat} | الحالة: ${state}`,
+                'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300',
+                '✅ متصل - ' + bat,
+                'bg-green-100 text-green-700'
+            );
+        } else {
+            setStatus('✅', 'الاتصال بسيرفر Pudu ناجح! الروبوت مسجل ومتاح.', 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300', '✅ متصل', 'bg-green-100 text-green-700');
+        }
+
+    } catch(err) {
+        if(btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-plug-circle-bolt"></i> اتصال بسيرفر Pudu';
+        }
+        let errMsg = 'فشل الاتصال بالسيرفر الآمن (Firebase Functions).';
+        if (err.code === 'functions/unauthenticated') {
+            errMsg = 'يجب تسجيل الدخول أولاً للاتصال بسيرفر Pudu.';
+        } else if (err.code === 'functions/unavailable') {
+            errMsg = 'سيرفر Firebase غير متاح حالياً. أعد المحاولة بعد قليل.';
+        } else if (err.message) {
+            errMsg = 'خطأ: ' + err.message;
+        }
+        setStatus('❌', errMsg, 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300', '❌ خطأ', 'bg-red-100 text-red-700');
+        console.error('[Pudu Connect]', err);
+    }
+};
