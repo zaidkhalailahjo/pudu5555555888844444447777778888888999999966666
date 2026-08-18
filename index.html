@@ -3744,12 +3744,9 @@
                 
                 <!-- إرسال لأمر -->
                 <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg text-white">
-                    <h3 class="font-bold text-lg mb-4 text-orange-400 border-b border-gray-700 pb-2"><i class="fa-solid fa-route"></i> إرسال إلى طاولة</h3>
-                    <div class="grid grid-cols-2 gap-3">
-                        <button onclick="window.sendRobotTo('1')" class="bg-green-600 hover:bg-green-700 text-white py-3 rounded font-bold transition text-sm">الطاولة 1</button>
-                        <button onclick="window.sendRobotTo('2')" class="bg-green-600 hover:bg-green-700 text-white py-3 rounded font-bold transition text-sm">الطاولة 2</button>
-                        <button onclick="window.sendRobotTo('Zaid')" class="bg-green-600 hover:bg-green-700 text-white py-3 rounded font-bold transition text-sm">الطاولة Zaid</button>
-                        <button onclick="window.sendRobotTo('Pick up')" class="bg-yellow-600 hover:bg-yellow-700 text-white py-3 rounded font-bold transition text-sm text-black">عودة (Pick up)</button>
+                    <h3 class="font-bold text-lg mb-4 text-orange-400 border-b border-gray-700 pb-2"><i class="fa-solid fa-route"></i> الخريطة الحالية و التوجيه</h3>
+                    <div id="rc-tablesList" class="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto custom-scrollbar pr-2">
+                        <p class="col-span-2 text-center text-gray-500 py-4 text-sm animate-pulse">جاري جلب خريطة الروبوت والنقاط...</p>
                     </div>
                 </div>
 
