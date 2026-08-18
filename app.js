@@ -1538,7 +1538,7 @@ window.addClientRobotRow = (name='', serial='', date='', hasWarranty=false, warr
                             if (contract.acknowledged) {
                                 hideContract = true;
                             } else {
-                                expiryBadge = `<div class="w-full bg-red-100 text-red-700 text-[10px] font-bold p-1 mt-1 flex justify-between items-center rounded"><span class="animate-pulse"><i class="fa-solid fa-triangle-exclamation"></i> العقد منتهي!</span> ${isCEO ? `<button onclick="window.acknowledgeContract('${c.id}', ${originalIndex})" class="bg-red-500 text-white px-2 rounded">تم / إخفاء</button>` : ''}</div>`;
+                        expiryBadge = `<div class="w-full bg-red-100 text-red-700 text-[10px] font-bold p-1 mt-1 flex justify-between items-center rounded"><span class="animate-pulse"><i class="fa-solid fa-triangle-exclamation"></i> العقد منتهي!</span> ${isCEO ? `<button onclick="window.acknowledgeContract('${c.id}', ${originalIndex})" class="bg-red-500 text-white px-2 rounded">تم / إخفاء</button>` : ''}</div>`;
                             }
                         } else if (diffDays <= 7) {
                             expiryBadge = `<div class="w-full bg-yellow-100 text-yellow-700 text-[10px] font-bold p-1 mt-1 rounded"><i class="fa-solid fa-clock"></i> ينتهي خلال ${diffDays} أيام</div>`;
@@ -1610,10 +1610,41 @@ window.addClientRobotRow = (name='', serial='', date='', hasWarranty=false, warr
         document.getElementById('robotForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             if(!currentUserData) return;
-            
+
+            const rName = document.getElementById('newRobotName').value.trim();
+            const serialNumber = document.getElementById('newRobotSerial').value.trim() || 'بدون رقم';
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+
+            // التحقق الحي من الروبوت اذا كان اسمه من الروبوتات المدعومة وله SN حقيقي
+            const isSupported = rName.toLowerCase().includes('bella') || rName.toLowerCase().includes('ketty') || rName.toLowerCase().includes('quill');
+            if (isSupported && serialNumber !== 'بدون رقم') {
+                const originalText = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mx-1"></i> جاري التحقق من اتصال الروبوت...';
+                try {
+                    const puduGateway = httpsCallable(cloudFunctions, 'puduGateway');
+                    const result = await puduGateway({ action: 'status', sn: serialNumber, payload: {} });
+                    if (!result.data || !result.data.success || !result.data.data) {
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
+                        showToast('فشل الربط! الرقم التسلسلي (SN) خاطئ او الروبوت غير متصل.', 'error');
+                        return;
+                    }
+                    showToast('تم التحقق! الروبوت متصل بنجاح.', 'success');
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                } catch(err) {
+                    console.error(err);
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                    showToast('تعذر الاتصال بسيرفر التحقق.', 'error');
+                    return;
+                }
+            }
+
             const data = {
-                name: document.getElementById('newRobotName').value,
-                serialNumber: document.getElementById('newRobotSerial').value || 'بدون رقم',
+                name: rName,
+                serialNumber: serialNumber,
                 status: document.getElementById('newRobotStatus').value,
                 notes: document.getElementById('newRobotNotes').value || '',
                 location: document.getElementById('robotLocation').value,
@@ -1624,22 +1655,18 @@ window.addClientRobotRow = (name='', serial='', date='', hasWarranty=false, warr
 
             try {
                 const locOrId = document.getElementById('robotLocation').value;
-                // إضافة شرط التحقق الناقص هنا لتجنب خطأ الـ Syntax Error
                 if (locOrId !== 'company' && locOrId !== 'warehouse') {
-                    // وضع التعديل (لوجود ID)
                     const existingRobot = globalRobots.find(x => x.id === locOrId);
                     data.location = existingRobot ? existingRobot.location : 'company';
-                    data.isRented = existingRobot ? (existingRobot.isRented || false) : false; 
-                    
+                    data.isRented = existingRobot ? (existingRobot.isRented || false) : false;
                     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robots', locOrId), data);
                     showToast('تم تعديل بيانات الروبوت بنجاح', 'success');
                 } else {
-                    // وضع الإضافة (لأن القيمة هي company أو warehouse)
                     await addDoc(getColRef('robots'), data);
-                    showToast('تم إضافة الروبوت بنجاح', 'success');
+                    showToast('تم اضافة الروبوت بنجاح', 'success');
                 }
                 window.closeModal('addRobotModal');
-            } catch(e) { console.error(e); showToast('حدث خطأ', 'error'); }
+            } catch(e) { console.error(e); showToast('حدث خطا اثناء الحفظ', 'error'); }
         });
 
         window.deleteRobot = async (id) => {
