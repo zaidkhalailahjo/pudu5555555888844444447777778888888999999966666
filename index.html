@@ -3724,5 +3724,47 @@
 
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script type="module" src="app.js"></script>
+    <!-- شاشة التحكم الكاملة بالروبوت -->
+    <div id="robotControlModal" class="fixed inset-0 bg-gray-900 bg-opacity-95 z-[999999] hidden flex-col transition-opacity duration-300">
+        <div class="flex justify-between items-center p-4 border-b border-gray-700 bg-gray-800 text-white">
+            <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-gamepad text-green-400"></i> تحكم الروبوت: <span id="rc-robotName" class="text-blue-300">--</span></h2>
+            <button onclick="window.closeRobotControlPanel()" class="text-gray-400 hover:text-red-500 text-2xl"><i class="fa-solid fa-times"></i></button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-4 md:p-8">
+            <div class="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- الحالة -->
+                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg text-white">
+                    <h3 class="font-bold text-lg mb-4 text-blue-400 border-b border-gray-700 pb-2"><i class="fa-solid fa-heartbeat"></i> الحالة الحية</h3>
+                    <div class="space-y-3">
+                        <p class="flex justify-between"><span class="text-gray-400">مستوى البطارية:</span> <span id="rc-bat" class="font-bold text-green-400 text-xl">--%</span></p>
+                        <p class="flex justify-between"><span class="text-gray-400">حالة النظام:</span> <span id="rc-state" class="font-bold">--</span></p>
+                    </div>
+                    <button onclick="window.refreshRobotStatus()" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-bold transition"><i class="fa-solid fa-sync"></i> تحديث الحالة</button>
+                </div>
+                
+                <!-- إرسال لأمر -->
+                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg text-white">
+                    <h3 class="font-bold text-lg mb-4 text-orange-400 border-b border-gray-700 pb-2"><i class="fa-solid fa-route"></i> إرسال إلى طاولة</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="window.sendRobotTo('1')" class="bg-green-600 hover:bg-green-700 text-white py-3 rounded font-bold transition text-sm">الطاولة 1</button>
+                        <button onclick="window.sendRobotTo('2')" class="bg-green-600 hover:bg-green-700 text-white py-3 rounded font-bold transition text-sm">الطاولة 2</button>
+                        <button onclick="window.sendRobotTo('Zaid')" class="bg-green-600 hover:bg-green-700 text-white py-3 rounded font-bold transition text-sm">الطاولة Zaid</button>
+                        <button onclick="window.sendRobotTo('Pick up')" class="bg-yellow-600 hover:bg-yellow-700 text-white py-3 rounded font-bold transition text-sm text-black">عودة (Pick up)</button>
+                    </div>
+                </div>
+
+                <!-- الصوت والشاشة -->
+                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg text-white md:col-span-2">
+                    <h3 class="font-bold text-lg mb-4 text-purple-400 border-b border-gray-700 pb-2"><i class="fa-solid fa-comment-dots"></i> الشاشة والنطق</h3>
+                    <div class="flex flex-col md:flex-row gap-3">
+                        <input type="text" id="rc-voiceText" placeholder="اكتب رسالة لينطقها الروبوت ويعرضها..." class="flex-1 bg-gray-700 border border-gray-600 text-white px-4 py-3 rounded focus:outline-none focus:border-purple-500">
+                        <button onclick="window.sendRobotVoice()" class="bg-purple-600 hover:bg-purple-700 text-white py-3 px-6 rounded font-bold transition whitespace-nowrap"><i class="fa-solid fa-bullhorn"></i> إرسال وانطق</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <input type="hidden" id="rc-activeSN">
+    </div>
+
 </body>
 </html>
