@@ -1712,32 +1712,42 @@ window.addClientRobotRow = (name='', serial='', date='', hasWarranty=false, warr
 
             robots.forEach(r => {
                 const statusColor = r.status === 'جديد' ? 'text-green-500' : (r.status === 'معطل' ? 'text-red-500' : 'text-yellow-500');
-                
+                const hasSN = r.serialNumber && r.serialNumber !== 'بدون رقم' && r.serialNumber.trim().length > 4;
+                const isPuduRobot = r.name && (r.name.toLowerCase().includes('bella') || r.name.toLowerCase().includes('ketty') || r.name.toLowerCase().includes('quill'));
+                const puduBtnCls = (hasSN && isPuduRobot) ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-700' : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-300 border-gray-300';
+                const controlBtn = isPuduRobot ? `<button onclick="window.openRobotControlPanel('${r.id}')" class="text-green-600 hover:bg-green-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold border border-green-200"><i class="fa-solid fa-gamepad mx-1"></i> تحكم</button>` : '';
+
                 let actionBtnsHtml = '';
                 if(canManageRobots) {
                     actionBtnsHtml = `
                         <div class="mt-auto pt-2 flex justify-between items-center border-t dark:border-gray-700 flex-wrap gap-1">
-                            <button onclick="window.openRobotControlPanel('${r.id}')" class="text-green-600 hover:bg-green-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold border border-green-200"><i class="fa-solid fa-gamepad mx-1"></i> تحكم</button>
+                            ${controlBtn}
                             <button onclick="window.moveRobotLocation('${r.id}', 'warehouse')" class="text-blue-600 hover:bg-blue-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold border border-blue-200"><i class="fa-solid fa-truck-moving mx-1"></i> للمستودع</button>
                             <button onclick="window.openEditRobotModal('${r.id}')" class="text-indigo-500 hover:bg-indigo-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold"><i class="fa-solid fa-pen mx-1"></i> تعديل</button>
                             <button onclick="window.deleteRobot('${r.id}')" class="text-red-500 hover:bg-red-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold"><i class="fa-solid fa-trash mx-1"></i> حذف</button>
                         </div>
                     `;
                 }
-                
+
                 cont.innerHTML += `
                     <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col h-full hover:shadow-md transition">
                         <div class="flex justify-between items-start mb-3 border-b dark:border-gray-700 pb-2">
-                            <h3 class="font-bold text-lg text-teal-700 dark:text-teal-400"><i class="fa-solid fa-robot mx-1"></i> ${escapeHTML(r.name)}</h3>
-                            <span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold">متوفر في الشركة</span>
+                            <h3 class="font-bold text-base text-teal-700 dark:text-teal-400"><i class="fa-solid fa-robot mx-1"></i> ${escapeHTML(r.name)}</h3>
+                            <span id="pudu-badge-${r.id}" class="bg-gray-100 dark:bg-gray-700 text-gray-500 px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap">● غير متحقق</span>
                         </div>
-                        <div class="text-xs text-gray-600 dark:text-gray-300 space-y-2 mb-4 flex-1">
+                        <div class="text-xs text-gray-600 dark:text-gray-300 space-y-2 mb-3 flex-1">
                             <p class="flex justify-between"><span>الرقم التسلسلي:</span> <span class="font-bold" dir="ltr">${escapeHTML(r.serialNumber)}</span></p>
                             <p class="flex justify-between"><span>الحالة:</span> <span class="font-bold ${statusColor}">${escapeHTML(r.status)}</span></p>
                             <p class="flex justify-between"><span>أضيف بواسطة:</span> <span>${escapeHTML(r.addedBy)}</span></p>
                             <p class="flex justify-between text-gray-400 pt-2 border-t dark:border-gray-700 text-[10px]"><span>التاريخ:</span> <span>${new Date(r.timestamp).toLocaleDateString('ar-EG')}</span></p>
                             ${r.notes ? `<p class="text-[10px] text-gray-500 mt-2 p-2 bg-gray-50 dark:bg-gray-900 rounded">${escapeHTML(r.notes)}</p>` : ''}
                         </div>
+                        <div id="pudu-status-${r.id}" class="hidden mb-2 text-[10px] p-2 rounded-lg leading-relaxed"></div>
+                        <button id="pudu-btn-${r.id}"
+                            onclick="window.connectRobotToPudu('${r.id}', '${escapeHTML(r.serialNumber)}', '${escapeHTML(r.name)}')"
+                            class="w-full mb-2 ${puduBtnCls} border py-2 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-2 shadow-sm">
+                            <i class="fa-solid fa-plug-circle-bolt"></i> اتصال بسيرفر Pudu
+                        </button>
                         ${actionBtnsHtml}
                     </div>
                 `;
@@ -1767,33 +1777,48 @@ window.addClientRobotRow = (name='', serial='', date='', hasWarranty=false, warr
             }
 
             robots.forEach(r => {
+            robots.forEach(r => {
                 const statusColor = r.status === 'جديد' ? 'text-green-500' : (r.status === 'معطل' ? 'text-red-500' : 'text-yellow-500');
-                
+                const hasSN = r.serialNumber && r.serialNumber !== 'بدون رقم' && r.serialNumber.trim().length > 4;
+                const isPuduRobot = r.name && (r.name.toLowerCase().includes('bella') || r.name.toLowerCase().includes('ketty') || r.name.toLowerCase().includes('quill'));
+                const puduBtnCls = (hasSN && isPuduRobot) ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-700' : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-300 border-gray-300';
+                const controlBtn = isPuduRobot ? `<button onclick="window.openRobotControlPanel('${r.id}')" class="text-green-600 hover:bg-green-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold border border-green-200"><i class="fa-solid fa-gamepad mx-1"></i> تحكم</button>` : '';
+
                 let actionBtnsHtml = '';
                 if(canManageRobots) {
                     actionBtnsHtml = `
-                        <div class="mt-auto pt-2 flex justify-between items-center border-t dark:border-gray-700">
-                            <button onclick="window.moveRobotLocation('${r.id}', 'company')" class="text-teal-600 hover:bg-teal-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold mt-2 border border-teal-200"><i class="fa-solid fa-building-circle-arrow-right mx-1"></i> نقل للشركة</button>
-                            <button onclick="window.openEditRobotModal('${r.id}')" class="text-indigo-500 hover:bg-indigo-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold mt-2"><i class="fa-solid fa-pen mx-1"></i> تعديل</button>
-                            <button onclick="window.deleteRobot('${r.id}')" class="text-red-500 hover:bg-red-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold mt-2"><i class="fa-solid fa-trash mx-1"></i> حذف</button>
+                        <div class="mt-auto pt-2 flex justify-between items-center border-t dark:border-gray-700 flex-wrap gap-1">
+                            ${controlBtn}
+                            <button onclick="window.moveRobotLocation('${r.id}', 'company')" class="text-teal-600 hover:bg-teal-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold border border-teal-200"><i class="fa-solid fa-building-circle-arrow-right mx-1"></i> نقل للشركة</button>
+                            <button onclick="window.openEditRobotModal('${r.id}')" class="text-indigo-500 hover:bg-indigo-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold"><i class="fa-solid fa-pen mx-1"></i> تعديل</button>
+                            <button onclick="window.deleteRobot('${r.id}')" class="text-red-500 hover:bg-red-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold"><i class="fa-solid fa-trash mx-1"></i> حذف</button>
                         </div>
                     `;
                 }
-                
+
                 cont.innerHTML += `
                     <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col h-full hover:shadow-md transition">
                         <div class="flex justify-between items-start mb-3 border-b dark:border-gray-700 pb-2">
-                            <h3 class="font-bold text-lg text-orange-700 dark:text-orange-400"><i class="fa-solid fa-robot mx-1"></i> ${escapeHTML(r.name)}</h3>
-                            <span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold">متوفر في المستودع</span>
+                            <h3 class="font-bold text-base text-orange-700 dark:text-orange-400"><i class="fa-solid fa-robot mx-1"></i> ${escapeHTML(r.name)}</h3>
+                            <span id="pudu-badge-${r.id}" class="bg-gray-100 dark:bg-gray-700 text-gray-500 px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap">● غير متحقق</span>
                         </div>
-                        <div class="text-xs text-gray-600 dark:text-gray-300 space-y-2 mb-4 flex-1">
+                        <div class="text-xs text-gray-600 dark:text-gray-300 space-y-2 mb-3 flex-1">
                             <p class="flex justify-between"><span>الرقم التسلسلي:</span> <span class="font-bold" dir="ltr">${escapeHTML(r.serialNumber)}</span></p>
                             <p class="flex justify-between"><span>الحالة:</span> <span class="font-bold ${statusColor}">${escapeHTML(r.status)}</span></p>
                             <p class="flex justify-between"><span>أضيف بواسطة:</span> <span>${escapeHTML(r.addedBy)}</span></p>
                             <p class="flex justify-between text-gray-400 pt-2 border-t dark:border-gray-700 text-[10px]"><span>التاريخ:</span> <span>${new Date(r.timestamp).toLocaleDateString('ar-EG')}</span></p>
                             ${r.notes ? `<p class="text-[10px] text-gray-500 mt-2 p-2 bg-gray-50 dark:bg-gray-900 rounded">${escapeHTML(r.notes)}</p>` : ''}
                         </div>
+                        <div id="pudu-status-${r.id}" class="hidden mb-2 text-[10px] p-2 rounded-lg leading-relaxed"></div>
+                        <button id="pudu-btn-${r.id}"
+                            onclick="window.connectRobotToPudu('${r.id}', '${escapeHTML(r.serialNumber)}', '${escapeHTML(r.name)}')"
+                            class="w-full mb-2 ${puduBtnCls} border py-2 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-2 shadow-sm">
+                            <i class="fa-solid fa-plug-circle-bolt"></i> اتصال بسيرفر Pudu
+                        </button>
                         ${actionBtnsHtml}
+                    </div>
+                `;
+            });
                     </div>
                 `;
             });
