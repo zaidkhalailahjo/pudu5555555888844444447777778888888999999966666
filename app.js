@@ -11463,3 +11463,49 @@ window.sendRobotVoice = async () => {
         showToast('??? ????? ?????', 'warning');
     }
 };
+
+window.openRobotControlPanel = (robotId) => {
+    const r = globalRobots.find(x => x.id === robotId);
+    if(!r) return;
+    
+    document.getElementById('rc-robotName').innerText = r.name;
+    document.getElementById('rc-activeSN').value = r.serialNumber;
+    
+    document.getElementById('rc-bat').innerText = '--%';
+    document.getElementById('rc-state').innerText = '???? ??????...';
+    document.getElementById('rc-bat').className = 'font-bold text-gray-400 text-xl';
+    
+    document.getElementById('rc-tablesList').innerHTML = '<p class="col-span-2 text-center text-gray-500 py-4 text-sm animate-pulse">???? ??? ????? ??????? ???????...</p>';
+
+    document.getElementById('robotControlModal').classList.remove('hidden');
+    document.getElementById('robotControlModal').classList.add('flex');
+    
+    window.refreshRobotStatus();
+    window.fetchRobotMap();
+};
+
+window.fetchRobotMap = async () => {
+    const tablesList = document.getElementById('rc-tablesList');
+    const res = await window.callPuduApi('map');
+    
+    if(res && res.data && res.data.mapList && res.data.mapList.length > 0) {
+        const points = res.data.mapList[0].standList || [];
+        if(points.length === 0) {
+            tablesList.innerHTML = '<p class="col-span-2 text-center text-red-500 text-sm">??????? ????? ?? ???? ???? ?????</p>';
+            return;
+        }
+        
+        tablesList.innerHTML = '';
+        points.forEach(pt => {
+            const btnColor = pt.type === 2 ? 'bg-yellow-600 hover:bg-yellow-700 text-black' : 'bg-green-600 hover:bg-green-700 text-white';
+            const icon = pt.type === 2 ? '<i class="fa-solid fa-home"></i>' : '<i class="fa-solid fa-chair"></i>';
+            tablesList.innerHTML += \
+                <button onclick="window.sendRobotTo('\')" class="\ py-3 rounded font-bold transition text-sm flex items-center justify-center gap-2 shadow-sm">
+                    \ \
+                </button>
+            \;
+        });
+    } else {
+        tablesList.innerHTML = '<p class="col-span-2 text-center text-red-500 text-sm font-bold">??? ??? ???????? ???? ?? ????? ???????.</p>';
+    }
+};
