@@ -11444,7 +11444,7 @@ window.callPuduApi = async (action, payload = {}) => {
     if(!sn) { showToast('الرقم التسلسلي مفقود', 'error'); return null; }
     
     try {
-        const puduGateway = window.httpsCallable(window.cloudFunctions, 'puduGateway');
+        const puduGateway = httpsCallable(cloudFunctions, 'puduGateway');
         const result = await puduGateway({ action, sn, payload });
         
         if(result.data && result.data.success) {
@@ -11572,7 +11572,7 @@ window.fetchRobotMap = async () => {
 };
 
 window.openRobotControlPanel = (robotId) => {
-    const r = window.globalRobots.find(x => x.id === robotId);
+    const r = globalRobots.find(x => x.id === robotId);
     if(!r) return;
     
     document.getElementById('rc-robotName').innerText = r.name;
@@ -11673,9 +11673,9 @@ window.connectRobotToPudu = async (robotId, sn, robotName) => {
         // --- نجح الاتصال! ---
         if (robotId) {
             try {
-                const { doc, updateDoc } = window.firebaseFirestore;
+                
                 await updateDoc(doc(db, "robots", robotId), { puduLinked: true });
-                const r = window.globalRobots.find(x => x.id === robotId);
+                const r = globalRobots.find(x => x.id === robotId);
                 if(r) r.puduLinked = true;
             } catch(e) { console.error("Failed to save puduLinked state:", e); }
         }
