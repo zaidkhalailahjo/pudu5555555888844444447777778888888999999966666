@@ -11676,7 +11676,6 @@ window.connectRobotToPudu = async (robotId, sn, robotName) => {
 
         // إخفاء زر الاتصال بعد النجاح
         if(btn) btn.style.display = 'none';
-        }
 
     } catch(err) {
         if(btn) {
