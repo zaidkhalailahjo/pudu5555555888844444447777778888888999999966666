@@ -11665,7 +11665,7 @@ window.connectRobotToPudu = async (robotId, sn, robotName) => {
             const state = data.run_state || 'متصل';
             setStatus(
                 '✅',
-                الروبوت متصل بنجاح بسيرفر Pudu! | البطارية: ${bat} | الحالة: ${state},
+                `الروبوت متصل بنجاح بسيرفر Pudu! | البطارية: ${bat} | الحالة: ${state}`,
                 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300',
                 '✅ متصل - ' + bat,
                 'bg-green-100 text-green-700'
