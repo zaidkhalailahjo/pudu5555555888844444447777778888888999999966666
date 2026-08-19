@@ -1743,11 +1743,17 @@ window.addClientRobotRow = (name='', serial='', date='', hasWarranty=false, warr
                             ${r.notes ? `<p class="text-[10px] text-gray-500 mt-2 p-2 bg-gray-50 dark:bg-gray-900 rounded">${escapeHTML(r.notes)}</p>` : ''}
                         </div>
                         <div id="pudu-status-${r.id}" class="hidden mb-2 text-[10px] p-2 rounded-lg leading-relaxed"></div>
-                        <button id="pudu-btn-${r.id}"
-                            onclick="window.connectRobotToPudu('${r.id}', '${escapeHTML(r.serialNumber)}', '${escapeHTML(r.name)}')"
-                            class="w-full mb-2 ${puduBtnCls} border py-2 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-2 shadow-sm">
-                            <i class="fa-solid fa-plug-circle-bolt"></i> اتصال بسيرفر Pudu
-                        </button>
+                        ${r.puduLinked ? 
+                            <div class="w-full mb-2 bg-emerald-50 border border-emerald-200 text-emerald-700 py-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-2 shadow-sm">
+                                <i class="fa-solid fa-link"></i> مرتبط بسيرفر Pudu
+                            </div> 
+                            : 
+                            <button id="pudu-btn-${r.id}"
+                                onclick="window.connectRobotToPudu('${r.id}', '${escapeHTML(r.serialNumber)}', '${escapeHTML(r.name)}')"
+                                class="w-full mb-2 ${puduBtnCls} border py-2 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-2 shadow-sm">
+                                <i class="fa-solid fa-plug-circle-bolt"></i> ربط بسيرفر Pudu
+                            </button>
+                        }
                         ${actionBtnsHtml}
                     </div>
                 `;
@@ -1809,11 +1815,17 @@ window.addClientRobotRow = (name='', serial='', date='', hasWarranty=false, warr
                             ${r.notes ? `<p class="text-[10px] text-gray-500 mt-2 p-2 bg-gray-50 dark:bg-gray-900 rounded">${escapeHTML(r.notes)}</p>` : ''}
                         </div>
                         <div id="pudu-status-${r.id}" class="hidden mb-2 text-[10px] p-2 rounded-lg leading-relaxed"></div>
-                        <button id="pudu-btn-${r.id}"
-                            onclick="window.connectRobotToPudu('${r.id}', '${escapeHTML(r.serialNumber)}', '${escapeHTML(r.name)}')"
-                            class="w-full mb-2 ${puduBtnCls} border py-2 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-2 shadow-sm">
-                            <i class="fa-solid fa-plug-circle-bolt"></i> اتصال بسيرفر Pudu
-                        </button>
+                        ${r.puduLinked ? 
+                            <div class="w-full mb-2 bg-emerald-50 border border-emerald-200 text-emerald-700 py-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-2 shadow-sm">
+                                <i class="fa-solid fa-link"></i> مرتبط بسيرفر Pudu
+                            </div> 
+                            : 
+                            <button id="pudu-btn-${r.id}"
+                                onclick="window.connectRobotToPudu('${r.id}', '${escapeHTML(r.serialNumber)}', '${escapeHTML(r.name)}')"
+                                class="w-full mb-2 ${puduBtnCls} border py-2 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-2 shadow-sm">
+                                <i class="fa-solid fa-plug-circle-bolt"></i> ربط بسيرفر Pudu
+                            </button>
+                        }
                         ${actionBtnsHtml}
                     </div>
                 `;
@@ -11659,6 +11671,15 @@ window.connectRobotToPudu = async (robotId, sn, robotName) => {
         }
 
         // --- نجح الاتصال! ---
+        if (robotId) {
+            try {
+                const { doc, updateDoc } = window.firebaseFirestore;
+                await updateDoc(doc(db, "robots", robotId), { puduLinked: true });
+                const r = window.globalRobots.find(x => x.id === robotId);
+                if(r) r.puduLinked = true;
+            } catch(e) { console.error("Failed to save puduLinked state:", e); }
+        }
+
         const data = result.data.data && result.data.data.data ? result.data.data.data : result.data.data;
         if (data) {
             const bat = data.battery !== undefined ? data.battery + '%' : 'غير محدد';
