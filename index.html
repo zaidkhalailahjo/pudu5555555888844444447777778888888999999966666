@@ -3775,9 +3775,10 @@
                                 </div>
                             </div>
                         </div>
-                        <div>
-                            <p class="text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wider">Software version</p>
-                            <p id="rc-version" class="text-sm font-bold text-slate-600">--</p>
+                        <div class="cursor-pointer hover:bg-slate-50 transition p-2 -m-2 rounded" onclick="document.getElementById('rc-tablesList').scrollIntoView({behavior: 'smooth'})">
+                            <p class="text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wider"><i class="fa-solid fa-map-location-dot"></i> الخريطة الحالية</p>
+                            <p id="rc-mapName" class="text-sm font-bold text-slate-600">--</p>
+                            <p id="rc-locationWarning" class="text-[10px] font-bold text-rose-500 hidden mt-1 animate-pulse bg-rose-100 px-2 py-0.5 rounded-full inline-block"><i class="fa-solid fa-triangle-exclamation"></i> فاقد التمركز</p>
                         </div>
                     </div>
                     
