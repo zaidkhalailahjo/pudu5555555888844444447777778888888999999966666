@@ -11955,10 +11955,10 @@ window.connectRobotToPudu = async (robotId, sn, robotName) => {
 // ==========================================
 
 window.handleRobotDirectLink = async () => {
-    const path = window.location.pathname;
-    if (!path.startsWith('/robots/')) return;
+    const path = window.location.pathname; // left for compatibility
+    if (!new URLSearchParams(window.location.search).has('robot')) return;
     
-    const pathId = decodeURIComponent(path.split('/robots/')[1] || "");
+    const pathId = new URLSearchParams(window.location.search).get("robot") || "";
     if (!pathId) return;
 
     // Check if user is logged in
@@ -11997,7 +11997,7 @@ window.handleRobotDirectLink = async () => {
 
 // Check repeatedly until auth resolves and robots load, but only run ONCE
 let linkCheckInterval = setInterval(() => {
-    if (window.location.pathname.startsWith('/robots/')) {
+    if (new URLSearchParams(window.location.search).has("robot")) {
         // If auth is loaded and robots are loaded
         if (currentUserData !== undefined && globalRobots && globalRobots.length > 0) {
             clearInterval(linkCheckInterval);
@@ -12143,7 +12143,7 @@ window.openRobotControlPanel = async (robotId) => {
         modal.classList.remove('opacity-0', 'scale-95');
         modal.classList.add('opacity-100', 'scale-100');
         
-        window.history.pushState(null, "", `/robots/${pathId}`);
+        window.history.pushState(null, "", `/?robot=${pathId}`);
         
         window.refreshRobotStatus();
         window.fetchRobotMap(); 
