@@ -10843,7 +10843,7 @@ window.sendDiscussionMessage = async () => {
         
         if (stateEl) stateEl.innerText = "جاري الفحص...";
         
-        const res = await window.callPuduApi("status");
+        const res = await window.callPuduApi("status", {}, true);
         const data = res && res.data ? res.data : res;
         
         if(data) {
@@ -11502,7 +11502,7 @@ window.closeRobotControlPanel = () => {
     document.getElementById('robotControlModal').classList.remove('flex');
 };
 
-window.callPuduApi = async (action, payload = {}) => {
+window.callPuduApi = async (action, payload = {}, quiet = false) => {
     const sn = document.getElementById('rc-activeSN').value;
     if(!sn) { showToast('الرقم التسلسلي مفقود', 'error'); return null; }
     
@@ -11530,7 +11530,7 @@ window.refreshRobotStatus = async () => {
     
     stateEl.innerText = 'جاري الفحص...';
     
-    const res = await window.callPuduApi('status');
+    const res = await window.callPuduApi('status', {}, true);
     const data = res && res.data ? res.data : res;
     
     if(data) {
@@ -11768,14 +11768,14 @@ window.closeRobotControlPanel = () => {
     window.history.pushState(null, "", "/"); // Revert URL
     const modal = document.getElementById('robotControlModal');
     modal.classList.remove('opacity-100', 'translate-y-0');
-    modal.classList.add('opacity-0', 'translate-y-8');
+    modal.classList.add('opacity-0', 'translate-y-4'); // Less travel for faster close
     setTimeout(() => {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
-    }, 500);
+    }, 300);
 };
 
-window.callPuduApi = async (action, payload = {}) => {
+window.callPuduApi = async (action, payload = {}, quiet = false) => {
     const sn = document.getElementById("rc-activeSN").value;
     if(!sn) { showToast("الرقم التسلسلي مفقود", "error"); return null; }
     
@@ -11787,12 +11787,12 @@ window.callPuduApi = async (action, payload = {}) => {
             return result.data.data;
         } else {
             console.error(result.data.error);
-            showToast("خطأ من السيرفر: " + result.data.error, "error");
+            if (!quiet) showToast("خطأ من السيرفر: " + result.data.error, "error");
             return null;
         }
     } catch(err) {
         console.error(err);
-        showToast("خطأ في الاتصال بالسيرفر", "error");
+        if (!quiet) showToast("خطأ في الاتصال بالسيرفر", "error");
         return null;
     }
 };
@@ -11892,7 +11892,7 @@ window.fetchRobotMap = async () => {
         <p class="text-xs font-medium">جاري جلب الخريطة من الروبوت...</p>
     </div>`;
     
-    const res = await window.callPuduApi("map");
+    const res = await window.callPuduApi("map", {}, true);
     const data = res && res.data ? res.data : res;
     list.innerHTML = "";
     
@@ -11913,7 +11913,11 @@ window.fetchRobotMap = async () => {
         list.appendChild(btnReturn);
         
     } else {
-        list.innerHTML = `<p class="col-span-full text-center text-slate-400 py-4 text-sm font-medium">لم يتم العثور على نقاط للطاولات. تأكد أن الروبوت يعمل وأن الخريطة محفوظة.</p>`;
+        list.innerHTML = `<div class="col-span-full py-6 flex flex-col items-center justify-center text-slate-400">
+        <i class="fa-solid fa-map-location-dot text-3xl mb-3 text-slate-300"></i>
+        <p class="text-sm font-bold mb-1">الخريطة غير متوفرة</p>
+        <p class="text-xs text-center px-4">لم يتم العثور على خريطة، أو أن السيرفر رفض الطلب (404). تأكد من إعدادات Pudu Cloud.</p>
+    </div>`;
     }
 };
 
