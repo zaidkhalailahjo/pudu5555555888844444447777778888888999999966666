@@ -1744,15 +1744,15 @@ window.addClientRobotRow = (name='', serial='', date='', hasWarranty=false, warr
                         </div>
                         <div id="pudu-status-${r.id}" class="hidden mb-2 text-[10px] p-2 rounded-lg leading-relaxed"></div>
                         ${r.puduLinked ? 
-                            <div class="w-full mb-2 bg-emerald-50 border border-emerald-200 text-emerald-700 py-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-2 shadow-sm">
+                            `<div class="w-full mb-2 bg-emerald-50 border border-emerald-200 text-emerald-700 py-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-2 shadow-sm">
                                 <i class="fa-solid fa-link"></i> مرتبط بسيرفر Pudu
-                            </div> 
+                            </div>` 
                             : 
-                            <button id="pudu-btn-${r.id}"
+                            `<button id="pudu-btn-${r.id}"
                                 onclick="window.connectRobotToPudu('${r.id}', '${escapeHTML(r.serialNumber)}', '${escapeHTML(r.name)}')"
                                 class="w-full mb-2 ${puduBtnCls} border py-2 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-2 shadow-sm">
                                 <i class="fa-solid fa-plug-circle-bolt"></i> ربط بسيرفر Pudu
-                            </button>
+                            </button>`
                         }
                         ${actionBtnsHtml}
                     </div>
