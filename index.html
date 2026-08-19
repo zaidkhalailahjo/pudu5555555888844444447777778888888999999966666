@@ -540,7 +540,7 @@
 <body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 h-screen overflow-hidden flex relative transition-colors duration-300">
 
     <!-- شاشة التحميل السينمائية الجديدة -->
-    <div id="loadingScreen" class="fixed inset-0 bg-[#001730] z-[100] flex flex-col items-center justify-center overflow-hidden transition-opacity duration-500">
+    <div id="loadingScreen" class="fixed inset-0 bg-[#001730] z-[100] flex flex-col items-center justify-center overflow-hidden transition-opacity duration-300 ease-out will-change-transform">
         <!-- تأثير الشبكة في الخلفية -->
         <div class="absolute inset-0 opacity-10" style="background-image: linear-gradient(#00839b 1px, transparent 1px), linear-gradient(90deg, #00839b 1px, transparent 1px); background-size: 30px 30px;"></div>
         
@@ -1290,7 +1290,7 @@
                     <!-- 1. طريقة العرض كقائمة (List) -->
                     <div id="tasks-list-view" class="flex-1 overflow-y-auto custom-scrollbar">
                         <table class="w-full text-right text-sm">
-                            <thead class="bg-white/70 dark:bg-gray-800/70 backdrop-blur-md border-b border-gray-200 dark:border-gray-600 text-[#002d74] dark:text-gray-300 sticky top-0 z-10">
+                            <thead class="bg-white/70 dark:bg-gray-800/70 border-b border-gray-200 dark:border-gray-600 text-[#002d74] dark:text-gray-300 sticky top-0 z-10">
                                 <tr>
                                     <th class="p-3 w-10 text-center"><i class="fa-solid fa-arrows-up-down"></i></th>
                                     <th class="p-3 font-bold w-1/3 text-start">Name</th>
@@ -3710,7 +3710,7 @@
         </div>
     </div>
     <div id="customConfirmModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[99999] p-4 backdrop-blur-sm">
-        <div class="bg-white dark:bg-gray-800 border-t-4 border-red-500 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col text-center p-6 transform scale-95 transition-transform duration-300">
+        <div class="bg-white dark:bg-gray-800 border-t-4 border-red-500 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col text-center p-6 transform translate-y-8 transition-transform duration-300">
             <div class="mx-auto w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4">
                 <i class="fa-solid fa-trash-can text-3xl text-red-500"></i>
             </div>
@@ -3728,7 +3728,7 @@
     <!-- شاشة التحكم الكاملة بالروبوت -->
         <!-- شاشة التحكم الكاملة بالروبوت (تصميم أبيض جميل) -->
         <!-- شاشة التحكم المتقدمة بالروبوت (تصميم لوحة Pudu IoT) -->
-    <div id="robotControlModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[999999] hidden flex-col items-center justify-center p-0 transition-all duration-500 opacity-0 scale-95">
+    <div id="robotControlModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[999999] hidden flex-col items-center justify-center p-0 transition-all duration-500 opacity-0 translate-y-8">
         <div class="bg-slate-50 shadow-2xl w-full h-full max-w-none max-h-none overflow-hidden flex flex-col border-none rounded-none transition-all duration-500">
             <!-- Header -->
             <div class="px-6 py-4 border-b border-slate-200 bg-white flex justify-between items-center sticky top-0 z-10 shadow-sm">
