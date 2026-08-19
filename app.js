@@ -10864,7 +10864,26 @@ window.sendDiscussionMessage = async () => {
                 iotEl.className = "text-sm font-bold text-emerald-600 flex items-center gap-1.5";
             }
             if (macEl) macEl.innerText = data.mac || data.macAddress || "10:2C:6B:--:--:--";
-            if (mapNameEl) mapNameEl.innerText = data.map_name || data.mapName || data.mapCode || "غير معروف";
+            
+            let finalMapName = "غير متوفرة";
+            if (data.map_name) finalMapName = data.map_name;
+            else if (data.mapName) finalMapName = data.mapName;
+            else if (data.mapCode) finalMapName = data.mapCode;
+            else if (data.location && data.location.map_name) finalMapName = data.location.map_name;
+            else if (data.location && data.location.mapCode) finalMapName = data.location.mapCode;
+            else if (data.position && data.position.map_name) finalMapName = data.position.map_name;
+            else if (data.current_map) finalMapName = data.current_map;
+            
+            if (mapNameEl) {
+                mapNameEl.innerText = finalMapName;
+                if (finalMapName === "غير متوفرة") {
+                    mapNameEl.classList.add('text-slate-400');
+                } else {
+                    mapNameEl.classList.remove('text-slate-400');
+                    mapNameEl.classList.add('text-emerald-600');
+                }
+            }
+
             
             const stateStr = (data.run_state || data.runState || "").toString().toUpperCase();
             if (locWarnEl) {
@@ -11748,8 +11767,8 @@ window.connectRobotToPudu = async (robotId, sn, robotName) => {
 window.closeRobotControlPanel = () => {
     window.history.pushState(null, "", "/"); // Revert URL
     const modal = document.getElementById('robotControlModal');
-    modal.classList.remove('opacity-100', 'scale-100');
-    modal.classList.add('opacity-0', 'scale-95');
+    modal.classList.remove('opacity-100', 'translate-y-0');
+    modal.classList.add('opacity-0', 'translate-y-8');
     setTimeout(() => {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
@@ -12140,8 +12159,8 @@ window.openRobotControlPanel = async (robotId) => {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
         void modal.offsetWidth;
-        modal.classList.remove('opacity-0', 'scale-95');
-        modal.classList.add('opacity-100', 'scale-100');
+        modal.classList.remove('opacity-0', 'translate-y-8');
+        modal.classList.add('opacity-100', 'translate-y-0');
         
         window.history.pushState(null, "", `/?robot=${pathId}`);
         
