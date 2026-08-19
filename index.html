@@ -35,6 +35,7 @@
         .dark .flatpickr-day.prevMonthDay, .dark .flatpickr-day.nextMonthDay { color: #6b7280; }
         .dark .flatpickr-time input { color: white !important; }
         .dark .flatpickr-time .flatpickr-am-pm { color: white !important; }
+        .swal2-container { z-index: 9999999 !important; }
     </style>
     
     <script>
@@ -722,7 +723,7 @@
         </div>
     </div>
 
-    <div id="toastContainer" class="fixed bottom-6 left-6 z-50 flex flex-col gap-3"></div>
+    <div id="toastContainer" class="fixed bottom-6 left-6 z-[9999999] flex flex-col gap-3"></div>
 
     <!-- شاشة التوقيع المستقلة للموبايل (عبر مسح الـ QR) -->
     <div id="standaloneSignScreen" class="fixed inset-0 bg-white z-[999999] hidden flex-col items-center justify-center p-6 text-center" dir="rtl">
