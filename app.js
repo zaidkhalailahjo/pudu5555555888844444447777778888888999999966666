@@ -11949,7 +11949,7 @@ window.handleRobotDirectLink = async () => {
 
     // Check if user is logged in
     const auth = window.getAuth ? window.getAuth() : null; // or just rely on currentUserData
-    if (!window.currentUserAuth) {
+    if (!currentUserAuth) {
         Swal.fire({
             icon: 'error',
             title: 'عذراً',
@@ -11964,10 +11964,10 @@ window.handleRobotDirectLink = async () => {
         return;
     }
 
-    if (!window.globalRobots || window.globalRobots.length === 0) return; // Wait for robots to load
+    if (!globalRobots || globalRobots.length === 0) return; // Wait for robots to load
 
     // Find robot by safeName + serialNumber
-    const r = window.globalRobots.find(x => {
+    const r = globalRobots.find(x => {
         const safeName = (x.name || "Robot").replace(/\s+/g, "");
         return (safeName + x.serialNumber) === pathId;
     });
@@ -11985,10 +11985,10 @@ window.handleRobotDirectLink = async () => {
 let linkCheckInterval = setInterval(() => {
     if (window.location.pathname.startsWith('/robots/')) {
         // If auth is loaded and robots are loaded
-        if (window.currentUserData !== undefined && window.globalRobots && window.globalRobots.length > 0) {
+        if (currentUserData !== undefined && globalRobots && globalRobots.length > 0) {
             clearInterval(linkCheckInterval);
             window.handleRobotDirectLink();
-        } else if (window.currentUserAuth === null && window.authResolved) {
+        } else if (currentUserAuth === null && window.authResolved) {
              // Auth resolved but no user
              clearInterval(linkCheckInterval);
              window.handleRobotDirectLink();
@@ -11999,26 +11999,24 @@ let linkCheckInterval = setInterval(() => {
 }, 500);
 
 // We need to flag when auth is resolved
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 onAuthStateChanged(getAuth(), (u) => {
     window.authResolved = true;
-    if (!u) window.currentUserAuth = null;
+    if (!u) currentUserAuth = null;
 });
 
 // Import getDocs etc properly for the one-time access
-import { getDocs, query, where, collection, addDoc, updateDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 window.requestOneTimeRobotAccess = async (pathId, robotName) => {
     try {
-        const adminUids = window.globalUsers.filter(u => u.role === 'CEO' || u.role === 'مطور' || u.role === 'Developer').map(u => u.uid);
+        const adminUids = globalUsers.filter(u => u.role === 'CEO' || u.role === 'مطور' || u.role === 'Developer').map(u => u.uid);
         
-        await addDoc(collection(window.db, 'artifacts', window.appId, 'public', 'data', 'tasks'), {
+        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'tasks'), {
             title: 'طلب وصول لروبوت: ' + robotName,
-            desc: 'الموظف ' + window.currentUserData.name + ' يطلب صلاحية الدخول لمرة واحدة للروبوت ' + robotName,
+            desc: 'الموظف ' + currentUserData.name + ' يطلب صلاحية الدخول لمرة واحدة للروبوت ' + robotName,
             type: 'robot_access_request',
             robotIdentifier: pathId,
-            createdBy: window.currentUserData.uid,
-            createdByName: window.currentUserData.name,
+            createdBy: currentUserData.uid,
+            createdByName: currentUserData.name,
             assigneeIds: adminUids,
             status: 'pending',
             isConsumed: false,
@@ -12028,7 +12026,7 @@ window.requestOneTimeRobotAccess = async (pathId, robotName) => {
 
         adminUids.forEach(uid => {
             if (window.sendSystemNotification) {
-                window.sendSystemNotification(uid, 'طلب دخول لروبوت', 'طلب ' + window.currentUserData.name + ' الدخول لمرة واحدة للروبوت ' + robotName, 'tasks', 'tasks').catch(e=>console.error("Notif error", e));
+                window.sendSystemNotification(uid, 'طلب دخول لروبوت', 'طلب ' + currentUserData.name + ' الدخول لمرة واحدة للروبوت ' + robotName, 'tasks', 'tasks').catch(e=>console.error("Notif error", e));
             }
         });
 
@@ -12043,7 +12041,7 @@ window.requestOneTimeRobotAccess = async (pathId, robotName) => {
 
 window.openRobotControlPanel = async (robotId) => {
     try {
-        const r = window.globalRobots.find(x => x.id === robotId);
+        const r = globalRobots.find(x => x.id === robotId);
         if(!r) return;
 
         const safeName = (r.name || "Robot").replace(/\s+/g, "");
@@ -12051,7 +12049,7 @@ window.openRobotControlPanel = async (robotId) => {
         
         // -- Permission Checking --
         const isCEO = window.isAdmin();
-        const canManage = isCEO || (window.currentUserData.permissions && window.currentUserData.permissions.permManageRobots);
+        const canManage = isCEO || (currentUserData.permissions && currentUserData.permissions.permManageRobots);
         
         let hasOneTimeAccess = false;
         let oneTimeTaskDoc = null;
@@ -12061,8 +12059,8 @@ window.openRobotControlPanel = async (robotId) => {
             Swal.showLoading();
             
             const q = query(
-                collection(window.db, 'artifacts', window.appId, 'public', 'data', 'tasks'), 
-                where('createdBy', '==', window.currentUserData.uid),
+                collection(db, 'artifacts', appId, 'public', 'data', 'tasks'), 
+                where('createdBy', '==', currentUserData.uid),
                 where('type', '==', 'robot_access_request'),
                 where('robotIdentifier', '==', pathId),
                 where('status', '==', 'completed'),
@@ -12097,7 +12095,7 @@ window.openRobotControlPanel = async (robotId) => {
         
         if (hasOneTimeAccess && oneTimeTaskDoc) {
             // Consume it
-            await updateDoc(doc(window.db, 'artifacts', window.appId, 'public', 'data', 'tasks', oneTimeTaskDoc.id), {
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', oneTimeTaskDoc.id), {
                 isConsumed: true
             });
             Swal.fire({
