@@ -11429,22 +11429,22 @@ window.closeRobotControlPanel = () => {
 
 window.callPuduApi = async (action, payload = {}) => {
     const sn = document.getElementById('rc-activeSN').value;
-    if(!sn) { showToast('????? ???????? ?????', 'error'); return null; }
+    if(!sn) { showToast('الرقم التسلسلي مفقود', 'error'); return null; }
     
     try {
-        const puduGateway = httpsCallable(cloudFunctions, 'puduGateway');
+        const puduGateway = window.httpsCallable(window.cloudFunctions, 'puduGateway');
         const result = await puduGateway({ action, sn, payload });
         
         if(result.data && result.data.success) {
-            return result.data.data; // ?????? Pudu ???????
+            return result.data.data;
         } else {
             console.error(result.data.error);
-            showToast('??? ?? ??????? ????????', 'error');
+            showToast('خطأ من السيرفر: ' + result.data.error, 'error');
             return null;
         }
     } catch(err) {
         console.error(err);
-        showToast('??? ??????? ???????? ?????', 'error');
+        showToast('خطأ في الاتصال بالسيرفر', 'error');
         return null;
     }
 };
@@ -11453,114 +11453,131 @@ window.refreshRobotStatus = async () => {
     const stateEl = document.getElementById('rc-state');
     const batEl = document.getElementById('rc-bat');
     
-    stateEl.innerText = '??? ???????...';
+    stateEl.innerText = 'جاري الفحص...';
     
     const res = await window.callPuduApi('status');
-    if(res && res.data) {
-        const runState = res.data.runState;
-        const bat = res.data.power;
+    const data = res && res.data ? res.data : res;
+    
+    if(data) {
+        const runState = data.run_state || data.runState;
+        const bat = data.battery !== undefined ? data.battery : (data.power !== undefined ? data.power : 0);
         
         batEl.innerText = bat + '%';
         if(bat > 50) batEl.className = 'font-bold text-green-400 text-xl';
         else if(bat > 20) batEl.className = 'font-bold text-yellow-400 text-xl';
         else batEl.className = 'font-bold text-red-500 text-xl animate-pulse';
         
-        stateEl.innerText = runState || '???? (?? ???? ????)';
+        stateEl.innerText = runState || 'متصل (لا توجد حالة)';
         stateEl.className = 'font-bold text-green-400';
     } else {
-        stateEl.innerText = '??? ????';
+        stateEl.innerText = 'غير متصل';
         stateEl.className = 'font-bold text-red-500';
     }
 };
 
 window.sendRobotTo = async (pointName) => {
-    showToast('???? ????? ??????? ??? ' + pointName + '...', 'info');
+    showToast('جاري توجيه الروبوت إلى ' + pointName + '...', 'info');
     
+    // بناء الطلب كما في لوحة التحكم القديمة الناجحة
     const payload = {
-        taskType: 'DELIVERY',
-        deliveryType: 'DIRECT',
-        pointName: pointName
+        point: pointName,
+        point_type: pointName === 'Pick up' || pointName.includes('استلام') ? 'dining_outlet' : 'table',
+        call_mode: 'CALL',
+        do_not_queue: true,
+        priority: 1
     };
     
     const res = await window.callPuduApi('call', payload);
-    if(res && (res.code === '0' || res.data === 'true')) {
-        showToast('?? ?????? ??????? ?????! ??', 'success');
+    if(res) {
+        showToast('تم إرسال الروبوت بنجاح! 🚀', 'success');
         window.refreshRobotStatus();
     } else {
-        showToast('??????? ????? ?? ??? ?????', 'warning');
+        showToast('فشل في توجيه الروبوت', 'warning');
     }
 };
 
 window.sendRobotVoice = async () => {
     const text = document.getElementById('rc-voiceText').value;
-    if(!text) { showToast('???? ???? ?????!', 'warning'); return; }
+    if(!text) { showToast('اكتب النص أولاً!', 'warning'); return; }
     
-    showToast('???? ???????...', 'info');
+    showToast('جاري إرسال النص...', 'info');
     
+    // بناء الطلب كما في اللوحة القديمة
     const payload = {
-        callMode: 'TEXT',
-        message: text,
-        displayTime: 10
+        payload: {
+            callMode: 'TEXT',
+            modeData: {
+                text: text,
+                showTimeout: 10
+            }
+        }
     };
     
     const res = await window.callPuduApi('speak', payload);
     if(res) {
-        showToast('?? ???/??? ??????? ????? ???', 'success');
+        showToast('تم نطق/عرض النص بنجاح 🔊', 'success');
         document.getElementById('rc-voiceText').value = '';
     } else {
-        showToast('??? ????? ?????', 'warning');
+        showToast('فشل إرسال النص', 'warning');
+    }
+};
+
+window.fetchRobotMap = async () => {
+    const tablesList = document.getElementById('rc-tablesList');
+    
+    const res = await window.callPuduApi('map');
+    const data = res && res.data ? res.data : res;
+    
+    if(data && data.standList && data.standList.length > 0) {
+        tablesList.innerHTML = '';
+        data.standList.forEach(t => {
+            const btnHtml = `
+                <button onclick="window.sendRobotTo('${escapeHTML(t.name)}')" class="bg-gray-700 hover:bg-indigo-600 text-white font-bold py-2 px-3 rounded text-sm transition flex flex-col items-center gap-1 border border-gray-600 hover:border-indigo-400">
+                    <i class="fa-solid fa-location-dot text-indigo-400 text-lg"></i>
+                    <span>${escapeHTML(t.name)}</span>
+                </button>
+            `;
+            tablesList.innerHTML += btnHtml;
+        });
+        
+        // زر الاستلام
+        tablesList.innerHTML += `
+            <button onclick="window.sendRobotTo('Pick up')" class="bg-orange-600 hover:bg-orange-500 text-white font-bold py-2 px-3 rounded text-sm transition flex flex-col items-center gap-1 border border-orange-400 col-span-2 mt-2 shadow-lg">
+                <i class="fa-solid fa-house-flag text-lg"></i>
+                <span>عودة للاستلام (Pick up)</span>
+            </button>
+        `;
+    } else {
+        // افتراضي في حال فشل الخريطة (نفس اللي كان باللوحة القديمة)
+        tablesList.innerHTML = `
+            <button onclick="window.sendRobotTo('1')" class="bg-gray-700 hover:bg-indigo-600 text-white py-2 rounded text-sm font-bold border border-gray-600">طاولة 1</button>
+            <button onclick="window.sendRobotTo('2')" class="bg-gray-700 hover:bg-indigo-600 text-white py-2 rounded text-sm font-bold border border-gray-600">طاولة 2</button>
+            <button onclick="window.sendRobotTo('Zaid')" class="bg-gray-700 hover:bg-indigo-600 text-white py-2 rounded text-sm font-bold border border-gray-600">Zaid</button>
+            <button onclick="window.sendRobotTo('Pick up')" class="bg-orange-600 hover:bg-orange-500 text-white py-2 rounded text-sm font-bold border border-orange-400 col-span-2">عودة للاستلام</button>
+            <p class="col-span-2 text-center text-yellow-500 text-[10px] mt-1">لم يتم جلب الخريطة، تظهر الأزرار الافتراضية.</p>
+        `;
     }
 };
 
 window.openRobotControlPanel = (robotId) => {
-    const r = globalRobots.find(x => x.id === robotId);
+    const r = window.globalRobots.find(x => x.id === robotId);
     if(!r) return;
     
     document.getElementById('rc-robotName').innerText = r.name;
     document.getElementById('rc-activeSN').value = r.serialNumber;
     
     document.getElementById('rc-bat').innerText = '--%';
-    document.getElementById('rc-state').innerText = '???? ??????...';
+    document.getElementById('rc-state').innerText = 'جاري الفحص...';
     document.getElementById('rc-bat').className = 'font-bold text-gray-400 text-xl';
     
-    document.getElementById('rc-tablesList').innerHTML = '<p class="col-span-2 text-center text-gray-500 py-4 text-sm animate-pulse">???? ??? ????? ??????? ???????...</p>';
-
+    document.getElementById('rc-tablesList').innerHTML = '<p class="col-span-2 text-center text-gray-500 py-4 text-sm animate-pulse">جاري جلب خريطة الطاولات الحية...</p>';
+    
     document.getElementById('robotControlModal').classList.remove('hidden');
     document.getElementById('robotControlModal').classList.add('flex');
     
     window.refreshRobotStatus();
     window.fetchRobotMap();
 };
-
-window.fetchRobotMap = async () => {
-    const tablesList = document.getElementById('rc-tablesList');
-    const res = await window.callPuduApi('map');
-    
-    if(res && res.data && res.data.mapList && res.data.mapList.length > 0) {
-        const points = res.data.mapList[0].standList || [];
-        if(points.length === 0) {
-            tablesList.innerHTML = '<p class="col-span-2 text-center text-red-500 text-sm">الخريطة فارغة لا توجد نقاط مسجلة</p>';
-            return;
-        }
-        
-        tablesList.innerHTML = '';
-        points.forEach(pt => {
-            const btnColor = pt.type === 2 ? 'bg-yellow-600 hover:bg-yellow-700 text-black' : 'bg-green-600 hover:bg-green-700 text-white';
-            const icon = pt.type === 2 ? '<i class="fa-solid fa-home"></i>' : '<i class="fa-solid fa-chair"></i>';
-            tablesList.innerHTML += `
-                <button onclick="window.sendRobotTo('${pt.name}')" class="${btnColor} py-3 rounded font-bold transition text-sm flex items-center justify-center gap-2 shadow-sm">
-                    ${icon} ${escapeHTML(pt.name)}
-                </button>
-            `;
-        });
-    } else {
-        tablesList.innerHTML = '<p class="col-span-2 text-center text-red-500 text-sm font-bold">فشل جلب الخريطة، تأكد من اتصال الروبوت.</p>';
-    }
-};
-
-// ============================================================
-// دالة الاتصال الذكي بسيرفر Pudu
-// ============================================================
 window.connectRobotToPudu = async (robotId, sn, robotName) => {
     const btn = document.getElementById('pudu-btn-' + robotId);
     const badge = document.getElementById('pudu-badge-' + robotId);
@@ -11642,19 +11659,23 @@ window.connectRobotToPudu = async (robotId, sn, robotName) => {
         }
 
         // --- نجح الاتصال! ---
-        const data = result.data.data && result.data.data.data;
+        const data = result.data.data && result.data.data.data ? result.data.data.data : result.data.data;
         if (data) {
-            const bat = data.power !== undefined ? data.power + '%' : 'غير محدد';
-            const state = data.runState || 'متصل';
+            const bat = data.battery !== undefined ? data.battery + '%' : 'غير محدد';
+            const state = data.run_state || 'متصل';
             setStatus(
                 '✅',
-                `الروبوت متصل بنجاح بسيرفر Pudu! | البطارية: ${bat} | الحالة: ${state}`,
+                الروبوت متصل بنجاح بسيرفر Pudu! | البطارية: ${bat} | الحالة: ${state},
                 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300',
                 '✅ متصل - ' + bat,
                 'bg-green-100 text-green-700'
             );
         } else {
             setStatus('✅', 'الاتصال بسيرفر Pudu ناجح! الروبوت مسجل ومتاح.', 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300', '✅ متصل', 'bg-green-100 text-green-700');
+        }
+
+        // إخفاء زر الاتصال بعد النجاح
+        if(btn) btn.style.display = 'none';
         }
 
     } catch(err) {
