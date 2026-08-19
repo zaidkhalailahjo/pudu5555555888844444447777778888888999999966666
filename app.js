@@ -10838,7 +10838,8 @@ window.sendDiscussionMessage = async () => {
         const batText = document.getElementById("rc-batText");
         const batBar = document.getElementById("rc-batBar");
         const macEl = document.getElementById("rc-mac");
-        const verEl = document.getElementById("rc-version");
+        const mapNameEl = document.getElementById("rc-mapName");
+        const locWarnEl = document.getElementById("rc-locationWarning");
         
         if (stateEl) stateEl.innerText = "جاري الفحص...";
         
@@ -10863,7 +10864,20 @@ window.sendDiscussionMessage = async () => {
                 iotEl.className = "text-sm font-bold text-emerald-600 flex items-center gap-1.5";
             }
             if (macEl) macEl.innerText = data.mac || data.macAddress || "10:2C:6B:--:--:--";
-            if (verEl) verEl.innerText = data.version || data.software_version || "V2 Open API";
+            if (mapNameEl) mapNameEl.innerText = data.map_name || data.mapName || data.mapCode || "غير معروف";
+            
+            const stateStr = (data.run_state || data.runState || "").toString().toUpperCase();
+            if (locWarnEl) {
+                if (stateStr.includes("LOST") || stateStr.includes("UNPOSITION")) {
+                    locWarnEl.classList.remove("hidden");
+                    if (stateEl) {
+                        stateEl.innerText = "فاقد التمركز (Lost Position)";
+                        stateEl.className = "text-sm font-bold text-rose-500";
+                    }
+                } else {
+                    locWarnEl.classList.add("hidden");
+                }
+            }
             
         } else {
             if (stateEl) stateEl.innerText = "Offline";
