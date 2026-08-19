@@ -1777,7 +1777,6 @@ window.addClientRobotRow = (name='', serial='', date='', hasWarranty=false, warr
             }
 
             robots.forEach(r => {
-            robots.forEach(r => {
                 const statusColor = r.status === 'جديد' ? 'text-green-500' : (r.status === 'معطل' ? 'text-red-500' : 'text-yellow-500');
                 const hasSN = r.serialNumber && r.serialNumber !== 'بدون رقم' && r.serialNumber.trim().length > 4;
                 const isPuduRobot = r.name && (r.name.toLowerCase().includes('bella') || r.name.toLowerCase().includes('ketty') || r.name.toLowerCase().includes('quill'));
@@ -1816,9 +1815,6 @@ window.addClientRobotRow = (name='', serial='', date='', hasWarranty=false, warr
                             <i class="fa-solid fa-plug-circle-bolt"></i> اتصال بسيرفر Pudu
                         </button>
                         ${actionBtnsHtml}
-                    </div>
-                `;
-            });
                     </div>
                 `;
             });
