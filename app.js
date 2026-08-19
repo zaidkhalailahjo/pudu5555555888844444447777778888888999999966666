@@ -11759,7 +11759,12 @@ window.openRobotControlPanel = (robotId) => {
         modal.classList.remove('opacity-0', 'scale-95');
         modal.classList.add('opacity-100', 'scale-100');
         
+        // Change URL
+        const safeName = (r.name || "Robot").replace(/\s+/g, "");
+        window.history.pushState(null, "", `/robots/${safeName}${r.serialNumber}`);
+        
         window.refreshRobotStatus();
+        window.fetchRobotMap(); // Auto fetch map so it doesn't stay on Loading
     } catch (e) {
         console.error(e);
         showToast("حدث خطأ أثناء فتح لوحة التحكم.", "error");
@@ -11767,6 +11772,7 @@ window.openRobotControlPanel = (robotId) => {
 };
 
 window.closeRobotControlPanel = () => {
+    window.history.pushState(null, "", "/"); // Revert URL
     const modal = document.getElementById('robotControlModal');
     modal.classList.remove('opacity-100', 'scale-100');
     modal.classList.add('opacity-0', 'scale-95');
