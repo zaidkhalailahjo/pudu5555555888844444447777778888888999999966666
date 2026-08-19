@@ -11960,7 +11960,7 @@ window.connectRobotToPudu = async (robotId, sn, robotName) => {
                     btn.outerHTML = `<div class="w-full mb-2 bg-emerald-50 border border-emerald-200 text-emerald-700 py-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-2 shadow-sm"><i class="fa-solid fa-link"></i> مرتبط بسيرفر Pudu</div>`;
                 }
 
-                await updateDoc(doc(db, "robots", robotId), { puduLinked: true });
+                await updateDoc(doc(db, "artifacts", appId, "public", "data", "robots", robotId), { puduLinked: true });
             } catch(e) {
                 console.error("Failed to save puduLinked state to DB:", e);
                 showToast("تم الاتصال محلياً، ولكن لم يتم الحفظ في القاعدة بسبب الصلاحيات.", "warning");
