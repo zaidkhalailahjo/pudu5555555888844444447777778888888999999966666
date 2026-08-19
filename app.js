@@ -11751,8 +11751,13 @@ window.openRobotControlPanel = (robotId) => {
         document.getElementById("rc-robotType").innerText = type;
         document.getElementById("rc-robotImage").src = img;
         
-        document.getElementById("robotControlModal").classList.remove("hidden");
-        document.getElementById("robotControlModal").classList.add("flex");
+        const modal = document.getElementById('robotControlModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        // trigger reflow
+        void modal.offsetWidth;
+        modal.classList.remove('opacity-0', 'scale-95');
+        modal.classList.add('opacity-100', 'scale-100');
         
         window.refreshRobotStatus();
     } catch (e) {
@@ -11762,8 +11767,13 @@ window.openRobotControlPanel = (robotId) => {
 };
 
 window.closeRobotControlPanel = () => {
-    document.getElementById("robotControlModal").classList.add("hidden");
-    document.getElementById("robotControlModal").classList.remove("flex");
+    const modal = document.getElementById('robotControlModal');
+    modal.classList.remove('opacity-100', 'scale-100');
+    modal.classList.add('opacity-0', 'scale-95');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }, 500);
 };
 
 window.callPuduApi = async (action, payload = {}) => {
@@ -11936,7 +11946,6 @@ window.connectRobotToPudu = async (robotId, sn, robotName) => {
 
         if (robotId) {
             try {
-                await updateDoc(doc(db, "robots", robotId), { puduLinked: true });
                 const r = globalRobots.find(x => x.id === robotId);
                 if(r) r.puduLinked = true;
                 showToast("✅ تم الاتصال بنجاح وربط الروبوت بالسيستم!", "success");
@@ -11944,7 +11953,12 @@ window.connectRobotToPudu = async (robotId, sn, robotName) => {
                 if (btn) {
                     btn.outerHTML = `<div class="w-full mb-2 bg-emerald-50 border border-emerald-200 text-emerald-700 py-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-2 shadow-sm"><i class="fa-solid fa-link"></i> مرتبط بسيرفر Pudu</div>`;
                 }
-            } catch(e) { console.error("Failed to save puduLinked state:", e); }
+
+                await updateDoc(doc(db, "robots", robotId), { puduLinked: true });
+            } catch(e) {
+                console.error("Failed to save puduLinked state to DB:", e);
+                showToast("تم الاتصال محلياً، ولكن لم يتم الحفظ في القاعدة بسبب الصلاحيات.", "warning");
+            }
         }
 
     } catch(err) {
