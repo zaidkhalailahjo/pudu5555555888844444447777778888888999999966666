@@ -3725,42 +3725,100 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script type="module" src="app.js"></script>
     <!-- شاشة التحكم الكاملة بالروبوت -->
-    <div id="robotControlModal" class="fixed inset-0 bg-gray-900 bg-opacity-95 z-[999999] hidden flex-col transition-opacity duration-300">
-        <div class="flex justify-between items-center p-4 border-b border-gray-700 bg-gray-800 text-white">
-            <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-gamepad text-green-400"></i> تحكم الروبوت: <span id="rc-robotName" class="text-blue-300">--</span></h2>
-            <button onclick="window.closeRobotControlPanel()" class="text-gray-400 hover:text-red-500 text-2xl"><i class="fa-solid fa-times"></i></button>
-        </div>
-        <div class="flex-1 overflow-y-auto p-4 md:p-8">
-            <div class="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- الحالة -->
-                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg text-white">
-                    <h3 class="font-bold text-lg mb-4 text-blue-400 border-b border-gray-700 pb-2"><i class="fa-solid fa-heartbeat"></i> الحالة الحية</h3>
-                    <div class="space-y-3">
-                        <p class="flex justify-between"><span class="text-gray-400">مستوى البطارية:</span> <span id="rc-bat" class="font-bold text-green-400 text-xl">--%</span></p>
-                        <p class="flex justify-between"><span class="text-gray-400">حالة النظام:</span> <span id="rc-state" class="font-bold">--</span></p>
+        <!-- شاشة التحكم الكاملة بالروبوت (تصميم أبيض جميل) -->
+    <div id="robotControlModal" class="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-[999999] hidden flex-col items-center justify-center p-4 transition-opacity duration-300">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
+            <!-- Header -->
+            <div class="px-8 py-5 border-b border-gray-100 bg-white flex justify-between items-center sticky top-0 z-10">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 text-2xl shadow-sm border border-indigo-100">
+                        <i class="fa-solid fa-robot"></i>
                     </div>
-                    <button onclick="window.refreshRobotStatus()" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-bold transition"><i class="fa-solid fa-sync"></i> تحديث الحالة</button>
-                </div>
-                
-                <!-- إرسال لأمر -->
-                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg text-white">
-                    <h3 class="font-bold text-lg mb-4 text-orange-400 border-b border-gray-700 pb-2"><i class="fa-solid fa-route"></i> الخريطة الحالية و التوجيه</h3>
-                    <div id="rc-tablesList" class="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto custom-scrollbar pr-2">
-                        <p class="col-span-2 text-center text-gray-500 py-4 text-sm animate-pulse">جاري جلب خريطة الروبوت والنقاط...</p>
+                    <div>
+                        <h2 class="text-2xl font-black text-gray-800 tracking-tight flex items-center gap-2">لوحة التحكم <span id="rc-robotName" class="text-indigo-600">--</span></h2>
+                        <p class="text-sm text-gray-500 font-medium mt-0.5"><i class="fa-solid fa-link text-green-500 mr-1"></i> متصل بنظام Pudu Open Platform</p>
                     </div>
                 </div>
+                <button onclick="window.closeRobotControlPanel()" class="w-10 h-10 rounded-full bg-gray-50 hover:bg-red-50 text-gray-400 hover:text-red-500 flex items-center justify-center transition-all text-xl"><i class="fa-solid fa-times"></i></button>
+            </div>
+            
+            <!-- Body -->
+            <div class="flex-1 overflow-y-auto p-8 bg-gray-50/50 custom-scrollbar">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    
+                    <!-- الجانب الأيمن: الحالة والمعلومات -->
+                    <div class="lg:col-span-4 space-y-6">
+                        <!-- الحالة الحية -->
+                        <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition">
+                            <h3 class="font-bold text-gray-800 mb-5 flex items-center gap-2 text-lg"><i class="fa-solid fa-heart-pulse text-rose-500"></i> الحالة الحية</h3>
+                            
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                                    <span class="text-gray-500 text-sm font-bold flex items-center gap-2"><i class="fa-solid fa-battery-half text-gray-400"></i> البطارية</span>
+                                    <span id="rc-bat" class="font-black text-gray-300 text-lg">--%</span>
+                                </div>
+                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                                    <span class="text-gray-500 text-sm font-bold flex items-center gap-2"><i class="fa-solid fa-signal text-gray-400"></i> حالة النظام</span>
+                                    <span id="rc-state" class="font-bold text-gray-400 text-sm px-3 py-1 rounded-full bg-gray-100">--</span>
+                                </div>
+                            </div>
+                            
+                            <button onclick="window.refreshRobotStatus()" class="mt-5 w-full bg-white hover:bg-indigo-50 text-indigo-600 border border-indigo-200 py-2.5 rounded-xl font-bold transition flex items-center justify-center gap-2 text-sm shadow-sm">
+                                <i class="fa-solid fa-arrows-rotate"></i> تحديث الحالة الآن
+                            </button>
+                        </div>
+                        
+                        <!-- إرشادات سريعة -->
+                        <div class="bg-gradient-to-br from-indigo-500 to-purple-600 p-6 rounded-2xl shadow-md text-white">
+                            <h3 class="font-bold mb-3 flex items-center gap-2"><i class="fa-solid fa-lightbulb text-yellow-300"></i> قدرات الروبوت</h3>
+                            <ul class="text-sm space-y-2 opacity-90 leading-relaxed list-disc list-inside">
+                                <li><strong>التوجيه:</strong> إرسال الروبوت لأي طاولة.</li>
+                                <li><strong>الشاشة:</strong> إرسال نصوص ترحيبية.</li>
+                                <li><strong>الصوت:</strong> نطق الجمل للزبائن.</li>
+                                <li><strong>العودة:</strong> العودة للمطبخ (Pick up).</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- الجانب الأيسر: التحكم والإجراءات -->
+                    <div class="lg:col-span-8 space-y-6">
+                        <!-- الخريطة والتوجيه -->
+                        <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition">
+                            <div class="flex justify-between items-center mb-5">
+                                <h3 class="font-bold text-gray-800 flex items-center gap-2 text-lg"><i class="fa-solid fa-map-location-dot text-emerald-500"></i> خريطة الطاولات والتوجيه</h3>
+                                <button onclick="window.fetchRobotMap()" class="text-emerald-600 hover:text-emerald-700 text-sm font-bold bg-emerald-50 px-3 py-1.5 rounded-lg transition"><i class="fa-solid fa-sync"></i> إعادة تحميل</button>
+                            </div>
+                            
+                            <div id="rc-tablesList" class="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-[220px] overflow-y-auto custom-scrollbar pr-2 p-1">
+                                <div class="col-span-full py-10 flex flex-col items-center justify-center text-gray-400">
+                                    <i class="fa-solid fa-spinner fa-spin text-3xl mb-3 text-emerald-400"></i>
+                                    <p class="text-sm font-medium">جاري جلب النقاط من الروبوت...</p>
+                                </div>
+                            </div>
+                        </div>
 
-                <!-- الصوت والشاشة -->
-                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg text-white md:col-span-2">
-                    <h3 class="font-bold text-lg mb-4 text-purple-400 border-b border-gray-700 pb-2"><i class="fa-solid fa-comment-dots"></i> الشاشة والنطق</h3>
-                    <div class="flex flex-col md:flex-row gap-3">
-                        <input type="text" id="rc-voiceText" placeholder="اكتب رسالة لينطقها الروبوت ويعرضها..." class="flex-1 bg-gray-700 border border-gray-600 text-white px-4 py-3 rounded focus:outline-none focus:border-purple-500">
-                        <button onclick="window.sendRobotVoice()" class="bg-purple-600 hover:bg-purple-700 text-white py-3 px-6 rounded font-bold transition whitespace-nowrap"><i class="fa-solid fa-bullhorn"></i> إرسال وانطق</button>
+                        <!-- الصوت والشاشة -->
+                        <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition">
+                            <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2 text-lg"><i class="fa-solid fa-comment-dots text-purple-500"></i> التحكم بالشاشة والنطق</h3>
+                            <p class="text-sm text-gray-500 mb-4 font-medium">أرسل نصوصاً ليتم عرضها على شاشة الروبوت ونطقها للزبائن مباشرة.</p>
+                            <div class="flex flex-col md:flex-row gap-3">
+                                <div class="relative flex-1">
+                                    <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                                        <i class="fa-solid fa-pen text-gray-400"></i>
+                                    </div>
+                                    <input type="text" id="rc-voiceText" placeholder="اكتب النص هنا (مثال: أهلاً بكم، طلبكم جاهز)..." class="w-full bg-gray-50 border border-gray-200 text-gray-800 pr-11 pl-4 py-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition font-medium">
+                                </div>
+                                <button onclick="window.sendRobotVoice()" class="bg-purple-600 hover:bg-purple-700 text-white py-3.5 px-8 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-sm whitespace-nowrap">
+                                    <i class="fa-solid fa-paper-plane"></i> إرسال للروبوت
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
+            
+            <input type="hidden" id="rc-activeSN">
         </div>
-        <input type="hidden" id="rc-activeSN">
     </div>
 
 </body>
