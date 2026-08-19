@@ -11731,46 +11731,6 @@ window.connectRobotToPudu = async (robotId, sn, robotName) => {
 
 
 
-window.openRobotControlPanel = (robotId) => {
-    try {
-        const r = globalRobots.find(x => x.id === robotId);
-        if(!r) return;
-        
-        document.getElementById("rc-robotName").innerText = r.name || "روبوت Pudu";
-        document.getElementById("rc-activeSN").value = r.serialNumber || "";
-        
-        // Set Robot Type and Image
-        let type = "Unknown";
-        let img = "";
-        const n = (r.name || "").toLowerCase();
-        if (n.includes("bella")) { type = "BellaBot"; img = "https://pudu-link.oss-cn-hongkong.aliyuncs.com/robot-image-resource/small-size/62.png"; }
-        else if (n.includes("ketty")) { type = "KettyBot"; img = "https://pudu-link.oss-cn-hongkong.aliyuncs.com/robot-image-resource/small-size/67.png"; }
-        else if (n.includes("quill") || n.includes("flash")) { type = "FlashBot"; img = "https://pudu-link.oss-cn-hongkong.aliyuncs.com/robot-image-resource/small-size/73.png"; }
-        else { type = "PuduBot"; img = "https://pudu-link.oss-cn-hongkong.aliyuncs.com/robot-image-resource/small-size/62.png"; }
-        
-        document.getElementById("rc-robotType").innerText = type;
-        document.getElementById("rc-robotImage").src = img;
-        
-        const modal = document.getElementById('robotControlModal');
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-        // trigger reflow
-        void modal.offsetWidth;
-        modal.classList.remove('opacity-0', 'scale-95');
-        modal.classList.add('opacity-100', 'scale-100');
-        
-        // Change URL
-        const safeName = (r.name || "Robot").replace(/\s+/g, "");
-        window.history.pushState(null, "", `/robots/${safeName}${r.serialNumber}`);
-        
-        window.refreshRobotStatus();
-        window.fetchRobotMap(); // Auto fetch map so it doesn't stay on Loading
-    } catch (e) {
-        console.error(e);
-        showToast("حدث خطأ أثناء فتح لوحة التحكم.", "error");
-    }
-};
-
 window.closeRobotControlPanel = () => {
     window.history.pushState(null, "", "/"); // Revert URL
     const modal = document.getElementById('robotControlModal');
@@ -11973,5 +11933,210 @@ window.connectRobotToPudu = async (robotId, sn, robotName) => {
             btn.innerHTML = `<i class="fa-solid fa-plug-circle-bolt"></i> ربط بسيرفر Pudu`;
         }
         showToast("فشل الاتصال: " + err.message, "error");
+    }
+};
+
+// ==========================================
+// ROBOT DIRECT LINK & ONE-TIME ACCESS SYSTEM
+// ==========================================
+
+window.handleRobotDirectLink = async () => {
+    const path = window.location.pathname;
+    if (!path.startsWith('/robots/')) return;
+    
+    const pathId = decodeURIComponent(path.split('/robots/')[1] || "");
+    if (!pathId) return;
+
+    // Check if user is logged in
+    const auth = window.getAuth ? window.getAuth() : null; // or just rely on currentUserData
+    if (!window.currentUserAuth) {
+        Swal.fire({
+            icon: 'error',
+            title: 'عذراً',
+            text: 'يجب تسجيل الدخول! ليس لديك صلاحية للتحكم في الروبوتات.',
+            confirmButtonText: 'حسناً'
+        }).then(() => {
+            window.history.pushState(null, '', '/');
+            if (document.getElementById('loginScreen')) {
+                document.getElementById('loginScreen').classList.remove('hidden');
+            }
+        });
+        return;
+    }
+
+    if (!window.globalRobots || window.globalRobots.length === 0) return; // Wait for robots to load
+
+    // Find robot by safeName + serialNumber
+    const r = window.globalRobots.find(x => {
+        const safeName = (x.name || "Robot").replace(/\s+/g, "");
+        return (safeName + x.serialNumber) === pathId;
+    });
+
+    if (!r) {
+        Swal.fire('خطأ', 'الروبوت غير موجود!', 'error').then(() => window.history.pushState(null, '', '/'));
+        return;
+    }
+
+    // Try to open it (openRobotControlPanel handles permissions now)
+    window.openRobotControlPanel(r.id);
+};
+
+// Check repeatedly until auth resolves and robots load, but only run ONCE
+let linkCheckInterval = setInterval(() => {
+    if (window.location.pathname.startsWith('/robots/')) {
+        // If auth is loaded and robots are loaded
+        if (window.currentUserData !== undefined && window.globalRobots && window.globalRobots.length > 0) {
+            clearInterval(linkCheckInterval);
+            window.handleRobotDirectLink();
+        } else if (window.currentUserAuth === null && window.authResolved) {
+             // Auth resolved but no user
+             clearInterval(linkCheckInterval);
+             window.handleRobotDirectLink();
+        }
+    } else {
+        clearInterval(linkCheckInterval);
+    }
+}, 500);
+
+// We need to flag when auth is resolved
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+onAuthStateChanged(getAuth(), (u) => {
+    window.authResolved = true;
+    if (!u) window.currentUserAuth = null;
+});
+
+// Import getDocs etc properly for the one-time access
+import { getDocs, query, where, collection, addDoc, updateDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+window.requestOneTimeRobotAccess = async (pathId, robotName) => {
+    try {
+        const adminUids = window.globalUsers.filter(u => u.role === 'CEO' || u.role === 'مطور' || u.role === 'Developer').map(u => u.uid);
+        
+        await addDoc(collection(window.db, 'artifacts', window.appId, 'public', 'data', 'tasks'), {
+            title: 'طلب وصول لروبوت: ' + robotName,
+            desc: 'الموظف ' + window.currentUserData.name + ' يطلب صلاحية الدخول لمرة واحدة للروبوت ' + robotName,
+            type: 'robot_access_request',
+            robotIdentifier: pathId,
+            createdBy: window.currentUserData.uid,
+            createdByName: window.currentUserData.name,
+            assigneeIds: adminUids,
+            status: 'pending',
+            isConsumed: false,
+            createdAt: Date.now(),
+            dueDate: Date.now() + 86400000 // +1 day
+        });
+
+        adminUids.forEach(uid => {
+            if (window.sendSystemNotification) {
+                window.sendSystemNotification(uid, 'طلب دخول لروبوت', 'طلب ' + window.currentUserData.name + ' الدخول لمرة واحدة للروبوت ' + robotName, 'tasks', 'tasks').catch(e=>console.error("Notif error", e));
+            }
+        });
+
+        Swal.fire('تم الإرسال', 'تم إرسال إشعار للمدير والمطور. بعد الموافقة، يمكنك فتح هذا الرابط للدخول لمرة واحدة.', 'success').then(() => {
+            window.history.pushState(null, '', '/');
+        });
+    } catch (err) {
+        console.error(err);
+        Swal.fire('خطأ', 'فشل في إرسال الطلب.', 'error');
+    }
+};
+
+window.openRobotControlPanel = async (robotId) => {
+    try {
+        const r = window.globalRobots.find(x => x.id === robotId);
+        if(!r) return;
+
+        const safeName = (r.name || "Robot").replace(/\s+/g, "");
+        const pathId = safeName + r.serialNumber;
+        
+        // -- Permission Checking --
+        const isCEO = window.isAdmin();
+        const canManage = isCEO || (window.currentUserData.permissions && window.currentUserData.permissions.permManageRobots);
+        
+        let hasOneTimeAccess = false;
+        let oneTimeTaskDoc = null;
+        
+        if (!canManage) {
+            Swal.fire({ title: 'جاري التحقق من الصلاحيات...', allowOutsideClick: false });
+            Swal.showLoading();
+            
+            const q = query(
+                collection(window.db, 'artifacts', window.appId, 'public', 'data', 'tasks'), 
+                where('createdBy', '==', window.currentUserData.uid),
+                where('type', '==', 'robot_access_request'),
+                where('robotIdentifier', '==', pathId),
+                where('status', '==', 'completed'),
+                where('isConsumed', '==', false)
+            );
+            const reqDocs = await getDocs(q);
+            
+            if (!reqDocs.empty) {
+                hasOneTimeAccess = true;
+                oneTimeTaskDoc = reqDocs.docs[0];
+            }
+            Swal.close();
+        }
+        
+        if (!canManage && !hasOneTimeAccess) {
+            Swal.fire({
+                icon: 'error',
+                title: 'ليس لديك صلاحية',
+                text: 'ليس لديك صلاحية لدخول الى هذا الروبوت.',
+                showCancelButton: true,
+                confirmButtonText: 'إرسال إشعار للمدير لطلب الصلاحية',
+                cancelButtonText: 'إلغاء'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    await window.requestOneTimeRobotAccess(pathId, r.name);
+                } else {
+                    window.history.pushState(null, "", "/");
+                }
+            });
+            return;
+        }
+        
+        if (hasOneTimeAccess && oneTimeTaskDoc) {
+            // Consume it
+            await updateDoc(doc(window.db, 'artifacts', window.appId, 'public', 'data', 'tasks', oneTimeTaskDoc.id), {
+                isConsumed: true
+            });
+            Swal.fire({
+                icon: 'success',
+                title: 'صلاحية لمرة واحدة',
+                text: 'تم منحك الدخول لمرة واحدة لهذا الروبوت. لن تتمكن من الدخول مرة أخرى إلا بطلب جديد.',
+                timer: 4000,
+                showConfirmButton: false
+            });
+        }
+        // -- End Permission Checking --
+
+        document.getElementById("rc-robotName").innerText = r.name || "روبوت Pudu";
+        document.getElementById("rc-activeSN").value = r.serialNumber || "";
+        
+        let type = "Unknown";
+        let img = "";
+        const n = (r.name || "").toLowerCase();
+        if (n.includes("bella")) { type = "BellaBot"; img = "https://pudu-link.oss-cn-hongkong.aliyuncs.com/robot-image-resource/small-size/62.png"; }
+        else if (n.includes("ketty")) { type = "KettyBot"; img = "https://pudu-link.oss-cn-hongkong.aliyuncs.com/robot-image-resource/small-size/67.png"; }
+        else if (n.includes("quill") || n.includes("flash")) { type = "FlashBot"; img = "https://pudu-link.oss-cn-hongkong.aliyuncs.com/robot-image-resource/small-size/73.png"; }
+        else { type = "PuduBot"; img = "https://pudu-link.oss-cn-hongkong.aliyuncs.com/robot-image-resource/small-size/62.png"; }
+        
+        document.getElementById("rc-robotType").innerText = type;
+        document.getElementById("rc-robotImage").src = img;
+        
+        const modal = document.getElementById('robotControlModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        void modal.offsetWidth;
+        modal.classList.remove('opacity-0', 'scale-95');
+        modal.classList.add('opacity-100', 'scale-100');
+        
+        window.history.pushState(null, "", `/robots/${pathId}`);
+        
+        window.refreshRobotStatus();
+        window.fetchRobotMap(); 
+    } catch (e) {
+        console.error(e);
+        showToast("حدث خطأ أثناء فتح لوحة التحكم.", "error");
     }
 };
