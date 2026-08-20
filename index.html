@@ -3819,7 +3819,7 @@
                         </div>
                         <div class="p-5 flex flex-wrap gap-3" dir="ltr">
                             <button onclick="window.puduNotSupported()" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm font-medium rounded shadow-sm transition"><i class="fa-regular fa-file-lines text-blue-500"></i> Log Export</button>
-                            <button onclick="window.fetchRobotMap()" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm font-medium rounded shadow-sm transition"><i class="fa-solid fa-download text-emerald-500"></i> Pull Map</button>
+                            <button onclick="window.openMapExportModal()" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm font-medium rounded shadow-sm transition"><i class="fa-solid fa-download text-emerald-500"></i> Pull Map</button>
                             <button onclick="window.puduNotSupported()" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm font-medium rounded shadow-sm transition opacity-60"><i class="fa-solid fa-upload text-blue-500"></i> Push Map</button>
                             <button onclick="window.puduNotSupported()" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm font-medium rounded shadow-sm transition opacity-60"><i class="fa-solid fa-volume-up text-blue-500"></i> Upload Audio</button>
                             <button onclick="window.puduNotSupported()" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm font-medium rounded shadow-sm transition opacity-60"><i class="fa-regular fa-folder-open text-blue-500"></i> Upload Files</button>
@@ -3866,6 +3866,56 @@
             <input type="hidden" id="rc-activeSN">
         </div>
     </div>
+
+
+<!-- Map Export Modal -->
+<div id="mapExportModal" class="fixed inset-0 bg-slate-900/60 z-[2147483647] hidden flex-col items-center justify-center p-4 transition-all duration-300 opacity-0">
+    <div class="bg-white rounded shadow-xl w-full max-w-3xl overflow-hidden flex flex-col transform transition-transform duration-300 translate-y-4" id="mapExportModalContent">
+        <!-- Header -->
+        <div class="px-6 py-4 flex justify-between items-center bg-white border-b border-gray-100">
+            <h3 class="text-lg font-bold text-gray-800">Map Export</h3>
+            <button onclick="window.closeMapExportModal()" class="text-gray-400 hover:text-gray-600 transition text-2xl">&times;</button>
+        </div>
+        
+        <!-- Body -->
+        <div class="p-8 bg-white flex-1" dir="ltr">
+            <!-- Type Section -->
+            <div class="mb-8">
+                <p class="text-[13px] text-gray-800 mb-2 font-medium"><span class="text-rose-500">*</span> Type</p>
+                <label class="flex items-center gap-2 cursor-pointer mt-3">
+                    <input type="radio" name="mapExportType" checked class="w-4 h-4 text-[#1890ff] border-gray-300 focus:ring-[#1890ff]">
+                    <span class="text-sm text-gray-700">Map Export</span>
+                </label>
+            </div>
+
+            <!-- Map List Section -->
+            <div class="mb-8">
+                <p class="text-[13px] text-gray-800 mb-2 font-medium"><span class="text-rose-500">*</span> Map List</p>
+                <div class="relative mt-2">
+                    <select id="mapExportSelect" class="w-full appearance-none border border-[#40a9ff] rounded px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-[#1890ff] focus:border-[#1890ff] bg-white shadow-sm transition">
+                        <option value="">Loading maps...</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+                        <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Export Button -->
+            <div id="mapExportActionContainer" class="mb-2">
+                <button onclick="window.executeMapExport()" class="bg-[#1890ff] hover:bg-[#40a9ff] text-white px-6 py-1.5 text-sm rounded shadow-sm transition">Export</button>
+            </div>
+
+            <!-- Result Section (Hidden initially) -->
+            <div id="mapExportResult" class="hidden border-t border-gray-100 pt-6 mt-6 flex justify-between items-center">
+                <span id="mapExportResultName" class="text-sm text-gray-700 font-medium"></span>
+                <button onclick="window.downloadExportedMap()" class="bg-white border border-[#1890ff] text-[#1890ff] hover:bg-blue-50 px-4 py-1.5 text-sm rounded transition flex items-center gap-2">
+                    <i class="fa-solid fa-download"></i> Download
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>
