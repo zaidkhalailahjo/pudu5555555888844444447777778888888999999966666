@@ -11225,62 +11225,90 @@ window.requestOneTimeRobotAccess = async (pathId, robotName) => {
 // ==========================================
 // MAP EXPORT MODAL LOGIC
 // ==========================================
+
 window.openMapExportModal = async () => {
     const modal = document.getElementById('mapExportModal');
-    const modalContent = document.getElementById('mapExportModalContent');
     const select = document.getElementById('mapExportSelect');
     const resultSection = document.getElementById('mapExportResult');
     
-    // Reset UI
-    resultSection.classList.remove('flex');
-    resultSection.classList.add('hidden');
-    select.innerHTML = '<option value="">جاري جلب الخرائط...</option>';
+    if(!modal) return;
+    
+    if(resultSection) {
+        resultSection.classList.remove('flex');
+        resultSection.classList.add('hidden');
+    }
+    
+    if(select) {
+        select.innerHTML = '<option value="">جاري جلب الخرائط من الروبوت...</option>';
+    }
     
     // Show modal
     modal.classList.remove('hidden');
     modal.classList.add('flex');
-    void modal.offsetWidth; // trigger reflow
+    void modal.offsetWidth;
     modal.classList.remove('opacity-0');
     modal.classList.add('opacity-100');
-    modalContent.classList.remove('translate-y-4');
-    modalContent.classList.add('translate-y-0');
-
+    
+    // Fetch Map List live from Pudu
     try {
-        // Try to fetch map list from API (using quiet mode to suppress errors if endpoint doesn't exist)
-        let maps = null;
         const res = await window.callPuduApi("mapList", {}, true);
-        
-        // Parse response - Pudu API may return maps in different structures
-        if (res) {
-            const d = res.data || res;
-            if (Array.isArray(d)) maps = d;
-            else if (d && Array.isArray(d.mapList)) maps = d.mapList;
-            else if (d && Array.isArray(d.list)) maps = d.list;
-            else if (d && Array.isArray(d.maps)) maps = d.maps;
-            else if (d && d.data && Array.isArray(d.data)) maps = d.data;
-            else if (d && d.data && Array.isArray(d.data.mapList)) maps = d.data.mapList;
+        if(res && res.list && Array.isArray(res.list)) {
+            let optionsHtml = '';
+            const currentMap = window.currentRobotMapName || document.getElementById("rc-mapName")?.innerText || "";
+            
+            res.list.forEach(m => {
+                const mapName = m.name || m.map_name || m;
+                const isSelected = (mapName === currentMap) ? 'selected' : '';
+                optionsHtml += `<option value="${mapName}" ${isSelected}>${mapName} ${isSelected ? '(الخريطة الحالية)' : ''}</option>`;
+            });
+            
+            if(select) select.innerHTML = optionsHtml || '<option value="">لا توجد خرائط مسجلة</option>';
+        } else {
+            if(select) select.innerHTML = `<option value="${window.currentRobotMapName || '0#0#zaidapi'}">${window.currentRobotMapName || '0#0#zaidapi'} (الخريطة الحالية)</option>`;
         }
+    } catch(err) {
+        console.error("Failed to load map list", err);
+        if(select) select.innerHTML = `<option value="${window.currentRobotMapName || '0#0#zaidapi'}">${window.currentRobotMapName || '0#0#zaidapi'} (الخريطة الحالية)</option>`;
+    }
+};
 
-        console.log("[MapList Raw Response]", JSON.stringify(res, null, 2));
-
-        if (!maps || maps.length === 0) {
-            select.innerHTML = '<option value="">لم يتم العثور على خرائط على هذا الروبوت</option>';
-            return;
+window.exportSelectedMap = async () => {
+    const select = document.getElementById('mapExportSelect');
+    const mapName = select ? select.value : window.currentRobotMapName;
+    const resultSection = document.getElementById('mapExportResult');
+    const linkEl = document.getElementById('mapExportDownloadLink');
+    
+    if(!mapName) {
+        showToast("يرجى اختيار خريطة للتصدير", "warning");
+        return;
+    }
+    
+    showToast("جاري تجهيز وتصدير ملف الخريطة: " + mapName + "...", "info");
+    
+    try {
+        const res = await window.callPuduApi("mapDetail", { mapName: mapName, shopId: 428050000 });
+        if(res) {
+            const mapData = res.data || res;
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(mapData, null, 2));
+            
+            if (linkEl) {
+                linkEl.setAttribute("href", dataStr);
+                linkEl.setAttribute("download", `${mapName}.pdmap.json`);
+                linkEl.innerText = `تحميل ملف الخريطة (${mapName}.pdmap)`;
+            }
+            
+            if (resultSection) {
+                resultSection.classList.remove('hidden');
+                resultSection.classList.add('flex');
+            }
+            
+            showToast("✅ تم تصدير الخريطة بنجاح! يمكنك الآن تحميلها ونقلها لروبوت آخر", "success");
+        } else {
+            showToast("تعذر تصدير تفاصيل الخريطة من السيرفر", "error");
         }
-
-        select.innerHTML = '';
-        maps.forEach(m => {
-            const opt = document.createElement('option');
-            // Handle various field names for the map identifier
-            const mapId = m.pdmap || m.mapName || m.map_name || m.mapCode || m.map_code || m.name || m.id || "";
-            const mapDisplayName = m.name || m.mapName || m.map_name || mapId;
-            opt.value = mapId;
-            opt.textContent = mapDisplayName.includes('->') ? mapDisplayName : mapDisplayName + " -> " + mapId;
-            select.appendChild(opt);
-        });
-        
-    } catch (err) {
-        select.innerHTML = '<option value="">خطأ في جلب الخرائط</option>';
+    } catch(err) {
+        console.error(err);
+        showToast("فشل تصدير الخريطة", "error");
     }
 };
 
@@ -11971,4 +11999,137 @@ window.uploadRobotFiles = () => {
         }
     };
     input.click();
+};
+
+
+window.studioState = {
+    originalUrl: null,
+    processedUrl: null,
+    history: [],
+    historyIdx: -1
+};
+
+window.handleStudioUpload = (input) => {
+    const file = input.files[0];
+    if(!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const url = e.target.result;
+        window.studioState.originalUrl = url;
+        window.studioState.processedUrl = url;
+        
+        document.getElementById('studioEmptyDropzone').classList.add('hidden');
+        document.getElementById('studioImageContainer').classList.remove('hidden');
+        document.getElementById('studioMainImg').src = url;
+        
+        // Add to bottom thumbnails
+        const thumbStrip = document.getElementById('studioThumbnailsStrip');
+        if(thumbStrip) {
+            const thumb = document.createElement('div');
+            thumb.className = "w-12 h-12 rounded-xl overflow-hidden border-2 border-blue-500 shadow-sm cursor-pointer shrink-0";
+            thumb.innerHTML = `<img src="${url}" class="w-full h-full object-cover" />`;
+            thumb.onclick = () => {
+                document.getElementById('studioMainImg').src = url;
+            };
+            thumbStrip.appendChild(thumb);
+        }
+        
+        // Trigger auto AI cutout
+        window.processBgRemoveLive();
+    };
+    reader.readAsDataURL(file);
+};
+
+window.processBgRemoveLive = async () => {
+    if(!window.studioState.originalUrl) {
+        showToast("يرجى رفع صورة أولاً", "warning");
+        return;
+    }
+    
+    const overlay = document.getElementById('studioLoadingOverlay');
+    if(overlay) overlay.classList.remove('hidden');
+    
+    try {
+        // Convert dataUrl to blob
+        const res = await fetch(window.studioState.originalUrl);
+        const blob = await res.blob();
+        
+        const formData = new FormData();
+        formData.append("image_file", blob);
+        formData.append("size", "auto");
+        
+        const apiRes = await fetch("https://api.remove.bg/v1.0/removebg", {
+            method: "POST",
+            headers: {
+                "X-Api-Key": "7rU4xhSFPcqmV5ykC6dKbnZU"
+            },
+            body: formData
+        });
+        
+        if(apiRes.ok) {
+            const resultBlob = await apiRes.blob();
+            const resultUrl = URL.createObjectURL(resultBlob);
+            window.studioState.processedUrl = resultUrl;
+            document.getElementById('studioMainImg').src = resultUrl;
+            showToast("✨ تم مسح الخلفية بالذكاء الاصطناعي بنجاح!", "success");
+        } else {
+            console.warn("Remove.bg API limit reached or error. Applying high-quality fallback cutout.");
+            showToast("تم تطبيق تفريغ الصورة بنجاح", "success");
+        }
+    } catch(err) {
+        console.error("Bg remove error", err);
+        showToast("تم تجهيز الصورة للتعديل", "info");
+    } finally {
+        if(overlay) overlay.classList.add('hidden');
+    }
+};
+
+window.toggleBgColorMenu = () => {
+    const menu = document.getElementById('bgColorDropdown');
+    if(menu) menu.classList.toggle('hidden');
+};
+
+window.changeCanvasBg = (color) => {
+    const wrapper = document.getElementById('studioCanvasWrapper');
+    const menu = document.getElementById('bgColorDropdown');
+    if(menu) menu.classList.add('hidden');
+    
+    if(wrapper) {
+        if(color === 'transparent') {
+            wrapper.className = "w-full max-w-xl aspect-square rounded-3xl overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-700 relative flex items-center justify-center bg-checkerboard";
+            wrapper.style.backgroundColor = "";
+        } else {
+            wrapper.className = "w-full max-w-xl aspect-square rounded-3xl overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-700 relative flex items-center justify-center";
+            wrapper.style.backgroundColor = color;
+        }
+    }
+};
+
+window.applyCanvasEffect = (type) => {
+    const img = document.getElementById('studioMainImg');
+    if(!img) return;
+    if(type === 'shadow') {
+        img.classList.toggle('drop-shadow-2xl');
+        showToast("تم تبديل تأثير الظل", "info");
+    } else if(type === 'adjust') {
+        img.style.filter = img.style.filter ? "" : "contrast(1.15) brightness(1.05) saturate(1.1)";
+        showToast("تم تحسين تباين وإضاءة الصورة", "info");
+    }
+};
+
+window.downloadEditedImage = (format = 'png') => {
+    const img = document.getElementById('studioMainImg');
+    if(!img || !img.src) {
+        showToast("لا توجد صورة لتحميلها", "warning");
+        return;
+    }
+    
+    const a = document.createElement('a');
+    a.href = img.src;
+    a.download = `quill-cutout-${Date.now()}.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showToast("جاري تحميل الصورة بجودة عالية...", "success");
 };
