@@ -6058,7 +6058,7 @@ async function autoDeleteOldAttendance() {
                 'tasks': 'المهام', 'notices': 'التعميمات', 'attendance': 'الحضور والانصراف',
                 'leaves': 'الإجازات', 'drive': 'المستندات', 'meetings': 'الاجتماعات',
                 'inventory': 'الجرد', 'robots': 'الروبوتات', 'rentals': 'المستأجرين',
-                'clients_mgmt': 'إدارة العملاء', 'custody': 'العهد', 'events': 'الأحداث والفعاليات',
+                'clients_mgmt': 'إدارة العملاء', 'bgremove': 'مسح الخلفية', 'custody': 'العهد', 'events': 'الأحداث والفعاليات',
                 'employees': 'الموظفين', 'discussion': 'المناقشة العامة', 'expenses': 'المصاريف', 'home-grid': 'الرئيسية'
             };
             const sName = secNames[sectionId] || sectionId;
@@ -6111,7 +6111,7 @@ async function autoDeleteOldAttendance() {
         window.addEventListener('hashchange', () => {
             if(!currentUserData) return;
             const hash = window.location.hash.replace('#', '');
-            const validSections = ['home-grid', 'notices', 'tasks', 'attendance', 'leaves', 'drive', 'meetings', 'settings', 'expenses', 'trainees', 'inventory', 'robots', 'rentals', 'clients_mgmt', 'custody', 'events', 'employees', 'discussion'];
+            const validSections = ['home-grid', 'notices', 'tasks', 'attendance', 'leaves', 'drive', 'meetings', 'settings', 'expenses', 'trainees', 'inventory', 'robots', 'rentals', 'clients_mgmt', 'bgremove', 'custody', 'events', 'employees', 'discussion'];
             
             // الحظر الشامل لمن هم بانتظار الموافقة
             if (currentUserData.role === 'pending') {
@@ -6189,7 +6189,7 @@ async function autoDeleteOldAttendance() {
                     if(gridRobBtn) gridRobBtn.style.display = (isCEO || perms.permViewRobots) ? 'flex' : 'none';
                     
                     // Show other items for all active employees
-                    const sections = ['rentals', 'custody', 'clients_mgmt'];
+                    const sections = ['rentals', 'custody', 'clients_mgmt', 'bgremove'];
                     sections.forEach(sec => {
                         const navBtn = document.querySelector(`[data-section="${sec}"]`);
                         const gridBtn = document.querySelector(`div[onclick="window.location.hash='${sec}'"]`);
