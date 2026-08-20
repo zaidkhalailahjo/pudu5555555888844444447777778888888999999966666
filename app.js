@@ -10825,6 +10825,7 @@ window.refreshRobotStatus = async () => {
         const iotEl = document.getElementById("rc-iotStatus");
         const batText = document.getElementById("rc-batText");
         const batBar = document.getElementById("rc-batBar");
+        const chargingTag = document.getElementById("rc-chargingTag");
         
         if (stateEl) stateEl.innerText = "جاري الفحص...";
         
@@ -10832,70 +10833,72 @@ window.refreshRobotStatus = async () => {
         const data = res && res.data ? res.data : res;
         
         if(data) {
-            const runState = data.run_state || data.runState || "Running";
-            const bat = data.battery !== undefined ? data.battery : (data.power !== undefined ? data.power : 0);
+            let rawState = (data.run_state || data.runState || "IDLE").toUpperCase();
+            const bat = data.battery !== undefined ? parseInt(data.battery) : (data.power !== undefined ? parseInt(data.power) : 0);
             
-            // Battery Update
+            // Check if charging: DISABLE or CHARGING or is_charging == 1 or charge_type > 0
+            const isCharging = (rawState.includes("DISABLE") || rawState.includes("CHARG") || data.is_charging == 1 || data.is_charging === true || (data.charge_type !== undefined && parseInt(data.charge_type) > 0));
+            
+            // Format state display
+            let displayState = "Ready (IDLE)";
+            if (isCharging) {
+                displayState = "Charging";
+            } else if (rawState.includes("BUSY") || rawState.includes("WORK") || rawState.includes("DELIVER")) {
+                displayState = "Working";
+            } else if (rawState.includes("ERROR")) {
+                displayState = "Error";
+            } else {
+                displayState = "Idle";
+            }
+
+            if (stateEl) stateEl.innerText = displayState;
+            if (iotEl) iotEl.innerText = "Online";
+
+            // Battery Percentage Text
             if (batText) batText.innerText = bat + "%";
+
+            // Battery Bar Styling & Animation
             if (batBar) {
                 batBar.style.width = bat + "%";
-                let colorClass = "bg-emerald-500 h-full transition-all duration-700";
-                if(bat <= 20) colorClass = "bg-rose-500 h-full transition-all duration-700 animate-pulse";
-                else if(bat <= 50) colorClass = "bg-amber-400 h-full transition-all duration-700";
-                
-                // Charging Detection
-                const stateStr = JSON.stringify(data).toUpperCase();
-                const isCharging = (data.is_charging == 1 || data.is_charging === true || data.charge_state === "CHARGING" || runState.toUpperCase().includes("CHARG"));
                 
                 if (isCharging) {
-                    batBar.style.animation = "pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite";
-                    batBar.style.backgroundColor = "#10b981"; // Emerald
+                    // When charging: Green with animated flowing gradient
+                    batBar.className = "h-full rounded-full transition-all duration-700 charging-bar-animated";
+                    if (chargingTag) chargingTag.classList.remove("hidden");
                 } else {
-                    batBar.style.animation = "none";
+                    if (chargingTag) chargingTag.classList.add("hidden");
+                    
+                    // Colors based on battery percentage:
+                    // Under 20%: Red
+                    // 21% - 50%: Orange
+                    // Above 50%: Green
+                    if (bat <= 20) {
+                        batBar.className = "bg-rose-500 h-full rounded-full transition-all duration-700";
+                    } else if (bat <= 50) {
+                        batBar.className = "bg-amber-500 h-full rounded-full transition-all duration-700";
+                    } else {
+                        batBar.className = "bg-emerald-500 h-full rounded-full transition-all duration-700";
+                    }
                 }
-                
-                batBar.className = colorClass;
             }
             
-            // State Display
-            if (stateEl) stateEl.innerText = runState;
-            if (iotEl) {
-                iotEl.innerText = "Online";
-            }
-            
-            // Extract MAC Address
+            // MAC
             if (document.getElementById("rc-mac")) {
                 let mac = data.mac || data.macAddress || data.mac_address || "--:--:--:--:--:--";
                 document.getElementById("rc-mac").innerText = mac;
             }
             
-            // Extract Version
+            // Version
             if (document.getElementById("rc-version")) {
                 let ver = data.softwareVersion || data.version || data.appVersion || data.systemVersion || "--";
                 document.getElementById("rc-version").innerText = ver;
             }
             
-            // Extract Map Name
-            let finalMapName = "غير متوفرة";
-            function searchMapName(obj) {
-                if(!obj || typeof obj !== 'object') return null;
-                for(let key in obj) {
-                    if (key === 'mapName' || key === 'map_name' || key === 'currentMap') {
-                        if (obj[key] && obj[key].trim() !== '') return obj[key];
-                    }
-                    if(typeof obj[key] === 'object') {
-                        let res = searchMapName(obj[key]);
-                        if(res) return res;
-                    }
-                }
-                return null;
-            }
-            
-            let foundMap = searchMapName(data);
-            if (foundMap) finalMapName = foundMap;
-            
-            if (document.getElementById("rc-mapName")) {
-                document.getElementById("rc-mapName").innerText = finalMapName;
+            // Map Name
+            let foundMap = data.mapName || data.map_name || data.currentMap || (data.data && data.data.mapName) || "";
+            if (foundMap && document.getElementById("rc-mapName")) {
+                document.getElementById("rc-mapName").innerText = foundMap;
+                window.currentRobotMapName = foundMap;
             }
         }
     } catch(e) {
@@ -10994,20 +10997,12 @@ window.sendRobotTo = async (pointName, pointType = "table") => {
 
     const res = await window.callPuduApi("call", payload);
     
-    if (res && res.success) {
-        const data = res.data || {};
-        const state = data.state || "";
-        const taskId = data.task_id || data.taskId || "";
-        
-        if (state === "CALL_SUCCESS" || taskId) {
-            showToast("✅ تم قبول المهمة وتحرك الروبوت بنجاح! رقم المهمة: " + (taskId || "تم البدء"), "success");
-            setTimeout(window.refreshRobotStatus, 1500);
-        } else {
-            showToast("⚠️ استجاب السيرفر: " + (state || "قيد المعالجة"), "info");
-        }
-    } else {
-        const errMsg = (res && res.error) ? res.error : "تعذر إرسال الروبوت، تأكد أنه متصل وغير مشغول";
-        showToast("❌ " + errMsg, "error");
+    // Check if result is valid (res is returned data from callPuduApi)
+    if (res !== null && res !== undefined) {
+        const taskId = (typeof res === 'object') ? (res.task_id || res.taskId || "") : "";
+        const msg = taskId ? (" رقم المهمة: " + taskId) : "";
+        showToast("✅ تم إرسال الروبوت بنجاح! جاري التوجه إلى: " + pointName + msg, "success");
+        setTimeout(window.refreshRobotStatus, 1500);
     }
 };
 
@@ -12014,7 +12009,24 @@ window.fetchLiveRobotStatuses = async () => {
             if (result.data && result.data.success && result.data.data) {
                 const data = result.data.data;
                 const batVal = data.battery !== undefined ? parseInt(data.battery) : (data.power !== undefined ? parseInt(data.power) : 0);
-                const runState = data.run_state || data.runState || "Running";
+                const rawState = (data.run_state || data.runState || "IDLE").toUpperCase();
+                
+                // Check if charging: DISABLE or CHARGING or is_charging == 1 or charge_type > 0
+                const isCharging = (rawState.includes("DISABLE") || rawState.includes("CHARG") || data.is_charging == 1 || data.is_charging === true || (data.charge_type !== undefined && parseInt(data.charge_type) > 0));
+
+                let displayState = "Idle";
+                let badgeColor = "bg-blue-100 text-blue-700";
+
+                if (isCharging) {
+                    displayState = "Charging";
+                    badgeColor = "bg-emerald-100 text-emerald-700 border border-emerald-200";
+                } else if (rawState.includes("BUSY") || rawState.includes("WORK") || rawState.includes("DELIVER")) {
+                    displayState = "Working";
+                    badgeColor = "bg-amber-100 text-amber-700";
+                } else if (rawState.includes("ERROR")) {
+                    displayState = "Error";
+                    badgeColor = "bg-rose-100 text-rose-700";
+                }
                 
                 // Update UI for Card
                 const batCircle = document.getElementById('bat-circle-' + r.id);
@@ -12024,18 +12036,21 @@ window.fetchLiveRobotStatuses = async () => {
                 if (batCircle && batText) {
                     batText.innerText = batVal + '%';
                     batCircle.setAttribute('stroke-dasharray', batVal + ', 100');
-                    if(batVal > 50) batCircle.setAttribute('class', "text-emerald-500 stroke-current transition-all duration-700");
-                    else if(batVal > 20) batCircle.setAttribute('class', "text-amber-400 stroke-current transition-all duration-700");
-                    else batCircle.setAttribute('class', "text-rose-500 stroke-current transition-all duration-700");
+                    
+                    if (isCharging) {
+                        batCircle.setAttribute('class', "text-emerald-500 stroke-current transition-all duration-700 animate-pulse");
+                    } else {
+                        if (batVal <= 20) {
+                            batCircle.setAttribute('class', "text-rose-500 stroke-current transition-all duration-700");
+                        } else if (batVal <= 50) {
+                            batCircle.setAttribute('class', "text-amber-500 stroke-current transition-all duration-700");
+                        } else {
+                            batCircle.setAttribute('class', "text-emerald-500 stroke-current transition-all duration-700");
+                        }
+                    }
                 }
                 
                 if (badge) {
-                    let badgeColor = 'bg-blue-100 text-blue-700';
-                    let displayState = 'Working';
-                    if (runState.toUpperCase().includes('CHARG') || data.is_charging == 1) { badgeColor = 'bg-emerald-100 text-emerald-700'; displayState = 'Charging'; }
-                    else if (runState.toUpperCase().includes('IDLE')) { badgeColor = 'bg-amber-100 text-amber-700'; displayState = 'Idle'; }
-                    else if (runState.toUpperCase().includes('ERROR')) { badgeColor = 'bg-rose-100 text-rose-700'; displayState = 'Error'; }
-                    
                     badge.className = `px-1.5 py-0.5 rounded text-[10px] font-bold ${badgeColor}`;
                     badge.innerText = displayState;
                 }
