@@ -11289,20 +11289,32 @@ window.exportSelectedMap = async () => {
         const res = await window.callPuduApi("mapDetail", { mapName: mapName, shopId: 428050000 });
         if(res) {
             const mapData = res.data || res;
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(mapData, null, 2));
+            
+            // Format into clean .pdmap package
+            const pdmapBlob = new Blob([JSON.stringify(mapData, null, 2)], { type: "application/octet-stream" });
+            const pdmapUrl = URL.createObjectURL(pdmapBlob);
+            const downloadName = `${mapName}.pdmap`;
             
             if (linkEl) {
-                linkEl.setAttribute("href", dataStr);
-                linkEl.setAttribute("download", `${mapName}.pdmap.json`);
-                linkEl.innerText = `تحميل ملف الخريطة (${mapName}.pdmap)`;
+                linkEl.setAttribute("href", pdmapUrl);
+                linkEl.setAttribute("download", downloadName);
+                linkEl.innerText = `تحميل ملف الخريطة (${downloadName})`;
             }
+            
+            // Trigger direct automatic download
+            const directA = document.createElement('a');
+            directA.href = pdmapUrl;
+            directA.download = downloadName;
+            document.body.appendChild(directA);
+            directA.click();
+            document.body.removeChild(directA);
             
             if (resultSection) {
                 resultSection.classList.remove('hidden');
                 resultSection.classList.add('flex');
             }
             
-            showToast("✅ تم تصدير الخريطة بنجاح! يمكنك الآن تحميلها ونقلها لروبوت آخر", "success");
+            showToast(`✅ تم تصدير وتحميل الخريطة بنجاح: ${downloadName}`, "success");
         } else {
             showToast("تعذر تصدير تفاصيل الخريطة من السيرفر", "error");
         }
@@ -12120,16 +12132,22 @@ window.applyCanvasEffect = (type) => {
 
 window.downloadEditedImage = (format = 'png') => {
     const img = document.getElementById('studioMainImg');
-    if(!img || !img.src) {
-        showToast("لا توجد صورة لتحميلها", "warning");
+    if(!img || !img.src || img.src === '' || img.src === window.location.href) {
+        showToast("يرجى رفع صورة أولاً لمسح خلفيتها وتحميلها", "warning");
         return;
     }
     
+    // Sequential counter: quill-remove-1, quill-remove-2
+    let currentCount = parseInt(localStorage.getItem('quill_remove_counter') || '1');
+    const fileName = `quill-remove-${currentCount}.${format}`;
+    
     const a = document.createElement('a');
     a.href = img.src;
-    a.download = `quill-cutout-${Date.now()}.${format}`;
+    a.download = fileName;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    showToast("جاري تحميل الصورة بجودة عالية...", "success");
+    
+    localStorage.setItem('quill_remove_counter', (currentCount + 1).toString());
+    showToast(`✅ تم تحميل الصورة باسم: ${fileName}`, "success");
 };
