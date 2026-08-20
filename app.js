@@ -10977,12 +10977,16 @@ window.sendRobotTo = async (pointName, pointType = "table") => {
     
     let pType = pointType;
     if (pointName === "Pick up" || pointName.includes("استلام")) pType = "dining_outlet";
-    else if (pointName.toLowerCase().startsWith("greeting")) pType = "source";
+    else if (pointName.toLowerCase().startsWith("greeting")) pType = "table";
+    else if (pType === "source" || pType === "greeting") pType = "table";
     
+    let mapName = window.currentRobotMapName || document.getElementById("rc-mapName")?.innerText || "";
+    if (mapName === "غير متوفرة" || mapName === "Unknown") mapName = "";
+
     const payload = { 
         point: pointName.trim(), 
         point_type: pType, 
-        map_name: window.currentRobotMapName || document.getElementById("rc-mapName")?.innerText || "",
+        map_name: mapName,
         call_mode: "CALL", 
         do_not_queue: true, 
         priority: 1 
@@ -10999,7 +11003,7 @@ window.sendRobotTo = async (pointName, pointType = "table") => {
             showToast("✅ تم قبول المهمة وتحرك الروبوت بنجاح! رقم المهمة: " + (taskId || "تم البدء"), "success");
             setTimeout(window.refreshRobotStatus, 1500);
         } else {
-            showToast("⚠️ تم استلام الأمر من السيرفر ولكن لم يبدأ التحرك. الحالة: " + (state || "غير معروفة"), "warning");
+            showToast("⚠️ استجاب السيرفر: " + (state || "قيد المعالجة"), "info");
         }
     } else {
         const errMsg = (res && res.error) ? res.error : "تعذر إرسال الروبوت، تأكد أنه متصل وغير مشغول";
