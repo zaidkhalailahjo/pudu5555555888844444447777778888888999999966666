@@ -10775,7 +10775,51 @@ window.sendDiscussionMessage = async () => {
     if(text.includes('@الجميع')) {
         mentionedUids = globalUsers.map(u => u.uid).filter(id => id !== currentUserData.uid);
     } else {
-        window.refreshRobotStatus = async () => {
+        globalUsers.forEach(u => {
+            if(text.includes(`@${u.name}`) && u.uid !== currentUserData.uid) mentionedUids.push(u.uid);
+        });
+    }
+
+    try {
+        const payload = {
+            uid: currentUserData.uid,
+            name: currentUserData.name,
+            photoURL: currentUserData.photoURL || 'https://ui-avatars.com/api/?name=User',
+            text: text,
+            groupId: typeof currentGroupId !== "undefined" ? (currentGroupId || 'general') : 'general',
+            timestamp: Date.now()
+        };
+        if (typeof currentReplyTo !== "undefined" && currentReplyTo) {
+            payload.replyTo = currentReplyTo;
+        }
+
+        const { addDoc, collection } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'discussions'), payload);
+        
+        input.value = ''; 
+        input.style.height = 'auto';
+        const icon = document.getElementById('sendChatIcon');
+        if(icon) icon.className = 'fa-solid fa-microphone';
+        if(typeof window.cancelReply === 'function') window.cancelReply();
+
+        mentionedUids.forEach(uid => {
+            if(typeof window.sendSystemNotification === 'function') {
+                window.sendSystemNotification(uid, 'إشارة جديدة', `قام ${currentUserData.name} بالإشارة إليك في المناقشة.`, 'chat', 'discussion');
+            }
+        });
+
+    } catch(e) { 
+        console.error("Chat Send Error: ", e);
+        if(typeof showToast === 'function') showToast('حدث خطأ، تأكد من اتصال الإنترنت', 'error'); 
+    } finally { 
+        btn.disabled = false;
+        btn.innerHTML = '<i id="sendChatIcon" class="fa-solid fa-microphone"></i>';
+        input.disabled = false;
+        input.focus();
+    }
+};
+
+window.refreshRobotStatus = async () => {
     try {
         const stateEl = document.getElementById("rc-state");
         const iotEl = document.getElementById("rc-iotStatus");
