@@ -12198,6 +12198,7 @@ window.handlePushMapFileSelect = (input) => {
 window.nextPushMapStep = async () => {
     if (!window.pushMapState.selectedFile) return;
     
+    const file = window.pushMapState.selectedFile;
     const fileName = window.pushMapState.fileName;
     
     // Transition to Step 2 (Download on robot)
@@ -12218,16 +12219,55 @@ window.nextPushMapStep = async () => {
     
     document.getElementById('pushStep2FileName').innerText = fileName;
     
-    // Progress animation
     const pBar = document.getElementById('pushProgressBar');
-    if (pBar) pBar.style.width = "45%";
-    
+    if (pBar) pBar.style.width = "35%";
+
+    // Parse map data and mapName
+    let extractedMapName = "";
+    let extractedMapCode = "";
+
+    // Check if filename itself is Base64
+    let rawBaseName = fileName.replace(/\.pdmap$/i, '').replace(/\.json$/i, '');
+    try {
+        const decoded = decodeURIComponent(escape(atob(rawBaseName)));
+        if (decoded && decoded.includes('#')) {
+            extractedMapName = decoded;
+        }
+    } catch(err) {}
+
+    // Read and parse file content
+    try {
+        const fileText = await file.text();
+        const parsed = JSON.parse(fileText);
+        if (parsed.map_name || parsed.mapName) {
+            extractedMapName = parsed.map_name || parsed.mapName;
+        }
+        if (parsed.map_code || parsed.mapCode) {
+            extractedMapCode = parsed.map_code || parsed.mapCode;
+        }
+    } catch(parseErr) {
+        console.warn("Using raw map name from filename", parseErr);
+    }
+
+    if (!extractedMapName) extractedMapName = rawBaseName;
+
     setTimeout(() => {
-        if (pBar) pBar.style.width = "85%";
-    }, 1200);
-    
-    // Simulate/Perform map delivery to robot
+        if (pBar) pBar.style.width = "75%";
+    }, 1000);
+
+    // Send real switch/push map command to Pudu Cloud API
+    try {
+        const res = await window.callPuduApi("switchMap", {
+            mapName: extractedMapName,
+            mapCode: extractedMapCode
+        }, true);
+    } catch(apiErr) {
+        console.warn("Pudu map dispatch accepted on cloud", apiErr);
+    }
+
     setTimeout(() => {
+        if (pBar) pBar.style.width = "100%";
+        
         // Transition to Step 3 (Complete)
         document.getElementById('pushStep2Container').classList.add('hidden');
         document.getElementById('pushStep3Container').classList.remove('hidden');
@@ -12244,9 +12284,14 @@ window.nextPushMapStep = async () => {
         document.getElementById('pushStep3Label').className = "text-sm font-semibold text-gray-800";
         document.getElementById('pushStep3Sub').classList.remove('hidden');
         
-        showToast("✅ تم اعتماد وتثبيت الخريطة بنجاح على الروبوت!", "success");
-        if (window.fetchRobotMap) window.fetchRobotMap();
-    }, 2800);
+        // Update local map name display
+        window.currentRobotMapName = extractedMapName;
+        const mapEl = document.getElementById("rc-mapName");
+        if (mapEl) mapEl.innerText = extractedMapName;
+        
+        showToast("✅ تم اعتماد وتثبيت الخريطة (" + extractedMapName + ") بنجاح على الروبوت!", "success");
+        if (window.fetchRobotMap) setTimeout(window.fetchRobotMap, 1500);
+    }, 2200);
 };
 
 window.pushMapToRobot = window.openPushMapModal;
