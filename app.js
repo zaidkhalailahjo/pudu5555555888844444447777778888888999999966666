@@ -10865,23 +10865,35 @@ window.sendDiscussionMessage = async () => {
             }
             if (macEl) macEl.innerText = data.mac || data.macAddress || "10:2C:6B:--:--:--";
             
+            // Deep search for map name in all possible fields
             let finalMapName = "غير متوفرة";
-            if (data.map_name) finalMapName = data.map_name;
-            else if (data.mapName) finalMapName = data.mapName;
-            else if (data.mapCode) finalMapName = data.mapCode;
-            else if (data.location && data.location.map_name) finalMapName = data.location.map_name;
-            else if (data.location && data.location.mapCode) finalMapName = data.location.mapCode;
-            else if (data.position && data.position.map_name) finalMapName = data.position.map_name;
-            else if (data.current_map) finalMapName = data.current_map;
+            const searchMapName = (obj, depth) => {
+                if (!obj || typeof obj !== 'object' || depth > 3) return null;
+                // Direct field names Pudu might use
+                const keys = ['map_name', 'mapName', 'mapCode', 'current_map', 'currentMap', 'map'];
+                for (const k of keys) {
+                    if (obj[k] && typeof obj[k] === 'string' && obj[k].length > 0) return obj[k];
+                }
+                // Search nested objects
+                for (const k of Object.keys(obj)) {
+                    if (typeof obj[k] === 'object' && obj[k] !== null) {
+                        const found = searchMapName(obj[k], depth + 1);
+                        if (found) return found;
+                    }
+                }
+                return null;
+            };
+            const foundMap = searchMapName(data, 0);
+            if (foundMap) finalMapName = foundMap;
+            
+            // Log full API response so user can see what fields exist (for debugging)
+            console.log("[Pudu Status Full Response]", JSON.stringify(data, null, 2));
             
             if (mapNameEl) {
                 mapNameEl.innerText = finalMapName;
-                if (finalMapName === "غير متوفرة") {
-                    mapNameEl.classList.add('text-slate-400');
-                } else {
-                    mapNameEl.classList.remove('text-slate-400');
-                    mapNameEl.classList.add('text-emerald-600');
-                }
+                mapNameEl.className = finalMapName === "غير متوفرة" 
+                    ? "text-sm font-bold text-slate-400" 
+                    : "text-sm font-bold text-emerald-600";
             }
 
             
@@ -12205,34 +12217,32 @@ window.openMapExportModal = async () => {
         let maps = null;
         const res = await window.callPuduApi("mapList", {}, true);
         
-        if (res && res.data && Array.isArray(res.data.mapList)) {
-            maps = res.data.mapList;
-        } else if (res && Array.isArray(res.data)) {
-            maps = res.data;
+        // Parse response - Pudu API may return maps in different structures
+        if (res) {
+            const d = res.data || res;
+            if (Array.isArray(d)) maps = d;
+            else if (d && Array.isArray(d.mapList)) maps = d.mapList;
+            else if (d && Array.isArray(d.list)) maps = d.list;
+            else if (d && Array.isArray(d.maps)) maps = d.maps;
+            else if (d && d.data && Array.isArray(d.data)) maps = d.data;
+            else if (d && d.data && Array.isArray(d.data.mapList)) maps = d.data.mapList;
         }
 
-        // Fallback to screenshot data if API fails or is not implemented on the server
+        console.log("[MapList Raw Response]", JSON.stringify(res, null, 2));
+
         if (!maps || maps.length === 0) {
-            // Mock data matching the user's screenshot exactly
-            maps = [
-                { name: "0#0#Majed test", pdmap: "MCMwl01hamVkIHRIc3Q=.pdmap" },
-                { name: "0#0#Map bella in boulevard", pdmap: "MCMwl01hcCBiZWxsYSBpb...pdmap" },
-                { name: "0#0#Map2", pdmap: "MCMwl01hcDI=.pdmap" },
-                { name: "0#0#MapQuillOffice", pdmap: "MCMwl01hcFF1aWxzd...pdmap" },
-                { name: "0#0#Mapfadi", pdmap: "MCMwl01hcGZhZGk=.pdmap" },
-                { name: "0#0#Maplubna", pdmap: "MCMwl01hcGx1Ym5h.pdmap" },
-                { name: "0#0#Ali Mj Map", pdmap: "MCMwl0FsaSBNaiBN...pdmap" },
-                { name: "0#0#Back to school", pdmap: "MCMwl0Jhy2sgZ...pdmap" },
-                { name: "0#0#zaidapi", pdmap: "MCMwl3phaWRhcGk=.pdmap" }
-            ];
+            select.innerHTML = '<option value="">لم يتم العثور على خرائط على هذا الروبوت</option>';
+            return;
         }
 
         select.innerHTML = '';
         maps.forEach(m => {
             const opt = document.createElement('option');
-            opt.value = m.pdmap || (m.name + ".pdmap");
-            // If the name already has the full format, use it, otherwise construct it
-            opt.textContent = m.name.includes('->') ? m.name : `${m.name} -> ${opt.value}`;
+            // Handle various field names for the map identifier
+            const mapId = m.pdmap || m.mapName || m.map_name || m.mapCode || m.map_code || m.name || m.id || "";
+            const mapDisplayName = m.name || m.mapName || m.map_name || mapId;
+            opt.value = mapId;
+            opt.textContent = mapDisplayName.includes('->') ? mapDisplayName : mapDisplayName + " -> " + mapId;
             select.appendChild(opt);
         });
         
