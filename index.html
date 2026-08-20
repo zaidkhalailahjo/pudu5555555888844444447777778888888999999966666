@@ -3931,7 +3931,7 @@
                             <div class="flex flex-wrap gap-2.5">
                                 <button onclick="window.exportRobotLogs()" class="border border-slate-200 bg-white text-slate-700 text-xs px-3.5 py-2 hover:bg-slate-50 rounded transition flex items-center gap-2 shadow-xs"><i class="fa-regular fa-file-lines text-blue-500"></i> Log Export</button>
                                 <button onclick="window.openMapExportModal()" class="border border-slate-200 bg-white text-slate-700 text-xs px-3.5 py-2 hover:bg-slate-50 rounded transition flex items-center gap-2 shadow-xs"><i class="fa-solid fa-download text-blue-500"></i> Pull Map</button>
-                                <button onclick="window.pushMapToRobot()" class="border border-slate-200 bg-white text-slate-700 text-xs px-3.5 py-2 hover:bg-slate-50 rounded transition flex items-center gap-2 shadow-xs"><i class="fa-solid fa-upload text-blue-500"></i> Push Map</button>
+                                <button onclick="window.openPushMapModal()" class="border border-slate-200 bg-white text-slate-700 text-xs px-3.5 py-2 hover:bg-slate-50 rounded transition flex items-center gap-2 shadow-xs"><i class="fa-solid fa-upload text-blue-500"></i> Push Map</button>
                                 <button class="border border-slate-200 bg-white text-slate-700 text-xs px-3.5 py-2 hover:bg-slate-50 rounded transition flex items-center gap-2 shadow-xs"><i class="fa-solid fa-volume-high text-blue-500"></i> Upload Audio</button>
                                 <button class="border border-slate-200 bg-white text-slate-700 text-xs px-3.5 py-2 hover:bg-slate-50 rounded transition flex items-center gap-2 shadow-xs"><i class="fa-regular fa-folder-open text-blue-500"></i> Upload Files</button>
                             </div>
@@ -4189,6 +4189,131 @@
                     <i class="fa-solid fa-download"></i> Download
                 </button>
             </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Push Map Wizard Modal (Matching Official Pudu IoT UI) -->
+<div id="pushMapModal" class="fixed inset-0 bg-slate-900/60 z-[2147483647] hidden flex-col items-center justify-center p-4 transition-all duration-300 opacity-0" dir="ltr">
+    <div class="bg-white rounded-lg shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col transform transition-transform duration-300 translate-y-4" id="pushMapModalContent">
+        
+        <!-- Header -->
+        <div class="px-6 py-4 flex justify-between items-center bg-white border-b border-gray-100">
+            <h3 class="text-base font-bold text-gray-800">Push Map</h3>
+            <button onclick="window.closePushMapModal()" class="text-gray-400 hover:text-gray-600 transition text-2xl leading-none">&times;</button>
+        </div>
+        
+        <!-- Body -->
+        <div class="p-8 bg-white flex-1 min-h-[380px] flex flex-col justify-between">
+            
+            <!-- 3-Step Stepper -->
+            <div class="flex items-center justify-between px-4 mb-8 relative">
+                
+                <!-- Step 1 Indicator -->
+                <div class="flex items-center gap-3 relative z-10">
+                    <div id="pushStep1Icon" class="w-8 h-8 rounded-full bg-[#1890ff] text-white flex items-center justify-center font-bold text-sm shadow-xs transition-all">
+                        1
+                    </div>
+                    <div>
+                        <p id="pushStep1Label" class="text-sm font-semibold text-gray-800">Upload to service</p>
+                        <p id="pushStep1Sub" class="text-[11px] text-gray-400 hidden">0/1 Completed</p>
+                    </div>
+                </div>
+
+                <!-- Line 1-2 -->
+                <div class="flex-1 h-[2px] bg-gray-200 mx-4 transition-all" id="pushLine1"></div>
+
+                <!-- Step 2 Indicator -->
+                <div class="flex items-center gap-3 relative z-10">
+                    <div id="pushStep2Icon" class="w-8 h-8 rounded-full border border-gray-300 bg-white text-gray-400 flex items-center justify-center font-bold text-sm transition-all">
+                        2
+                    </div>
+                    <div>
+                        <p id="pushStep2Label" class="text-sm font-semibold text-gray-400">Download on robot</p>
+                        <p id="pushStep2Sub" class="text-[11px] text-[#1890ff] hidden">Processing...</p>
+                    </div>
+                </div>
+
+                <!-- Line 2-3 -->
+                <div class="flex-1 h-[2px] bg-gray-200 mx-4 transition-all" id="pushLine2"></div>
+
+                <!-- Step 3 Indicator -->
+                <div class="flex items-center gap-3 relative z-10">
+                    <div id="pushStep3Icon" class="w-8 h-8 rounded-full border border-gray-300 bg-white text-gray-400 flex items-center justify-center font-bold text-sm transition-all">
+                        3
+                    </div>
+                    <div>
+                        <p id="pushStep3Label" class="text-sm font-semibold text-gray-400">Complete</p>
+                        <p id="pushStep3Sub" class="text-[11px] text-gray-400 hidden">1 files processed</p>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- STEP 1 CONTENT: Upload Dropzone -->
+            <div id="pushStep1Container" class="flex-1 flex flex-col justify-between">
+                <div class="border-2 border-dashed border-gray-200 rounded-lg p-10 flex flex-col items-center justify-center cursor-pointer hover:border-[#1890ff] transition bg-gray-50/50 min-h-[180px]" onclick="document.getElementById('pushMapFileInput').click()">
+                    <div class="w-14 h-14 bg-[#e6f7ff] text-[#1890ff] rounded-xl flex items-center justify-center text-2xl mb-3">
+                        <i class="fa-solid fa-box-archive"></i>
+                    </div>
+                    <p class="text-sm text-gray-600 font-medium">Click or drag files to this area to upload</p>
+                    <input type="file" id="pushMapFileInput" accept=".pdmap,.zip,.json" class="hidden" onchange="window.handlePushMapFileSelect(this)">
+                </div>
+
+                <!-- Attached File Info (Step 1) -->
+                <div id="pushSelectedFileInfo" class="hidden items-center gap-2 mt-4 text-xs text-gray-700">
+                    <i class="fa-solid fa-paperclip text-gray-400"></i>
+                    <span id="pushSelectedFileName" class="font-mono font-medium">MCMwI3phaWRhcGk=.pdmap</span>
+                </div>
+
+                <!-- Action Button Step 1 -->
+                <div class="mt-6 flex justify-start">
+                    <button id="pushNextBtn" onclick="window.nextPushMapStep()" disabled class="bg-gray-100 text-gray-400 cursor-not-allowed font-medium text-sm px-5 py-1.5 rounded transition">
+                        Next Step
+                    </button>
+                </div>
+            </div>
+
+            <!-- STEP 2 CONTENT: Download on robot / Processing -->
+            <div id="pushStep2Container" class="hidden flex-1 flex flex-col justify-between py-4">
+                <div class="space-y-4">
+                    <!-- File item with loader -->
+                    <div class="flex items-center justify-between">
+                        <span id="pushStep2FileName" class="text-sm font-mono text-gray-800 font-medium">MCMwI3phaWRhcGk=.pdmap</span>
+                        <div class="flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-[#1890ff] animate-ping"></span>
+                            <span class="w-2 h-2 rounded-full bg-[#40a9ff] animate-bounce"></span>
+                            <span class="w-2 h-2 rounded-full bg-[#1890ff] animate-pulse"></span>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                        <div id="pushProgressBar" class="bg-[#1890ff] h-full rounded-full transition-all duration-500 w-1/3 animate-pulse"></div>
+                    </div>
+
+                    <!-- Alert Box -->
+                    <div class="bg-[#e6f7ff] border border-[#91d5ff] rounded-lg p-3.5 flex items-center gap-3 text-xs text-gray-800 mt-6">
+                        <i class="fa-solid fa-circle-info text-[#1890ff] text-base"></i>
+                        <span>Robot is downloading the file, please wait patiently</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 3 CONTENT: Operation completed -->
+            <div id="pushStep3Container" class="hidden flex-1 flex flex-col items-center justify-center py-6 text-center">
+                <!-- Big Green Check -->
+                <div class="w-16 h-16 rounded-full bg-[#52c41a] text-white flex items-center justify-center text-3xl shadow-sm mb-4">
+                    <i class="fa-solid fa-check"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800 mb-1">Operation completed</h3>
+                <p class="text-xs text-gray-400 mb-6">All 1 files processed</p>
+                <button onclick="window.closePushMapModal()" class="bg-[#1890ff] hover:bg-[#40a9ff] text-white font-medium text-sm px-7 py-1.5 rounded shadow-sm transition">
+                    Close
+                </button>
+            </div>
+
         </div>
     </div>
 </div>
