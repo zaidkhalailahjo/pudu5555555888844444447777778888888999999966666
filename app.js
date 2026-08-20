@@ -11934,3 +11934,41 @@ window.refreshRobotStatus = async () => {
         console.error("Error refreshing robot status", e);
     }
 };
+
+
+window.uploadRobotAudio = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'audio/*,.mp3,.wav';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        showToast("جاري رفع الملف الصوتي...", "info");
+        try {
+            const url = await window.uploadToFirebase(file, 'pudu_audio');
+            showToast("تم رفع الملف الصوتي بنجاح!", "success");
+        } catch(err) {
+            console.error(err);
+            showToast("فشل رفع الملف الصوتي", "error");
+        }
+    };
+    input.click();
+};
+
+window.uploadRobotFiles = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        showToast("جاري رفع الملف للسحابة...", "info");
+        try {
+            const url = await window.uploadToFirebase(file, 'pudu_files');
+            showToast("تم رفع الملف بنجاح! الرابط جاهز للمشاركة", "success");
+        } catch(err) {
+            console.error(err);
+            showToast("فشل رفع الملف", "error");
+        }
+    };
+    input.click();
+};
