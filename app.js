@@ -11544,27 +11544,7 @@ window.closeRobotControlPanel = () => {
     document.getElementById('robotControlModal').classList.remove('flex');
 };
 
-window.callPuduApi = async (action, payload = {}, quiet = false) => {
-    const sn = document.getElementById('rc-activeSN').value;
-    if(!sn) { showToast('الرقم التسلسلي مفقود', 'error'); return null; }
-    
-    try {
-        const puduGateway = httpsCallable(cloudFunctions, 'puduGateway');
-        const result = await puduGateway({ action, sn, payload });
-        
-        if(result.data && result.data.success) {
-            return result.data.data;
-        } else {
-            console.error(result.data.error);
-            showToast('خطأ من السيرفر: ' + result.data.error, 'error');
-            return null;
-        }
-    } catch(err) {
-        console.error(err);
-        showToast('خطأ في الاتصال بالسيرفر', 'error');
-        return null;
-    }
-};
+
 
 window.refreshRobotStatus = async () => {
     const stateEl = document.getElementById('rc-state');
@@ -11836,27 +11816,7 @@ window.closeRobotControlPanel = () => {
     }, 300);
 };
 
-window.callPuduApi = async (action, payload = {}, quiet = false) => {
-    const sn = document.getElementById("rc-activeSN").value;
-    if(!sn) { showToast("الرقم التسلسلي مفقود", "error"); return null; }
-    
-    try {
-        const puduGateway = httpsCallable(cloudFunctions, "puduGateway");
-        const result = await puduGateway({ action, sn, payload });
-        
-        if(result.data && result.data.success) {
-            return result.data.data;
-        } else {
-            console.error(result.data.error);
-            if (!quiet) showToast("خطأ من السيرفر: " + result.data.error, "error");
-            return null;
-        }
-    } catch(err) {
-        console.error(err);
-        if (!quiet) showToast("خطأ في الاتصال بالسيرفر", "error");
-        return null;
-    }
-};
+
 
 window.refreshRobotStatus = async () => {
     try {
@@ -12137,105 +12097,7 @@ window.requestOneTimeRobotAccess = async (pathId, robotName) => {
     }
 };
 
-window.openRobotControlPanel = async (robotId) => {
-    try {
-        const r = globalRobots.find(x => x.id === robotId);
-        if(!r) return;
 
-        const safeName = (r.name || "Robot").replace(/\s+/g, "");
-        const pathId = safeName + r.serialNumber;
-        
-        // -- Permission Checking --
-        const isCEO = window.isAdmin();
-        const canManage = isCEO || (currentUserData.permissions && currentUserData.permissions.permManageRobots);
-        
-        let hasOneTimeAccess = false;
-        let oneTimeTaskDoc = null;
-        
-        if (!canManage) {
-            Swal.fire({ title: 'جاري التحقق من الصلاحيات...', allowOutsideClick: false });
-            Swal.showLoading();
-            
-            const q = query(
-                collection(db, 'artifacts', appId, 'public', 'data', 'tasks'), 
-                where('createdBy', '==', currentUserData.uid),
-                where('type', '==', 'robot_access_request'),
-                where('robotIdentifier', '==', pathId),
-                where('status', '==', 'completed'),
-                where('isConsumed', '==', false)
-            );
-            const reqDocs = await getDocs(q);
-            
-            if (!reqDocs.empty) {
-                hasOneTimeAccess = true;
-                oneTimeTaskDoc = reqDocs.docs[0];
-            }
-            Swal.close();
-        }
-        
-        if (!canManage && !hasOneTimeAccess) {
-            Swal.fire({
-                icon: 'error',
-                title: 'ليس لديك صلاحية',
-                text: 'ليس لديك صلاحية لدخول الى هذا الروبوت.',
-                showCancelButton: true,
-                confirmButtonText: 'إرسال إشعار للمدير لطلب الصلاحية',
-                cancelButtonText: 'إلغاء'
-            }).then(async (result) => {
-                if (result.isConfirmed) {
-                    await window.requestOneTimeRobotAccess(pathId, r.name);
-                } else {
-                    window.history.pushState(null, "", "/");
-                }
-            });
-            return;
-        }
-        
-        if (hasOneTimeAccess && oneTimeTaskDoc) {
-            // Consume it
-            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tasks', oneTimeTaskDoc.id), {
-                isConsumed: true
-            });
-            Swal.fire({
-                icon: 'success',
-                title: 'صلاحية لمرة واحدة',
-                text: 'تم منحك الدخول لمرة واحدة لهذا الروبوت. لن تتمكن من الدخول مرة أخرى إلا بطلب جديد.',
-                timer: 4000,
-                showConfirmButton: false
-            });
-        }
-        // -- End Permission Checking --
-
-        document.getElementById("rc-robotName").innerText = r.name || "روبوت Pudu";
-        document.getElementById("rc-activeSN").value = r.serialNumber || "";
-        
-        let type = "Unknown";
-        let img = "";
-        const n = (r.name || "").toLowerCase();
-        if (n.includes("bella")) { type = "BellaBot"; img = "https://pudu-link.oss-cn-hongkong.aliyuncs.com/robot-image-resource/small-size/62.png"; }
-        else if (n.includes("ketty")) { type = "KettyBot"; img = "https://pudu-link.oss-cn-hongkong.aliyuncs.com/robot-image-resource/small-size/67.png"; }
-        else if (n.includes("quill") || n.includes("flash")) { type = "FlashBot"; img = "https://pudu-link.oss-cn-hongkong.aliyuncs.com/robot-image-resource/small-size/73.png"; }
-        else { type = "PuduBot"; img = "https://pudu-link.oss-cn-hongkong.aliyuncs.com/robot-image-resource/small-size/62.png"; }
-        
-        document.getElementById("rc-robotType").innerText = type;
-        document.getElementById("rc-robotImage").src = img;
-        
-        const modal = document.getElementById('robotControlModal');
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-        void modal.offsetWidth;
-        modal.classList.remove('opacity-0', 'translate-y-8');
-        modal.classList.add('opacity-100', 'translate-y-0');
-        
-        window.history.pushState(null, "", `/?robot=${pathId}`);
-        
-        window.refreshRobotStatus();
-        window.fetchRobotMap(); 
-    } catch (e) {
-        console.error(e);
-        showToast("حدث خطأ أثناء فتح لوحة التحكم.", "error");
-    }
-};
 
 
 // ==========================================
@@ -12536,5 +12398,229 @@ window.exportRobotLogs = async () => {
     const res = await window.callPuduApi("call", payload);
     if(res) {
         showToast("سيقوم الروبوت برفع السجلات قريباً، راجع لوحة Pudu IoT", "success");
+    }
+};
+
+
+window.openRobotControlPanel = async (robotId) => {
+    try {
+        const r = globalRobots.find(x => x.id === robotId);
+        if(!r) return;
+
+        const safeName = (r.name || "Robot").replace(/\s+/g, "");
+        const pathId = safeName + r.serialNumber;
+        
+        // Ensure globals are set for API calls
+        window.currentRobotSn = r.serialNumber;
+        window.currentRobotName = r.name;
+        
+        // Update Title in Modal
+        const titleEl = document.getElementById("rc-title");
+        if(titleEl) titleEl.innerText = r.name || "روبوت Pudu";
+        
+        // Handle Model Specific UI
+        const isKetty = r.serialNumber.toLowerCase().startsWith('pnt') || r.serialNumber.toLowerCase().startsWith('kty') || (r.name || '').toLowerCase().includes('ketty');
+        document.querySelectorAll('.rc-ketty-only').forEach(el => {
+            if (isKetty) el.style.display = '';
+            else el.style.display = 'none';
+        });
+
+        // Show Modal safely
+        const modal = document.getElementById('robotControlModal');
+        if(modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            void modal.offsetWidth;
+            modal.classList.remove('opacity-0', 'translate-y-8');
+            modal.classList.add('opacity-100', 'translate-y-0');
+        }
+        
+        window.history.pushState(null, "", `/?robot=${pathId}`);
+        
+        // Switch to Status tab
+        if (window.switchRcTab) window.switchRcTab('status');
+        
+        window.refreshRobotStatus();
+        window.fetchRobotMap(); 
+    } catch (e) {
+        console.error("Open Panel Error:", e);
+        showToast("حدث خطأ أثناء فتح لوحة التحكم. انظر الكونسول.", "error");
+    }
+};
+
+window.callPuduApi = async (action, payload = {}, quiet = false) => {
+    const sn = window.currentRobotSn;
+    if(!sn) { if(!quiet) showToast('الرقم التسلسلي مفقود', 'error'); return null; }
+    
+    try {
+        const puduGateway = httpsCallable(cloudFunctions, 'puduGateway');
+        const result = await puduGateway({ action, sn, payload });
+        
+        if(result.data && result.data.success) {
+            return result.data.data;
+        } else {
+            console.error(result.data.error);
+            if(!quiet) showToast('خطأ من السيرفر: ' + result.data.error, 'error');
+            return null;
+        }
+    } catch(err) {
+        console.error(err);
+        if(!quiet) showToast('خطأ في الاتصال بالسيرفر', 'error');
+        return null;
+    }
+};
+
+window.refreshRobotStatus = async () => {
+    try {
+        const stateEl = document.getElementById("rc-state");
+        const iotEl = document.getElementById("rc-iotStatus");
+        const batText = document.getElementById("rc-batText");
+        const batBar = document.getElementById("rc-batBar");
+        const chargingIcon = document.getElementById("rc-chargingIcon");
+        const macEl = document.getElementById("rc-mac");
+        
+        if (stateEl) stateEl.innerText = "جاري الفحص...";
+        
+        const res = await window.callPuduApi("status", {}, true);
+        const data = res && res.data ? res.data : res;
+        
+        if(data) {
+            const runState = data.run_state || data.runState || "Running";
+            const bat = data.battery !== undefined ? data.battery : (data.power !== undefined ? data.power : 0);
+            
+            // Battery Update
+            if (batText) batText.innerText = bat + "%";
+            if (batBar) {
+                batBar.style.width = bat + "%";
+                let colorClass = "bg-emerald-500 h-2.5 rounded-full transition-all duration-700";
+                if(bat <= 20) colorClass = "bg-rose-500 h-2.5 rounded-full transition-all duration-700 animate-pulse";
+                else if(bat <= 50) colorClass = "bg-amber-400 h-2.5 rounded-full transition-all duration-700";
+                
+                // Charging Detection
+                const stateStr = JSON.stringify(data).toUpperCase();
+                const isCharging = stateStr.includes("CHARGING") || runState.toUpperCase().includes('CHARG');
+                
+                if (isCharging) {
+                    if (chargingIcon) chargingIcon.classList.remove("hidden");
+                    // Add CSS animation manually inline since we don't know if CSS is there
+                    batBar.style.animation = "pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite";
+                    batBar.style.backgroundColor = "#10b981"; // Emerald
+                } else {
+                    if (chargingIcon) chargingIcon.classList.add("hidden");
+                    batBar.style.animation = "none";
+                }
+                
+                batBar.className = colorClass;
+            }
+            
+            if (stateEl) stateEl.innerText = runState;
+            if (iotEl) {
+                iotEl.innerHTML = '<span class="relative flex h-2.5 w-2.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span></span> Online';
+                iotEl.className = "text-sm font-bold text-emerald-600 flex items-center gap-1.5";
+            }
+            
+            // Extract MAC Address
+            if (document.getElementById("rc-mac")) {
+                let mac = data.mac || data.macAddress || data.mac_address || "--:--:--:--:--:--";
+                document.getElementById("rc-mac").innerText = mac;
+            }
+            
+            // Extract Version
+            if (document.getElementById("rc-version")) {
+                let ver = data.softwareVersion || data.version || data.appVersion || data.systemVersion || "--";
+                document.getElementById("rc-version").innerText = ver;
+            }
+            
+            // Extract Location X, Y
+            if (document.getElementById("rc-locX") && document.getElementById("rc-locY")) {
+                let x = "--", y = "--";
+                if (data.location && typeof data.location.x !== 'undefined') {
+                    x = data.location.x.toFixed(2);
+                    y = data.location.y.toFixed(2);
+                } else if (data.pose && typeof data.pose.x !== 'undefined') {
+                    x = data.pose.x.toFixed(2);
+                    y = data.pose.y.toFixed(2);
+                }
+                document.getElementById("rc-locX").innerText = x;
+                document.getElementById("rc-locY").innerText = y;
+            }
+            
+            // Extract Map Name
+            let finalMapName = "غير متوفرة";
+            function searchMapName(obj) {
+                if(!obj || typeof obj !== 'object') return null;
+                for(let key in obj) {
+                    if (key === 'mapName' || key === 'map_name' || key === 'currentMap') {
+                        if (obj[key] && obj[key].trim() !== '') return obj[key];
+                    }
+                    if(typeof obj[key] === 'object') {
+                        let res = searchMapName(obj[key]);
+                        if(res) return res;
+                    }
+                }
+                return null;
+            }
+            
+            let foundMap = searchMapName(data);
+            if (foundMap) finalMapName = foundMap;
+            
+            if (document.getElementById("rc-mapName")) {
+                document.getElementById("rc-mapName").innerText = finalMapName;
+            }
+        }
+    } catch(e) {
+        console.error("Error refreshing robot status", e);
+    }
+};
+
+
+window.removeImageBackground = async () => {
+    const input = document.getElementById('rc-bgInput');
+    const file = input.files[0];
+    if(!file) {
+        showToast("يرجى اختيار صورة أولاً", "error");
+        return;
+    }
+    
+    showToast("جاري المعالجة بالذكاء الاصطناعي... يرجى الانتظار", "info");
+    
+    const formData = new FormData();
+    formData.append('image_file', file);
+    formData.append('size', 'auto');
+    
+    try {
+        const response = await fetch('https://api.remove.bg/v1.0/removebg', {
+            method: 'POST',
+            headers: {
+                'X-Api-Key': '7rU4xhSFPcqmV5ykC6dKbnZU'
+            },
+            body: formData
+        });
+        
+        if(response.ok) {
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            
+            const imgResult = document.getElementById('rc-bgResult');
+            const placeholder = document.getElementById('rc-bgPlaceholder');
+            const downloadBtn = document.getElementById('rc-bgDownload');
+            
+            imgResult.src = url;
+            imgResult.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+            
+            downloadBtn.href = url;
+            downloadBtn.download = 'no_bg_' + file.name;
+            downloadBtn.classList.remove('hidden');
+            downloadBtn.classList.add('inline-block');
+            
+            showToast("تمت إزالة الخلفية بنجاح! ✨", "success");
+        } else {
+            console.error("BG Remove Error:", await response.text());
+            showToast("فشلت عملية مسح الخلفية، تأكد من مفتاح API", "error");
+        }
+    } catch (e) {
+        console.error(e);
+        showToast("حدث خطأ في الاتصال", "error");
     }
 };
