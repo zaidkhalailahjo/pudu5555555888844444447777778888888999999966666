@@ -11272,66 +11272,7 @@ window.openMapExportModal = async () => {
     }
 };
 
-window.exportSelectedMap = async () => {
-    const select = document.getElementById('mapExportSelect');
-    const mapName = select ? select.value : window.currentRobotMapName;
-    const resultSection = document.getElementById('mapExportResult');
-    const linkEl = document.getElementById('mapExportDownloadLink');
-    
-    if(!mapName) {
-        showToast("يرجى اختيار خريطة للتصدير", "warning");
-        return;
-    }
-    
-    showToast("جاري تجهيز وتصدير ملف الخريطة: " + mapName + "...", "info");
-    
-    try {
-        const res = await window.callPuduApi("mapDetail", { mapName: mapName, shopId: 428050000 });
-        if(res) {
-            const mapData = res.data || res;
-            
-            // Encode mapName to Base64 to strictly match Pudu robot filename convention (e.g. MCMwI3phaWRhcGk=.pdmap)
-            let base64Name = mapName;
-            try {
-                base64Name = btoa(unescape(encodeURIComponent(mapName)));
-            } catch (e) {
-                base64Name = mapName;
-            }
-            
-            const downloadName = `${base64Name}.pdmap`;
-            
-            // Format into clean .pdmap package
-            const pdmapBlob = new Blob([JSON.stringify(mapData, null, 2)], { type: "application/octet-stream" });
-            const pdmapUrl = URL.createObjectURL(pdmapBlob);
-            
-            if (linkEl) {
-                linkEl.setAttribute("href", pdmapUrl);
-                linkEl.setAttribute("download", downloadName);
-                linkEl.innerText = `تحميل ملف الخريطة (${downloadName})`;
-            }
-            
-            // Direct auto download
-            const directA = document.createElement('a');
-            directA.href = pdmapUrl;
-            directA.download = downloadName;
-            document.body.appendChild(directA);
-            directA.click();
-            document.body.removeChild(directA);
-            
-            if (resultSection) {
-                resultSection.classList.remove('hidden');
-                resultSection.classList.add('flex');
-            }
-            
-            showToast(`✅ تم تنزيل الخريطة بنجاح: ${downloadName}`, "success");
-        } else {
-            showToast("تعذر تصدير تفاصيل الخريطة من السيرفر", "error");
-        }
-    } catch(err) {
-        console.error(err);
-        showToast("فشل تصدير الخريطة", "error");
-    }
-};
+
 
 window.closeMapExportModal = () => {
     const modal = document.getElementById('mapExportModal');
@@ -11348,55 +11289,9 @@ window.closeMapExportModal = () => {
     }, 300);
 };
 
-window.executeMapExport = () => {
-    const select = document.getElementById('mapExportSelect');
-    const resultSection = document.getElementById('mapExportResult');
-    const resultName = document.getElementById('mapExportResultName');
-    
-    if (!select.value || select.options[select.selectedIndex].value === "") {
-        showToast("الرجاء اختيار خريطة أولاً", "warning");
-        return;
-    }
-    
-    const selectedText = select.options[select.selectedIndex].textContent;
-    const parts = selectedText.split('->');
-    const fileName = parts.length > 1 ? parts[1].trim() : select.value;
-    
-    const btn = document.querySelector('#mapExportActionContainer button');
-    const originalText = btn.innerText;
-    btn.innerText = "Exporting...";
-    btn.disabled = true;
-    btn.classList.add('opacity-70');
-    
-    // Simulate network delay for export preparation
-    setTimeout(() => {
-        btn.innerText = originalText;
-        btn.disabled = false;
-        btn.classList.remove('opacity-70');
-        
-        // Show result
-        resultName.innerText = fileName;
-        resultSection.classList.remove('hidden');
-        resultSection.classList.add('flex');
-    }, 1000);
-};
 
-window.downloadExportedMap = () => {
-    const resultName = document.getElementById('mapExportResultName').innerText;
-    
-    // Create a dummy blob download 
-    const blob = new Blob(["Pudu Map Data Simulated (API integration needed to fetch real bytes)"], { type: "application/octet-stream" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = resultName || "map.pdmap";
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
-    
-    showToast("تم بدء التحميل", "success");
-};
+
+
 
 
 // ==========================================
@@ -12174,3 +12069,72 @@ window.downloadEditedImage = (format = 'png') => {
     localStorage.setItem('quill_remove_counter', (currentCount + 1).toString());
     showToast(`✅ تم تحميل الصورة باسم: ${fileName}`, "success");
 };
+
+
+window.currentExportedMapData = null;
+window.currentExportedMapName = "";
+
+window.executeMapExport = async () => {
+    const select = document.getElementById('mapExportSelect');
+    const resultSection = document.getElementById('mapExportResult');
+    const resultName = document.getElementById('mapExportResultName');
+    
+    const mapName = select ? select.value : window.currentRobotMapName;
+    if (!mapName || mapName.trim() === "") {
+        showToast("الرجاء اختيار خريطة أولاً", "warning");
+        return;
+    }
+    
+    // Encode to Base64 to strictly match Pudu robot native filename convention (e.g. MCMwI3phaWRhcGk=.pdmap)
+    let base64Name = mapName;
+    try {
+        base64Name = btoa(unescape(encodeURIComponent(mapName)));
+    } catch(e) {
+        base64Name = mapName;
+    }
+    const finalFileName = `${base64Name}.pdmap`;
+    window.currentExportedMapName = finalFileName;
+    
+    showToast("جاري جلب وتصدير ملف الخريطة (" + mapName + ")...", "info");
+    
+    try {
+        const res = await window.callPuduApi("mapDetail", { mapName: mapName, shopId: 428050000 });
+        const mapData = (res && res.data) ? res.data : res;
+        
+        if (mapData) {
+            window.currentExportedMapData = JSON.stringify(mapData, null, 2);
+            
+            if (resultName) resultName.innerText = finalFileName;
+            if (resultSection) {
+                resultSection.classList.remove('hidden');
+                resultSection.classList.add('flex');
+            }
+            
+            // Auto download
+            window.downloadExportedMap();
+            showToast("✅ تم تصدير وتنزيل الخريطة بنجاح: " + finalFileName, "success");
+        } else {
+            showToast("تعذر جلب تفاصيل الخريطة من السيرفر", "error");
+        }
+    } catch (err) {
+        console.error("Map Export Error:", err);
+        showToast("فشل تصدير الخريطة", "error");
+    }
+};
+
+window.downloadExportedMap = () => {
+    const fileName = window.currentExportedMapName || document.getElementById('mapExportResultName')?.innerText || "MCMwI3phaWRhcGk=.pdmap";
+    const dataContent = window.currentExportedMapData || JSON.stringify({ map_name: "0#0#zaidapi", export_time: Date.now() }, null, 2);
+    
+    const blob = new Blob([dataContent], { type: "application/octet-stream" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+};
+
+window.exportSelectedMap = window.executeMapExport;
