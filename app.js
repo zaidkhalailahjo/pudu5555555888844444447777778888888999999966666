@@ -10967,15 +10967,55 @@ window.refreshRobotStatus = async () => {
     }
 };
 
-window.sendRobotTo = async (pointName) => {
-    showToast("جاري توجيه الروبوت إلى " + pointName + "...", "info");
-    const payload = { point: pointName, point_type: pointName === "Pick up" || pointName.includes("استلام") ? "dining_outlet" : "table", call_mode: "CALL", do_not_queue: true, priority: 1 };
+window.sendRobotTo = async (pointName, pointType = "table") => {
+    if(!pointName || pointName.trim() === '') {
+        showToast("يرجى اختيار أو كتابة اسم النقطة أولاً", "warning");
+        return;
+    }
+
+    showToast("جاري إرسال الروبوت إلى: " + pointName + "...", "info");
+    
+    let pType = pointType;
+    if (pointName === "Pick up" || pointName.includes("استلام")) pType = "dining_outlet";
+    else if (pointName.toLowerCase().startsWith("greeting")) pType = "source";
+    
+    const payload = { 
+        point: pointName.trim(), 
+        point_type: pType, 
+        map_name: window.currentRobotMapName || document.getElementById("rc-mapName")?.innerText || "",
+        call_mode: "CALL", 
+        do_not_queue: true, 
+        priority: 1 
+    };
+
     const res = await window.callPuduApi("call", payload);
-    if(res) {
-        showToast("تم إرسال الروبوت بنجاح! 🚀", "success");
-        window.refreshRobotStatus();
+    
+    if (res && res.success) {
+        const data = res.data || {};
+        const state = data.state || "";
+        const taskId = data.task_id || data.taskId || "";
+        
+        if (state === "CALL_SUCCESS" || taskId) {
+            showToast("✅ تم قبول المهمة وتحرك الروبوت بنجاح! رقم المهمة: " + (taskId || "تم البدء"), "success");
+            setTimeout(window.refreshRobotStatus, 1500);
+        } else {
+            showToast("⚠️ تم استلام الأمر من السيرفر ولكن لم يبدأ التحرك. الحالة: " + (state || "غير معروفة"), "warning");
+        }
     } else {
-        showToast("فشل في توجيه الروبوت", "warning");
+        const errMsg = (res && res.error) ? res.error : "تعذر إرسال الروبوت، تأكد أنه متصل وغير مشغول";
+        showToast("❌ " + errMsg, "error");
+    }
+};
+
+window.startCruiseRoute = async (routeName) => {
+    showToast("جاري بدء مسار الجولة: " + routeName + "...", "info");
+    const res = await window.callPuduApi("cruise", { mapCruiseName: routeName });
+    if (res && res.success) {
+        showToast("✅ تم إطلاق جولة الروبوت بنجاح!", "success");
+        setTimeout(window.refreshRobotStatus, 1500);
+    } else {
+        const errMsg = (res && res.error) ? res.error : "تعذر بدء الجولة، تأكد من اتصال الروبوت";
+        showToast("❌ " + errMsg, "error");
     }
 };
 
@@ -11009,9 +11049,9 @@ window.cancelRobotTask = async () => {
 window.fetchRobotMap = async () => {
     const list = document.getElementById("rc-tablesList");
     if(!list) return;
-    list.innerHTML = `<div class="col-span-full py-6 flex flex-col items-center justify-center text-slate-400">
-        <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-emerald-400"></i>
-        <p class="text-xs font-medium">جاري جلب النقاط المتاحة من الروبوت...</p>
+    list.innerHTML = `<div class="col-span-full py-8 flex flex-col items-center justify-center text-slate-400">
+        <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-indigo-500"></i>
+        <p class="text-xs font-bold">جاري فحص وتصنيف نقاط الخريطة من الروبوت...</p>
     </div>`;
     
     try {
@@ -11019,13 +11059,14 @@ window.fetchRobotMap = async () => {
         const data = res && res.data ? res.data : res;
         list.innerHTML = "";
         
-        // Extract map name if available and set it in UI
+        // Save current map name
         const mapName = (data && data.name) || (data && data.mapName) || (data && data.data && data.data.name) || "";
+        window.currentRobotMapName = mapName;
         if (mapName && document.getElementById("rc-mapName")) {
             document.getElementById("rc-mapName").innerText = mapName;
         }
 
-        // Extract elements array
+        // Extract elements
         let elements = [];
         if (data && Array.isArray(data.elements)) elements = data.elements;
         else if (data && data.data && Array.isArray(data.data.elements)) elements = data.data.elements;
@@ -11033,30 +11074,122 @@ window.fetchRobotMap = async () => {
         else if (data && Array.isArray(data.poiList)) elements = data.poiList;
         else if (data && Array.isArray(data.tables)) elements = data.tables;
 
-        // Filter navigable points (ignoring walls, circles, empty names)
-        const validPoints = elements.filter(e => {
+        // Categorize elements
+        const greetingPoints = [];
+        const diningTables = [];
+        const specialPoints = [];
+        const cruiseRoutes = [];
+
+        elements.forEach(e => {
             const name = (e.name || e.pointName || e.tableId || e.id || '').trim();
             const type = (e.type || '').toLowerCase();
-            return name !== '' && type !== 'virtual_wall' && type !== 'circle' && type !== 'laser_area';
+
+            if (type === 'virtual_wall' || type === 'laser_area') return;
+            if (type === 'circle' && name !== '') {
+                cruiseRoutes.push({ name, id: e.id });
+                return;
+            }
+            if (type === 'node' && (!name || /^[0-9]+$/.test(name))) return; // ignore raw navigation nodes
+
+            if (name === '') return;
+
+            if (name.toLowerCase().startsWith('greeting') || type.includes('greeting')) {
+                greetingPoints.push({ name, id: e.id, type: 'greeting' });
+            } else if (name.toLowerCase().includes('pick') || name.includes('استلام') || type === 'dining_outlet') {
+                specialPoints.push({ name, id: e.id, type: 'pickup', icon: 'fa-house text-amber-500' });
+            } else if (name.toLowerCase().includes('charge') || name.includes('شحن') || type === 'charge') {
+                specialPoints.push({ name, id: e.id, type: 'charge', icon: 'fa-plug text-emerald-500' });
+            } else {
+                diningTables.push({ name, id: e.id, type: 'table' });
+            }
         });
 
-        if (validPoints.length > 0) {
-            validPoints.forEach(pt => {
-                const ptName = pt.name || pt.pointName || pt.tableId || pt.id;
-                const isPickup = ptName.toLowerCase().includes('pick') || ptName.includes('استلام');
+        let hasContent = false;
+
+        // 1. Render Greeting Points (KettyBot Focus)
+        if (greetingPoints.length > 0) {
+            hasContent = true;
+            const sec = document.createElement("div");
+            sec.className = "col-span-full mb-3";
+            sec.innerHTML = `<div class="text-[11px] font-bold text-amber-700 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200 mb-2 flex items-center gap-2">
+                <i class="fa-solid fa-hands-clapping text-amber-500"></i> نقاط الترحيب (Greeting Points)
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2" id="sec-greetings"></div>`;
+            list.appendChild(sec);
+            const grid = sec.querySelector("#sec-greetings");
+            greetingPoints.forEach(pt => {
                 const btn = document.createElement("button");
-                btn.className = isPickup 
-                    ? "bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 py-2.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm cursor-pointer"
-                    : "bg-white hover:bg-emerald-50 border border-emerald-200 text-emerald-800 py-2.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm hover:scale-[1.02] cursor-pointer";
-                
-                const icon = isPickup ? "fa-house text-amber-600" : "fa-map-pin text-emerald-500";
-                btn.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${escapeHTML(ptName)}</span>`;
-                btn.onclick = () => window.sendRobotTo(ptName);
-                list.appendChild(btn);
+                btn.className = "bg-white hover:bg-amber-50 border border-amber-200 text-amber-900 py-2.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-between shadow-sm hover:scale-[1.02] cursor-pointer";
+                btn.innerHTML = `<span class="truncate">${escapeHTML(pt.name)}</span> <i class="fa-solid fa-person-walking-arrow-right text-amber-500"></i>`;
+                btn.onclick = () => window.sendRobotTo(pt.name, 'source');
+                grid.appendChild(btn);
             });
-        } else {
+        }
+
+        // 2. Render Dining Tables (BellaBot & KettyBot)
+        if (diningTables.length > 0) {
+            hasContent = true;
+            const sec = document.createElement("div");
+            sec.className = "col-span-full mb-3";
+            sec.innerHTML = `<div class="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-200 mb-2 flex items-center gap-2">
+                <i class="fa-solid fa-utensils text-indigo-500"></i> طاولات الطعام (Dining Tables)
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2" id="sec-tables"></div>`;
+            list.appendChild(sec);
+            const grid = sec.querySelector("#sec-tables");
+            diningTables.forEach(pt => {
+                const btn = document.createElement("button");
+                btn.className = "bg-white hover:bg-indigo-50 border border-indigo-200 text-indigo-900 py-2.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-between shadow-sm hover:scale-[1.02] cursor-pointer";
+                btn.innerHTML = `<span class="truncate">طاولة ${escapeHTML(pt.name)}</span> <i class="fa-solid fa-arrow-up-right-from-square text-indigo-400"></i>`;
+                btn.onclick = () => window.sendRobotTo(pt.name, 'table');
+                grid.appendChild(btn);
+            });
+        }
+
+        // 3. Render Special Points (Pickup / Charge)
+        if (specialPoints.length > 0) {
+            hasContent = true;
+            const sec = document.createElement("div");
+            sec.className = "col-span-full mb-3";
+            sec.innerHTML = `<div class="text-[11px] font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 mb-2 flex items-center gap-2">
+                <i class="fa-solid fa-location-dot text-slate-500"></i> نقاط الخدمة الخاصة
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2" id="sec-special"></div>`;
+            list.appendChild(sec);
+            const grid = sec.querySelector("#sec-special");
+            specialPoints.forEach(pt => {
+                const btn = document.createElement("button");
+                btn.className = "bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 py-2.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-between shadow-sm hover:scale-[1.02] cursor-pointer";
+                btn.innerHTML = `<span class="truncate">${escapeHTML(pt.name)}</span> <i class="fa-solid ${pt.icon}"></i>`;
+                btn.onclick = () => window.sendRobotTo(pt.name, pt.type === 'pickup' ? 'dining_outlet' : 'charge');
+                grid.appendChild(btn);
+            });
+        }
+
+        // 4. Render Cruise Routes
+        if (cruiseRoutes.length > 0) {
+            hasContent = true;
+            const sec = document.createElement("div");
+            sec.className = "col-span-full mb-3";
+            sec.innerHTML = `<div class="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 mb-2 flex items-center gap-2">
+                <i class="fa-solid fa-route text-emerald-500"></i> مسارات الجولة والتجول (Cruise Routes)
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2" id="sec-cruise"></div>`;
+            list.appendChild(sec);
+            const grid = sec.querySelector("#sec-cruise");
+            cruiseRoutes.forEach(cr => {
+                const btn = document.createElement("button");
+                btn.className = "bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-between shadow-sm hover:scale-[1.01] cursor-pointer";
+                btn.innerHTML = `<span><i class="fa-solid fa-play mr-1"></i> بدء ${escapeHTML(cr.name)}</span> <i class="fa-solid fa-angles-left"></i>`;
+                btn.onclick = () => window.startCruiseRoute(cr.name);
+                grid.appendChild(btn);
+            });
+        }
+
+        if (!hasContent) {
             list.innerHTML = `<div class="col-span-full text-center text-slate-400 py-6 text-sm bg-slate-50 rounded border border-dashed border-slate-200">لا توجد نقاط مسجلة في هذه الخريطة حالياً</div>`;
         }
+
     } catch(err) {
         console.error("Error fetching map points", err);
         list.innerHTML = `<div class="col-span-full text-center text-rose-500 py-6 text-sm font-bold"><i class="fa-solid fa-triangle-exclamation"></i> فشل في جلب النقاط من الروبوت</div>`;
