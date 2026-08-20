@@ -3791,101 +3791,109 @@
                 <div class="flex flex-col md:flex-row gap-6">
                     
                     <!-- Left Sidebar (Info Card) -->
-                    <div class="w-full md:w-[320px] bg-white border border-slate-200 rounded-sm shadow-sm flex flex-col p-6 h-fit shrink-0">
+                    <div class="w-full md:w-[320px] bg-white border border-slate-200 rounded shadow-sm flex flex-col p-6 h-fit shrink-0">
+                        
+                        <!-- Top Header in Sidebar -->
                         <div class="flex items-center gap-4 border-b border-slate-100 pb-6 mb-6">
-                            <div class="w-16 h-16 bg-slate-50 flex items-center justify-center p-1 rounded">
+                            <div class="w-16 h-16 bg-slate-50 flex items-center justify-center p-1 rounded border border-slate-100 shrink-0">
                                 <img id="rc-info-img" src="https://businesss.pudutech.com/robot-image-proxy/robot-image-resource/small-size/62.png" class="object-contain w-full h-full drop-shadow-sm" />
                             </div>
-                            <div>
-                                <h3 id="rc-title" class="font-bold text-sm text-slate-800 mb-1">Robot Name</h3>
+                            <div class="min-w-0 flex-1">
+                                <h3 id="rc-title" class="font-bold text-sm text-slate-800 mb-1 truncate">Robot Name</h3>
                                 <p id="rc-robotType" class="text-xs text-slate-500">PuduBot</p>
                             </div>
                         </div>
                         
-                        <div class="space-y-6">
+                        <!-- Details List -->
+                        <div class="space-y-5">
                             <div>
-                                <p class="text-xs text-slate-500 mb-1.5">MAC</p>
+                                <p class="text-xs text-slate-500 mb-1">MAC</p>
                                 <div class="flex items-center gap-2">
-                                    <p id="rc-mac" class="text-sm text-slate-700">10:2C:6B:97:C9:64</p>
-                                    <i class="fa-regular fa-copy text-blue-500 cursor-pointer hover:text-blue-700 transition" onclick="navigator.clipboard.writeText(document.getElementById('rc-mac').innerText); showToast('تم النسخ', 'success');"></i>
+                                    <p id="rc-mac" class="text-sm font-semibold text-slate-700 font-mono">10:2C:6B:97:C9:64</p>
+                                    <i class="fa-regular fa-copy text-blue-500 cursor-pointer hover:text-blue-700 transition text-xs" onclick="navigator.clipboard.writeText(document.getElementById('rc-mac').innerText); showToast('تم النسخ', 'success');"></i>
                                 </div>
                             </div>
+                            
                             <div>
-                                <p class="text-xs text-slate-500 mb-1.5 flex items-center gap-1">Machine operating status <i class="fa-regular fa-circle-question text-slate-400"></i></p>
-                                <p id="rc-state" class="text-sm text-slate-700">Running</p>
-                            </div>
-                            <div>
-                                <p class="text-xs text-slate-500 mb-1.5 flex items-center gap-1">Remote Maintenance of IoT Status <i class="fa-regular fa-circle-question text-slate-400"></i></p>
-                                <p id="rc-iotStatus" class="text-sm text-slate-700">Online</p>
-                            </div>
-                            <div>
-                                <div class="flex items-center justify-between mb-1.5">
-                                <span class="text-xs text-slate-500">Machine power</span>
-                                <span id="rc-chargingTag" class="hidden text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-200">
-                                    <i class="fa-solid fa-bolt text-emerald-500 animate-pulse"></i> Charging
-                                </span>
-                            </div>
-                            <div class="flex items-baseline gap-2">
-                                <p id="rc-batText" class="text-lg font-bold text-slate-800">--%</p>
-                            </div>
-                            <div class="w-full bg-slate-100 h-2.5 rounded-full mt-1.5 overflow-hidden border border-slate-200">
-                                <div id="rc-batBar" class="bg-emerald-500 h-full rounded-full transition-all duration-700" style="width: 0%"></div>
-                            </div>
+                                <p class="text-xs text-slate-500 mb-1 flex items-center gap-1">Machine operating status <i class="fa-regular fa-circle-question text-slate-400"></i></p>
+                                <p id="rc-state" class="text-sm font-bold text-slate-700">Idle</p>
                             </div>
                             
-                                <p class="text-xs text-slate-500 mb-1.5">Software version</p>
-                                <p id="rc-version" class="text-sm text-slate-700">6.13.0.51</p>
-                            </div>
                             <div>
-                                <p class="text-xs text-slate-500 mb-1.5">Current Map</p>
+                                <p class="text-xs text-slate-500 mb-1 flex items-center gap-1">Remote Maintenance of IoT Status <i class="fa-regular fa-circle-question text-slate-400"></i></p>
+                                <p id="rc-iotStatus" class="text-sm font-bold text-emerald-600">Online</p>
+                            </div>
+                            
+                            <div>
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <span class="text-xs text-slate-500">Machine power</span>
+                                    <span id="rc-chargingTag" class="hidden text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-200">
+                                        <i class="fa-solid fa-bolt text-emerald-500 animate-pulse"></i> Charging
+                                    </span>
+                                </div>
+                                <div class="flex items-baseline gap-2">
+                                    <p id="rc-batText" class="text-lg font-black text-slate-800">--%</p>
+                                </div>
+                                <div class="w-full bg-slate-100 h-2.5 rounded-full mt-1.5 overflow-hidden border border-slate-200">
+                                    <div id="rc-batBar" class="bg-emerald-500 h-full rounded-full transition-all duration-700" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <p class="text-xs text-slate-500 mb-1">Software version</p>
+                                <p id="rc-version" class="text-sm font-semibold text-slate-700 font-mono">6.13.0.51</p>
+                            </div>
+                            
+                            <div>
+                                <p class="text-xs text-slate-500 mb-1">Current Map</p>
                                 <div class="flex justify-between items-center">
-                                    <p id="rc-mapName" class="text-sm text-slate-700 truncate max-w-[200px]">Unknown</p>
+                                    <p id="rc-mapName" class="text-sm font-bold text-indigo-600 truncate max-w-[190px]">0#0#zaidapi</p>
                                     <button onclick="window.fetchRobotMap()" class="text-xs text-blue-500 hover:underline">تحديث</button>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Right Side (Management Cards) -->
+                    <!-- Right Side (Management Cards Stack) -->
                     <div class="flex-1 flex flex-col gap-4">
                         
                         <!-- File Management -->
-                        <div class="bg-white border border-slate-200 rounded-sm p-5 shadow-sm">
-                            <h4 class="font-bold text-sm text-slate-800 mb-4">File Management</h4>
-                            <div class="flex flex-wrap gap-3">
-                                <button onclick="window.exportRobotLogs()" class="border border-slate-200 text-slate-600 text-[13px] px-4 py-2 hover:bg-slate-50 rounded-sm transition flex items-center gap-2"><i class="fa-regular fa-file-lines text-blue-500"></i> Log Export</button>
-                                <button onclick="window.pullMapFromRobot()" class="border border-slate-200 text-slate-600 text-[13px] px-4 py-2 hover:bg-slate-50 rounded-sm transition flex items-center gap-2"><i class="fa-solid fa-download text-blue-500"></i> Pull Map</button>
-                                <button onclick="window.pushMapToRobot()" class="border border-slate-200 text-slate-600 text-[13px] px-4 py-2 hover:bg-slate-50 rounded-sm transition flex items-center gap-2"><i class="fa-solid fa-upload text-blue-500"></i> Push Map</button>
-                                <button class="border border-slate-200 text-slate-600 text-[13px] px-4 py-2 hover:bg-slate-50 rounded-sm transition flex items-center gap-2"><i class="fa-solid fa-volume-high text-blue-500"></i> Upload Audio</button>
-                                <button class="border border-slate-200 text-slate-600 text-[13px] px-4 py-2 hover:bg-slate-50 rounded-sm transition flex items-center gap-2"><i class="fa-regular fa-folder-open text-blue-500"></i> Upload Files</button>
+                        <div class="bg-white border border-slate-200 rounded p-5 shadow-sm">
+                            <h4 class="font-bold text-sm text-slate-800 mb-3">File Management</h4>
+                            <div class="flex flex-wrap gap-2.5">
+                                <button onclick="window.exportRobotLogs()" class="border border-slate-200 bg-white text-slate-700 text-xs px-3.5 py-2 hover:bg-slate-50 rounded transition flex items-center gap-2 shadow-xs"><i class="fa-regular fa-file-lines text-blue-500"></i> Log Export</button>
+                                <button onclick="window.pullMapFromRobot()" class="border border-slate-200 bg-white text-slate-700 text-xs px-3.5 py-2 hover:bg-slate-50 rounded transition flex items-center gap-2 shadow-xs"><i class="fa-solid fa-download text-blue-500"></i> Pull Map</button>
+                                <button onclick="window.pushMapToRobot()" class="border border-slate-200 bg-white text-slate-700 text-xs px-3.5 py-2 hover:bg-slate-50 rounded transition flex items-center gap-2 shadow-xs"><i class="fa-solid fa-upload text-blue-500"></i> Push Map</button>
+                                <button class="border border-slate-200 bg-white text-slate-700 text-xs px-3.5 py-2 hover:bg-slate-50 rounded transition flex items-center gap-2 shadow-xs"><i class="fa-solid fa-volume-high text-blue-500"></i> Upload Audio</button>
+                                <button class="border border-slate-200 bg-white text-slate-700 text-xs px-3.5 py-2 hover:bg-slate-50 rounded transition flex items-center gap-2 shadow-xs"><i class="fa-regular fa-folder-open text-blue-500"></i> Upload Files</button>
                             </div>
                         </div>
 
                         <!-- APK Management -->
-                        <div class="bg-white border border-slate-200 rounded-sm p-5 shadow-sm">
-                            <h4 class="font-bold text-sm text-slate-800 mb-4">APK Management</h4>
-                            <div class="flex flex-wrap gap-3">
-                                <button onclick="window.installApk()" class="border border-slate-200 text-slate-600 text-[13px] px-4 py-2 hover:bg-slate-50 rounded-sm transition flex items-center gap-2"><i class="fa-solid fa-bolt text-blue-500"></i> Upload APK And Install</button>
-                                <button class="border border-slate-200 text-slate-600 text-[13px] px-4 py-2 hover:bg-slate-50 rounded-sm transition flex items-center gap-2"><i class="fa-regular fa-trash-can text-blue-500"></i> Uninstalling Robot Software</button>
-                                <button class="border border-slate-200 text-slate-600 text-[13px] px-4 py-2 hover:bg-slate-50 rounded-sm transition flex items-center gap-2"><i class="fa-solid fa-mobile-screen text-blue-500"></i> Uninstall the mapping tool</button>
+                        <div class="bg-white border border-slate-200 rounded p-5 shadow-sm">
+                            <h4 class="font-bold text-sm text-slate-800 mb-3">APK Management</h4>
+                            <div class="flex flex-wrap gap-2.5">
+                                <button onclick="window.installApk()" class="border border-slate-200 bg-white text-slate-700 text-xs px-3.5 py-2 hover:bg-slate-50 rounded transition flex items-center gap-2 shadow-xs"><i class="fa-solid fa-bolt text-blue-500"></i> Upload APK And Install</button>
+                                <button class="border border-slate-200 bg-white text-slate-700 text-xs px-3.5 py-2 hover:bg-slate-50 rounded transition flex items-center gap-2 shadow-xs"><i class="fa-regular fa-trash-can text-blue-500"></i> Uninstalling Robot Software</button>
+                                <button class="border border-slate-200 bg-white text-slate-700 text-xs px-3.5 py-2 hover:bg-slate-50 rounded transition flex items-center gap-2 shadow-xs"><i class="fa-solid fa-mobile-screen text-blue-500"></i> Uninstall the mapping tool</button>
                             </div>
                         </div>
 
                         <!-- Remote Desktop -->
-                        <div class="bg-white border border-slate-200 rounded-sm p-5 shadow-sm">
-                            <h4 class="font-bold text-sm text-slate-800 mb-4">Remote Desktop</h4>
-                            <div class="flex flex-wrap gap-3">
-                                <button class="border border-slate-200 text-slate-600 text-[13px] px-4 py-2 hover:bg-slate-50 rounded-sm transition flex items-center gap-2"><i class="fa-solid fa-desktop text-blue-500"></i> Remote Desktop</button>
-                                <button class="border border-slate-200 text-slate-600 text-[13px] px-4 py-2 hover:bg-slate-50 rounded-sm transition flex items-center gap-2"><i class="fa-regular fa-image text-blue-500"></i> Screenshot</button>
-                                <button class="border border-slate-200 text-slate-600 text-[13px] px-4 py-2 hover:bg-slate-50 rounded-sm transition flex items-center gap-2"><i class="fa-solid fa-video text-blue-500"></i> Record Video</button>
+                        <div class="bg-white border border-slate-200 rounded p-5 shadow-sm">
+                            <h4 class="font-bold text-sm text-slate-800 mb-3">Remote Desktop</h4>
+                            <div class="flex flex-wrap gap-2.5">
+                                <button class="border border-slate-200 bg-white text-slate-700 text-xs px-3.5 py-2 hover:bg-slate-50 rounded transition flex items-center gap-2 shadow-xs"><i class="fa-solid fa-desktop text-blue-500"></i> Remote Desktop</button>
+                                <button class="border border-slate-200 bg-white text-slate-700 text-xs px-3.5 py-2 hover:bg-slate-50 rounded transition flex items-center gap-2 shadow-xs"><i class="fa-regular fa-image text-blue-500"></i> Screenshot</button>
+                                <button class="border border-slate-200 bg-white text-slate-700 text-xs px-3.5 py-2 hover:bg-slate-50 rounded transition flex items-center gap-2 shadow-xs"><i class="fa-solid fa-video text-blue-500"></i> Record Video</button>
                             </div>
                         </div>
 
                         <!-- Terminal -->
-                        <div class="bg-white border border-slate-200 rounded-sm p-5 shadow-sm">
-                            <h4 class="font-bold text-sm text-slate-800 mb-4">Terminal</h4>
-                            <div class="flex flex-wrap gap-3">
-                                <button class="border border-slate-200 text-slate-600 text-[13px] px-4 py-2 hover:bg-slate-50 rounded-sm transition flex items-center gap-2"><i class="fa-solid fa-terminal text-blue-500"></i> Terminal</button>
+                        <div class="bg-white border border-slate-200 rounded p-5 shadow-sm">
+                            <h4 class="font-bold text-sm text-slate-800 mb-3">Terminal</h4>
+                            <div class="flex flex-wrap gap-2.5">
+                                <button class="border border-slate-200 bg-white text-slate-700 text-xs px-3.5 py-2 hover:bg-slate-50 rounded transition flex items-center gap-2 shadow-xs"><i class="fa-solid fa-terminal text-blue-500"></i> Terminal</button>
                             </div>
                         </div>
 
