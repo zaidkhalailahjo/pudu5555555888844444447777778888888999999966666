@@ -10819,92 +10819,7 @@ window.sendDiscussionMessage = async () => {
     }
 };
 
-window.refreshRobotStatus = async () => {
-    try {
-        const stateEl = document.getElementById("rc-state");
-        const iotEl = document.getElementById("rc-iotStatus");
-        const batText = document.getElementById("rc-batText");
-        const batBar = document.getElementById("rc-batBar");
-        const chargingTag = document.getElementById("rc-chargingTag");
-        
-        if (stateEl) stateEl.innerText = "جاري الفحص...";
-        
-        const res = await window.callPuduApi("status", {}, true);
-        const data = res && res.data ? res.data : res;
-        
-        if(data) {
-            let rawState = (data.run_state || data.runState || "IDLE").toUpperCase();
-            const bat = data.battery !== undefined ? parseInt(data.battery) : (data.power !== undefined ? parseInt(data.power) : 0);
-            
-            // Check if charging: DISABLE or CHARGING or is_charging == 1 or charge_type > 0
-            const isCharging = (rawState.includes("DISABLE") || rawState.includes("CHARG") || data.is_charging == 1 || data.is_charging === true || (data.charge_type !== undefined && parseInt(data.charge_type) > 0));
-            
-            // Format state display
-            let displayState = "Ready (IDLE)";
-            if (isCharging) {
-                displayState = "Charging";
-            } else if (rawState.includes("BUSY") || rawState.includes("WORK") || rawState.includes("DELIVER")) {
-                displayState = "Working";
-            } else if (rawState.includes("ERROR")) {
-                displayState = "Error";
-            } else {
-                displayState = "Idle";
-            }
 
-            if (stateEl) stateEl.innerText = displayState;
-            if (iotEl) iotEl.innerText = "Online";
-
-            // Battery Percentage Text
-            if (batText) batText.innerText = bat + "%";
-
-            // Battery Bar Styling & Animation
-            if (batBar) {
-                batBar.style.width = bat + "%";
-                
-                if (isCharging) {
-                    // When charging: Green with animated flowing gradient
-                    batBar.className = "h-full rounded-full transition-all duration-700 charging-bar-animated";
-                    if (chargingTag) chargingTag.classList.remove("hidden");
-                } else {
-                    if (chargingTag) chargingTag.classList.add("hidden");
-                    
-                    // Colors based on battery percentage:
-                    // Under 20%: Red
-                    // 21% - 50%: Orange
-                    // Above 50%: Green
-                    if (bat <= 20) {
-                        batBar.className = "bg-rose-500 h-full rounded-full transition-all duration-700";
-                    } else if (bat <= 50) {
-                        batBar.className = "bg-amber-500 h-full rounded-full transition-all duration-700";
-                    } else {
-                        batBar.className = "bg-emerald-500 h-full rounded-full transition-all duration-700";
-                    }
-                }
-            }
-            
-            // MAC
-            if (document.getElementById("rc-mac")) {
-                let mac = data.mac || data.macAddress || data.mac_address || "--:--:--:--:--:--";
-                document.getElementById("rc-mac").innerText = mac;
-            }
-            
-            // Version
-            if (document.getElementById("rc-version")) {
-                let ver = data.softwareVersion || data.version || data.appVersion || data.systemVersion || "--";
-                document.getElementById("rc-version").innerText = ver;
-            }
-            
-            // Map Name
-            let foundMap = data.mapName || data.map_name || data.currentMap || (data.data && data.data.mapName) || "";
-            if (foundMap && document.getElementById("rc-mapName")) {
-                document.getElementById("rc-mapName").innerText = foundMap;
-                window.currentRobotMapName = foundMap;
-            }
-        }
-    } catch(e) {
-        console.error("Error refreshing robot status", e);
-    }
-};
 
 
 
@@ -10922,53 +10837,7 @@ window.closeRobotControlPanel = () => {
 
 
 
-window.refreshRobotStatus = async () => {
-    try {
-        const stateEl = document.getElementById("rc-state");
-        const iotEl = document.getElementById("rc-iotStatus");
-        const batText = document.getElementById("rc-batText");
-        const batBar = document.getElementById("rc-batBar");
-        const macEl = document.getElementById("rc-mac");
-        const verEl = document.getElementById("rc-version");
-        
-        if (stateEl) stateEl.innerText = "جاري الفحص...";
-        
-        const res = await window.callPuduApi("status");
-        const data = res && res.data ? res.data : res;
-        
-        if(data) {
-            const runState = data.run_state || data.runState || "Running";
-            const bat = data.battery !== undefined ? data.battery : (data.power !== undefined ? data.power : 0);
-            
-            if (batText) batText.innerText = bat + "%";
-            if (batBar) {
-                batBar.style.width = bat + "%";
-                if(bat > 50) batBar.className = "bg-emerald-500 h-2.5 rounded-full";
-                else if(bat > 20) batBar.className = "bg-amber-400 h-2.5 rounded-full";
-                else batBar.className = "bg-rose-500 h-2.5 rounded-full animate-pulse";
-            }
-            
-            if (stateEl) stateEl.innerText = runState;
-            if (iotEl) {
-                iotEl.innerHTML = '<span class="relative flex h-2.5 w-2.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span></span> Online';
-                iotEl.className = "text-sm font-bold text-emerald-600 flex items-center gap-1.5";
-            }
-            if (macEl) macEl.innerText = data.mac || data.macAddress || "10:2C:6B:--:--:--";
-            if (verEl) verEl.innerText = data.version || data.software_version || "V2 Open API";
-            
-        } else {
-            if (stateEl) stateEl.innerText = "Offline";
-            if (iotEl) {
-                iotEl.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Offline';
-                iotEl.className = "text-sm font-bold text-rose-500 flex items-center gap-1.5";
-            }
-            if (batText) batText.innerText = "--%";
-            if (batBar) batBar.style.width = "0%";
-        }
-    } catch (err) {
-        console.error("Error refreshing status", err);
-    }
-};
+
 
 window.sendRobotTo = async (pointName, pointType = "table") => {
     if(!pointName || pointName.trim() === '') {
@@ -11701,108 +11570,7 @@ window.callPuduApi = async (action, payload = {}, quiet = false) => {
     }
 };
 
-window.refreshRobotStatus = async () => {
-    try {
-        const stateEl = document.getElementById("rc-state");
-        const iotEl = document.getElementById("rc-iotStatus");
-        const batText = document.getElementById("rc-batText");
-        const batBar = document.getElementById("rc-batBar");
-        const chargingIcon = document.getElementById("rc-chargingIcon");
-        const macEl = document.getElementById("rc-mac");
-        
-        if (stateEl) stateEl.innerText = "جاري الفحص...";
-        
-        const res = await window.callPuduApi("status", {}, true);
-        const data = res && res.data ? res.data : res;
-        
-        if(data) {
-            const runState = data.run_state || data.runState || "Running";
-            const bat = data.battery !== undefined ? data.battery : (data.power !== undefined ? data.power : 0);
-            
-            // Battery Update
-            if (batText) batText.innerText = bat + "%";
-            if (batBar) {
-                batBar.style.width = bat + "%";
-                let colorClass = "bg-emerald-500 h-2.5 rounded-full transition-all duration-700";
-                if(bat <= 20) colorClass = "bg-rose-500 h-2.5 rounded-full transition-all duration-700 animate-pulse";
-                else if(bat <= 50) colorClass = "bg-amber-400 h-2.5 rounded-full transition-all duration-700";
-                
-                // Charging Detection
-                const stateStr = JSON.stringify(data).toUpperCase();
-                const isCharging = (data.is_charging == 1 || data.is_charging === true || data.charge_state === "CHARGING" || runState.toUpperCase().includes("CHARG"));
-                
-                if (isCharging) {
-                    if (chargingIcon) chargingIcon.classList.remove("hidden");
-                    // Add CSS animation manually inline since we don't know if CSS is there
-                    batBar.style.animation = "pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite";
-                    batBar.style.backgroundColor = "#10b981"; // Emerald
-                } else {
-                    if (chargingIcon) chargingIcon.classList.add("hidden");
-                    batBar.style.animation = "none";
-                }
-                
-                batBar.className = colorClass;
-            }
-            
-            if (stateEl) stateEl.innerText = runState;
-            if (iotEl) {
-                iotEl.innerHTML = '<span class="relative flex h-2.5 w-2.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span></span> Online';
-                iotEl.className = "text-sm font-bold text-emerald-600 flex items-center gap-1.5";
-            }
-            
-            // Extract MAC Address
-            if (document.getElementById("rc-mac")) {
-                let mac = data.mac || data.macAddress || data.mac_address || "--:--:--:--:--:--";
-                document.getElementById("rc-mac").innerText = mac;
-            }
-            
-            // Extract Version
-            if (document.getElementById("rc-version")) {
-                let ver = data.softwareVersion || data.version || data.appVersion || data.systemVersion || "--";
-                document.getElementById("rc-version").innerText = ver;
-            }
-            
-            // Extract Location X, Y
-            if (document.getElementById("rc-locX") && document.getElementById("rc-locY")) {
-                let x = "--", y = "--";
-                if (data.location && typeof data.location.x !== 'undefined') {
-                    x = data.location.x.toFixed(2);
-                    y = data.location.y.toFixed(2);
-                } else if (data.pose && typeof data.pose.x !== 'undefined') {
-                    x = data.pose.x.toFixed(2);
-                    y = data.pose.y.toFixed(2);
-                }
-                document.getElementById("rc-locX").innerText = x;
-                document.getElementById("rc-locY").innerText = y;
-            }
-            
-            // Extract Map Name
-            let finalMapName = "غير متوفرة";
-            function searchMapName(obj) {
-                if(!obj || typeof obj !== 'object') return null;
-                for(let key in obj) {
-                    if (key === 'mapName' || key === 'map_name' || key === 'currentMap') {
-                        if (obj[key] && obj[key].trim() !== '') return obj[key];
-                    }
-                    if(typeof obj[key] === 'object') {
-                        let res = searchMapName(obj[key]);
-                        if(res) return res;
-                    }
-                }
-                return null;
-            }
-            
-            let foundMap = searchMapName(data);
-            if (foundMap) finalMapName = foundMap;
-            
-            if (document.getElementById("rc-mapName")) {
-                document.getElementById("rc-mapName").innerText = finalMapName;
-            }
-        }
-    } catch(e) {
-        console.error("Error refreshing robot status", e);
-    }
-};
+
 
 
 window.removeImageBackground = async () => {
@@ -12058,5 +11826,93 @@ window.fetchLiveRobotStatuses = async () => {
         } catch (err) {
             console.error("Failed to fetch live status for", r.serialNumber, err);
         }
+    }
+};
+
+
+window.refreshRobotStatus = async () => {
+    try {
+        const stateEl = document.getElementById("rc-state");
+        const iotEl = document.getElementById("rc-iotStatus");
+        const batText = document.getElementById("rc-batText");
+        const batBar = document.getElementById("rc-batBar");
+        const chargingTag = document.getElementById("rc-chargingTag");
+        
+        if (stateEl) stateEl.innerText = "جاري الفحص...";
+        
+        const res = await window.callPuduApi("status", {}, true);
+        const data = res && res.data ? res.data : res;
+        
+        if(data) {
+            const rawState = String(data.run_state || data.runState || "IDLE").toUpperCase();
+            const bat = data.battery !== undefined ? parseInt(data.battery) : (data.power !== undefined ? parseInt(data.power) : 0);
+            
+            // Check if charging: DISABLE or CHARGING or is_charging == 1 or charge_type > 0
+            const isCharging = (rawState.includes("DISABLE") || rawState.includes("CHARG") || data.is_charging == 1 || data.is_charging === true || (data.charge_type !== undefined && parseInt(data.charge_type) > 0));
+            
+            // State Display
+            let displayState = "Idle";
+            if (isCharging) {
+                displayState = "Charging";
+            } else if (rawState.includes("BUSY") || rawState.includes("WORK") || rawState.includes("DELIVER")) {
+                displayState = "Working";
+            } else if (rawState.includes("ERROR")) {
+                displayState = "Error";
+            } else {
+                displayState = "Idle";
+            }
+
+            if (stateEl) stateEl.innerText = displayState;
+            if (iotEl) iotEl.innerText = "Online";
+
+            // Battery Percentage Text
+            if (batText) batText.innerText = bat + "%";
+
+            // Battery Bar Styling & Animation
+            if (batBar) {
+                batBar.style.width = bat + "%";
+                
+                if (isCharging) {
+                    // Charging animation & Green color
+                    batBar.className = "h-full rounded-full transition-all duration-700 charging-bar-animated";
+                    if (chargingTag) chargingTag.classList.remove("hidden");
+                } else {
+                    if (chargingTag) chargingTag.classList.add("hidden");
+                    
+                    // Colors based on battery percentage:
+                    // Under 20%: Red
+                    // 21% - 50%: Orange
+                    // Above 50%: Green
+                    if (bat <= 20) {
+                        batBar.className = "bg-rose-500 h-full rounded-full transition-all duration-700";
+                    } else if (bat <= 50) {
+                        batBar.className = "bg-amber-500 h-full rounded-full transition-all duration-700";
+                    } else {
+                        batBar.className = "bg-emerald-500 h-full rounded-full transition-all duration-700";
+                    }
+                }
+            }
+            
+            // MAC
+            if (document.getElementById("rc-mac")) {
+                let mac = data.mac || data.macAddress || data.mac_address || "--:--:--:--:--:--";
+                document.getElementById("rc-mac").innerText = mac;
+            }
+            
+            // Version
+            if (document.getElementById("rc-version")) {
+                let ver = data.softwareVersion || data.version || data.appVersion || data.systemVersion || "--";
+                document.getElementById("rc-version").innerText = ver;
+            }
+            
+            // Map Name
+            let foundMap = data.mapName || data.map_name || data.currentMap || (data.data && data.data.mapName) || "";
+            if (foundMap && document.getElementById("rc-mapName")) {
+                document.getElementById("rc-mapName").innerText = foundMap;
+                window.currentRobotMapName = foundMap;
+            }
+        }
+    } catch(e) {
+        console.error("Error refreshing robot status", e);
     }
 };
