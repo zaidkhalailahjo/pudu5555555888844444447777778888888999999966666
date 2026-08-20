@@ -3868,13 +3868,74 @@
             </div>
 
             <!-- TAB: INTERACT -->
-            <div id="rc-content-interact" class="rc-tab-content hidden max-w-5xl mx-auto w-full">
+            
+            <!-- TAB: INTERACT -->
+            <div id="rc-content-interact" class="rc-tab-content hidden max-w-6xl mx-auto w-full">
+                
+                <!-- Ad Configuration (Ketty Only) -->
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm rc-ketty-only mb-6 overflow-hidden flex flex-col">
+                    <!-- Ad Tabs Header -->
+                    <div class="flex gap-6 border-b border-slate-200 px-6 pt-4 bg-slate-50/50">
+                        <button class="px-2 py-3 text-sm font-bold text-blue-600 border-b-2 border-blue-600 whitespace-nowrap">Large Screen Advertising</button>
+                        <button class="px-2 py-3 text-sm font-bold text-slate-500 border-b-2 border-transparent hover:text-blue-500 whitespace-nowrap">Advanced Scenario Advertising</button>
+                        <button class="px-2 py-3 text-sm font-bold text-slate-500 border-b-2 border-transparent hover:text-blue-500 whitespace-nowrap">Small Screen Screen Saver</button>
+                    </div>
+                    
+                    <!-- Ad Split Layout -->
+                    <div class="flex flex-col md:flex-row p-6 gap-8 min-h-[400px]">
+                        
+                        <!-- Left Side: Add Content (Form) -->
+                        <div class="w-full md:w-1/3 flex flex-col gap-4 border-r md:border-slate-200 md:pr-6">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">إضافة محتوى (صورة / فيديو)</label>
+                                <div class="border-2 border-dashed border-blue-200 bg-blue-50/50 hover:bg-blue-50 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition" onclick="document.getElementById('adFileInput').click()">
+                                    <i class="fa-solid fa-cloud-arrow-up text-3xl text-blue-400 mb-2"></i>
+                                    <span class="text-xs font-bold text-blue-600">اختر ملف للرفع</span>
+                                    <input type="file" id="adFileInput" accept="image/*,video/mp4" class="hidden" onchange="window.previewAdFile(this)">
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-3 mt-2">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 mb-1">تاريخ البداية (Start Date)</label>
+                                    <input type="date" class="w-full border border-slate-200 rounded px-2 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 mb-1">تاريخ الانتهاء (End Date)</label>
+                                    <input type="date" class="w-full border border-slate-200 rounded px-2 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-blue-500">
+                                </div>
+                            </div>
+                            
+                            <div class="mt-auto pt-4">
+                                <button onclick="window.saveAndPushAd()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition shadow-md flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-floppy-disk"></i> Save & Push
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Right Side: Content Preview -->
+                        <div class="w-full md:w-2/3 flex flex-col">
+                            <h4 class="text-xs font-bold text-slate-500 mb-3 uppercase tracking-wider">معاينة المحتوى (Preview)</h4>
+                            <div class="flex-1 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center overflow-hidden relative min-h-[300px]">
+                                <img id="adImagePreview" class="hidden max-w-full max-h-full object-contain" />
+                                <video id="adVideoPreview" class="hidden max-w-full max-h-full" controls autoplay loop muted></video>
+                                <div id="adEmptyState" class="text-center text-slate-400">
+                                    <i class="fa-regular fa-image text-4xl mb-2 opacity-50"></i>
+                                    <p class="text-sm">لا يوجد محتوى محدد</p>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Legacy Voice & Expressions Grid -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Voice & Text -->
                     <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-comment-dots text-indigo-500"></i> الصوت والشاشة</h3>
+                        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-comment-dots text-indigo-500"></i> التحدث والصوتيات</h3>
                         <div class="mb-4">
-                            <label class="block text-xs font-bold text-slate-500 mb-1">النص المراد نطقه/عرضه (TTS)</label>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">النص المراد نطقه (TTS)</label>
                             <div class="flex gap-2">
                                 <input type="text" id="rc-voiceText" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" placeholder="مرحباً بكم في مطعمنا...">
                                 <button onclick="window.sendRobotVoice()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition"><i class="fa-solid fa-paper-plane"></i> إرسال</button>
@@ -3893,12 +3954,7 @@
                     
                     <!-- Expressions (KettyBot Only) -->
                     <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm rc-ketty-only">
-                        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-face-laugh-beam text-amber-500"></i> تعبيرات الوجه (شاشة الدعايات)</h3>
-                        <div class="mb-4">
-                            <button onclick="window.uploadAndPushAd()" class="w-full bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 py-2 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2">
-                                <i class="fa-solid fa-cloud-arrow-up"></i> رفع إعلان (صورة/فيديو) للشاشة
-                            </button>
-                        </div>
+                        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-face-laugh-beam text-amber-500"></i> تعبيرات الوجه السريعة</h3>
                         <div class="grid grid-cols-3 gap-3">
                             <button onclick="window.setExpression('happy')" class="bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg py-3 flex flex-col items-center gap-1 transition">
                                 <i class="fa-solid fa-face-laugh text-2xl"></i> <span class="text-xs font-bold">سعيد</span>
@@ -3923,34 +3979,7 @@
                 </div>
             </div>
 
-            
-            <!-- TAB: BG REMOVAL -->
-            <div id="rc-content-bgremove" class="rc-tab-content hidden max-w-5xl mx-auto w-full">
-                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-6">
-                    <div class="flex-1">
-                        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-wand-magic-sparkles text-purple-500"></i> إزالة خلفية الصور بالذكاء الاصطناعي</h3>
-                        <p class="text-sm text-slate-500 mb-4">ارفع صورة ليتم إزالة خلفيتها فوراً وتجهيزها لشاشة الروبوت (دقة عالية).</p>
-                        
-                        <div class="flex flex-col gap-4">
-                            <input type="file" id="rc-bgInput" accept="image/*" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 transition"/>
-                            <button onclick="window.removeImageBackground()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition flex items-center justify-center gap-2">
-                                <i class="fa-solid fa-eraser"></i> مسح الخلفية الآن
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="w-full md:w-64 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl bg-slate-50 p-4 min-h-[200px]">
-                        <img id="rc-bgResult" class="max-w-full max-h-[200px] object-contain hidden" />
-                        <div id="rc-bgPlaceholder" class="text-center text-slate-400">
-                            <i class="fa-regular fa-image text-4xl mb-2"></i>
-                            <p class="text-xs">النتيجة ستظهر هنا</p>
-                        </div>
-                        <a id="rc-bgDownload" class="mt-4 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold py-1.5 px-3 rounded hidden transition">تحميل النتيجة</a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- TAB: SYSTEM -->
+<!-- TAB: SYSTEM -->
             <div id="rc-content-system" class="rc-tab-content hidden max-w-5xl mx-auto w-full">
                 <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm mb-6">
                     <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-folder-tree text-blue-500"></i> إدارة الخرائط والملفات</h3>
