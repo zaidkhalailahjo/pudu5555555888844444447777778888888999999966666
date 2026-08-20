@@ -11011,7 +11011,7 @@ window.fetchRobotMap = async () => {
     if(!list) return;
     list.innerHTML = `<div class="col-span-full py-6 flex flex-col items-center justify-center text-slate-400">
         <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-emerald-400"></i>
-        <p class="text-xs font-medium">جاري جلب الخريطة والنقاط...</p>
+        <p class="text-xs font-medium">جاري جلب النقاط المتاحة من الروبوت...</p>
     </div>`;
     
     try {
@@ -11019,38 +11019,47 @@ window.fetchRobotMap = async () => {
         const data = res && res.data ? res.data : res;
         list.innerHTML = "";
         
-        // Aggressively find the array of points/tables
-        let pointsArray = [];
-        if (data && data.points && Array.isArray(data.points)) pointsArray = data.points;
-        else if (data && data.poiList && Array.isArray(data.poiList)) pointsArray = data.poiList;
-        else if (data && data.poi_list && Array.isArray(data.poi_list)) pointsArray = data.poi_list;
-        else if (data && data.tableList && Array.isArray(data.tableList)) pointsArray = data.tableList;
-        else if (data && data.tables && Array.isArray(data.tables)) pointsArray = data.tables;
-        else if (data && typeof data === 'object') {
-            // Search all keys for arrays that might contain points
-            for (let key in data) {
-                if (Array.isArray(data[key]) && data[key].length > 0 && (data[key][0].name || data[key][0].pointName || data[key][0].tableId)) {
-                    pointsArray = data[key];
-                    break;
-                }
-            }
+        // Extract map name if available and set it in UI
+        const mapName = (data && data.name) || (data && data.mapName) || (data && data.data && data.data.name) || "";
+        if (mapName && document.getElementById("rc-mapName")) {
+            document.getElementById("rc-mapName").innerText = mapName;
         }
-        
-        if (pointsArray && pointsArray.length > 0) {
-            pointsArray.forEach(pt => {
-                const ptName = pt.name || pt.pointName || pt.tableId || pt.id || "نقطة مجهولة";
+
+        // Extract elements array
+        let elements = [];
+        if (data && Array.isArray(data.elements)) elements = data.elements;
+        else if (data && data.data && Array.isArray(data.data.elements)) elements = data.data.elements;
+        else if (data && Array.isArray(data.points)) elements = data.points;
+        else if (data && Array.isArray(data.poiList)) elements = data.poiList;
+        else if (data && Array.isArray(data.tables)) elements = data.tables;
+
+        // Filter navigable points (ignoring walls, circles, empty names)
+        const validPoints = elements.filter(e => {
+            const name = (e.name || e.pointName || e.tableId || e.id || '').trim();
+            const type = (e.type || '').toLowerCase();
+            return name !== '' && type !== 'virtual_wall' && type !== 'circle' && type !== 'laser_area';
+        });
+
+        if (validPoints.length > 0) {
+            validPoints.forEach(pt => {
+                const ptName = pt.name || pt.pointName || pt.tableId || pt.id;
+                const isPickup = ptName.toLowerCase().includes('pick') || ptName.includes('استلام');
                 const btn = document.createElement("button");
-                btn.className = "bg-white border border-emerald-100 hover:border-emerald-300 hover:bg-emerald-50 text-emerald-800 py-2 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 shadow-sm";
-                btn.innerHTML = `<i class="fa-solid fa-map-pin text-emerald-500"></i> ${ptName}`;
+                btn.className = isPickup 
+                    ? "bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 py-2.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                    : "bg-white hover:bg-emerald-50 border border-emerald-200 text-emerald-800 py-2.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm hover:scale-[1.02] cursor-pointer";
+                
+                const icon = isPickup ? "fa-house text-amber-600" : "fa-map-pin text-emerald-500";
+                btn.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${escapeHTML(ptName)}</span>`;
                 btn.onclick = () => window.sendRobotTo(ptName);
                 list.appendChild(btn);
             });
         } else {
-            list.innerHTML = `<div class="col-span-full text-center text-rose-500 py-6 text-sm font-bold bg-rose-50 rounded border border-rose-100"><i class="fa-solid fa-circle-exclamation mb-2 text-xl block"></i> الخريطة الحالية لا تحتوي على نقاط مسجلة أو أن الروبوت لا يرسل النقاط حالياً.</div>`;
+            list.innerHTML = `<div class="col-span-full text-center text-slate-400 py-6 text-sm bg-slate-50 rounded border border-dashed border-slate-200">لا توجد نقاط مسجلة في هذه الخريطة حالياً</div>`;
         }
     } catch(err) {
         console.error("Error fetching map points", err);
-        list.innerHTML = `<div class="col-span-full text-center text-rose-500 py-6 text-sm font-bold"><i class="fa-solid fa-triangle-exclamation"></i> فشل في الاتصال وجلب النقاط</div>`;
+        list.innerHTML = `<div class="col-span-full text-center text-rose-500 py-6 text-sm font-bold"><i class="fa-solid fa-triangle-exclamation"></i> فشل في جلب النقاط من الروبوت</div>`;
     }
 };
 
