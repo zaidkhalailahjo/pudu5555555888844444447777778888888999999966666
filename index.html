@@ -18,16 +18,18 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/ar.js"></script>
     <style>
-        /* Charging flow animation */
-        @keyframes chargingFlow {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
+        /* Charging looping fill animation */
+        @keyframes chargingBarLoop {
+            0% { width: 0%; opacity: 0.5; }
+            50% { width: 70%; opacity: 0.9; }
+            100% { width: 100%; opacity: 1; }
         }
-        .charging-bar-animated {
-            background: linear-gradient(90deg, #10b981 0%, #6ee7b7 50%, #10b981 100%) !important;
-            background-size: 200% 100% !important;
-            animation: chargingFlow 2s linear infinite !important;
+        .charging-bar-loop {
+            background: linear-gradient(90deg, #10b981 0%, #34d399 50%, #059669 100%) !important;
+            animation: chargingBarLoop 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
         }
+
+        
 
         /* تخصيص ألوان الكلندر لتطابق هوية النظام Quill */
         .flatpickr-calendar { font-family: 'Cairo', sans-serif !important; border-radius: 16px !important; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important; border: 1px solid #e5e7eb !important; overflow: hidden; padding: 0 !important; }
