@@ -3781,7 +3781,7 @@
                 <button onclick="window.switchRcTab('move')" id="rc-tab-move" class="rc-tab-btn px-4 py-2 text-sm font-bold text-slate-500 border-b-2 border-transparent hover:text-indigo-500 transition-colors whitespace-nowrap"><i class="fa-solid fa-route mr-1"></i> التحريك والمهام</button>
                 <button onclick="window.switchRcTab('interact')" id="rc-tab-interact" class="rc-tab-btn px-4 py-2 text-sm font-bold text-slate-500 border-b-2 border-transparent hover:text-indigo-500 transition-colors whitespace-nowrap"><i class="fa-solid fa-face-smile mr-1"></i> التفاعل والشاشة</button>
                 <button onclick="window.switchRcTab('bgremove')" id="rc-tab-bgremove" class="rc-tab-btn px-4 py-2 text-sm font-bold text-slate-500 border-b-2 border-transparent hover:text-indigo-500 transition-colors whitespace-nowrap"><i class="fa-solid fa-eraser mr-1"></i> مسح الخلفية</button>
-                <button onclick="window.switchRcTab('system')" id="rc-tab-system" class="rc-tab-btn px-4 py-2 text-sm font-bold text-slate-500 border-b-2 border-transparent hover:text-indigo-500 transition-colors whitespace-nowrap"><i class="fa-solid fa-gear mr-1"></i> النظام والخريطة</button>
+                
             </div>
         </div>
         
@@ -3864,7 +3864,7 @@
                             <h4 class="font-bold text-sm text-slate-800 mb-3">File Management</h4>
                             <div class="flex flex-wrap gap-2.5">
                                 <button onclick="window.exportRobotLogs()" class="border border-slate-200 bg-white text-slate-700 text-xs px-3.5 py-2 hover:bg-slate-50 rounded transition flex items-center gap-2 shadow-xs"><i class="fa-regular fa-file-lines text-blue-500"></i> Log Export</button>
-                                <button onclick="window.pullMapFromRobot()" class="border border-slate-200 bg-white text-slate-700 text-xs px-3.5 py-2 hover:bg-slate-50 rounded transition flex items-center gap-2 shadow-xs"><i class="fa-solid fa-download text-blue-500"></i> Pull Map</button>
+                                <button onclick="window.openMapExportModal()" class="border border-slate-200 bg-white text-slate-700 text-xs px-3.5 py-2 hover:bg-slate-50 rounded transition flex items-center gap-2 shadow-xs"><i class="fa-solid fa-download text-blue-500"></i> Pull Map</button>
                                 <button onclick="window.pushMapToRobot()" class="border border-slate-200 bg-white text-slate-700 text-xs px-3.5 py-2 hover:bg-slate-50 rounded transition flex items-center gap-2 shadow-xs"><i class="fa-solid fa-upload text-blue-500"></i> Push Map</button>
                                 <button class="border border-slate-200 bg-white text-slate-700 text-xs px-3.5 py-2 hover:bg-slate-50 rounded transition flex items-center gap-2 shadow-xs"><i class="fa-solid fa-volume-high text-blue-500"></i> Upload Audio</button>
                                 <button class="border border-slate-200 bg-white text-slate-700 text-xs px-3.5 py-2 hover:bg-slate-50 rounded transition flex items-center gap-2 shadow-xs"><i class="fa-regular fa-folder-open text-blue-500"></i> Upload Files</button>
@@ -4073,25 +4073,7 @@
             </div>
 
 <!-- TAB: SYSTEM -->
-            <div id="rc-content-system" class="rc-tab-content hidden max-w-5xl mx-auto w-full">
-                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm mb-6">
-                    <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-folder-tree text-blue-500"></i> إدارة الخرائط والملفات</h3>
-                    <div class="flex flex-wrap gap-3" dir="ltr">
-                        <button onclick="window.openMapExportModal()" class="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 text-sm font-bold rounded-lg shadow-sm transition">
-                            <i class="fa-solid fa-download"></i> Pull Map (.pdmap)
-                        </button>
-                        <button onclick="window.pushMapToRobot()" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-emerald-50 text-emerald-700 text-sm font-medium rounded shadow-sm transition">
-                            <i class="fa-solid fa-upload text-emerald-500"></i> Push Map
-                        </button>
-                        <button onclick="window.exportRobotLogs()" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium rounded shadow-sm transition">
-                            <i class="fa-solid fa-file-export text-slate-500"></i> Log Export
-                        </button>
-                        <button onclick="window.installApk()" class="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 hover:bg-red-100 text-red-700 text-sm font-bold rounded shadow-sm transition">
-                            <i class="fa-brands fa-android"></i> Install APK
-                        </button>
-                    </div>
-                </div>
-            </div>
+            
             
         </div>
     </div>
