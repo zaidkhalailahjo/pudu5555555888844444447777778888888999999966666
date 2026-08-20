@@ -10885,6 +10885,36 @@ window.sendDiscussionMessage = async () => {
             };
             const foundMap = searchMapName(data, 0);
             if (foundMap) finalMapName = foundMap;
+
+            // Extract MAC Address
+            if (document.getElementById("rc-mac")) {
+                let mac = data.mac || data.macAddress || data.mac_address || "--:--:--:--:--:--";
+                document.getElementById("rc-mac").innerText = mac;
+            }
+            
+            // Extract Version
+            if (document.getElementById("rc-version")) {
+                let ver = data.softwareVersion || data.version || data.appVersion || data.systemVersion || "--";
+                document.getElementById("rc-version").innerText = ver;
+            }
+            
+            // Extract Location X, Y
+            if (document.getElementById("rc-locX") && document.getElementById("rc-locY")) {
+                let x = "--", y = "--";
+                if (data.location && typeof data.location.x !== 'undefined') {
+                    x = data.location.x.toFixed(2);
+                    y = data.location.y.toFixed(2);
+                } else if (data.pose && typeof data.pose.x !== 'undefined') {
+                    x = data.pose.x.toFixed(2);
+                    y = data.pose.y.toFixed(2);
+                } else if (data.position && typeof data.position.x !== 'undefined') {
+                    x = data.position.x.toFixed(2);
+                    y = data.position.y.toFixed(2);
+                }
+                document.getElementById("rc-locX").innerText = x;
+                document.getElementById("rc-locY").innerText = y;
+            }
+
             
             // Log full API response so user can see what fields exist (for debugging)
             console.log("[Pudu Status Full Response]", JSON.stringify(data, null, 2));
@@ -11648,6 +11678,25 @@ window.fetchRobotMap = async () => {
 
 
 window.connectRobotToPudu = async (robotId, sn, robotName) => {
+    window.currentRobotSn = sn;
+    window.currentRobotName = robotName;
+    const rcTitle = document.getElementById('rc-title');
+    if (rcTitle) rcTitle.innerText = robotName;
+    
+    // Handle Model Specific UI
+    const isKetty = sn.toLowerCase().startsWith('pnt') || sn.toLowerCase().startsWith('kty') || robotName.toLowerCase().includes('ketty');
+    const isBella = sn.toLowerCase().startsWith('bl') || robotName.toLowerCase().includes('bella');
+    
+    document.querySelectorAll('.rc-ketty-only').forEach(el => {
+        if (isKetty) {
+            el.style.display = '';
+        } else {
+            el.style.display = 'none';
+        }
+    });
+    
+    window.switchRcTab('status');
+
     const btn = document.getElementById('pudu-btn-' + robotId);
     const badge = document.getElementById('pudu-badge-' + robotId);
     const statusDiv = document.getElementById('pudu-status-' + robotId);
@@ -12314,4 +12363,75 @@ window.downloadExportedMap = () => {
     document.body.removeChild(a);
     
     showToast("تم بدء التحميل", "success");
+};
+
+
+// ==========================================
+// TABS & UI LOGIC
+// ==========================================
+window.switchRcTab = (tabId) => {
+    // Hide all contents
+    document.querySelectorAll('.rc-tab-content').forEach(el => {
+        el.classList.remove('block');
+        el.classList.add('hidden');
+    });
+    // Remove active state from all buttons
+    document.querySelectorAll('.rc-tab-btn').forEach(el => {
+        el.classList.remove('active', 'text-indigo-600', 'border-indigo-600');
+        el.classList.add('text-slate-500', 'border-transparent');
+    });
+    
+    // Show selected content
+    document.getElementById('rc-content-' + tabId).classList.remove('hidden');
+    document.getElementById('rc-content-' + tabId).classList.add('block');
+    
+    // Activate button
+    const btn = document.getElementById('rc-tab-' + tabId);
+    btn.classList.add('active', 'text-indigo-600', 'border-indigo-600');
+    btn.classList.remove('text-slate-500', 'border-transparent');
+};
+
+// ==========================================
+// NEW PUDU API ACTIONS
+// ==========================================
+window.chargeRobot = async () => {
+    showToast("جاري التوجيه للشاحن...", "info");
+    const payload = { point: "charge", point_type: "charge", call_mode: "CHARGE", do_not_queue: true, priority: 1 };
+    const res = await window.callPuduApi("call", payload);
+    if(res) {
+        showToast("الروبوت في طريقه للشاحن ⚡", "success");
+        window.refreshRobotStatus();
+    }
+};
+
+window.cruiseRobot = async () => {
+    showToast("تفعيل وضع التجول...", "info");
+    // Standard cruise command
+    const payload = { call_mode: "CRUISE", do_not_queue: true };
+    const res = await window.callPuduApi("call", payload);
+    if(res) {
+        showToast("بدأ الروبوت بالتجول 🚶", "success");
+        window.refreshRobotStatus();
+    }
+};
+
+window.setExpression = async (type) => {
+    // type: happy, angry, sad, cute, sleepy, normal
+    showToast("تغيير التعبير...", "info");
+    const payload = { payload: { callMode: "EXPRESSION", modeData: { expression: type } } };
+    const res = await window.callPuduApi("speak", payload);
+    if(res) {
+        showToast("تم تغيير تعبير الوجه 😊", "success");
+    }
+};
+
+window.setRobotVolume = async () => {
+    const vol = document.getElementById('rc-volumeSlider').value;
+    showToast("جاري تغيير مستوى الصوت...", "info");
+    // Standard custom_call for volume change
+    const payload = { cmd: "set_volume", params: { volume: parseInt(vol) } };
+    const res = await window.callPuduApi("call", payload);
+    if(res) {
+        showToast("تم تطبيق مستوى الصوت 🔊", "success");
+    }
 };
