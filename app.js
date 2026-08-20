@@ -11777,26 +11777,26 @@ window.fetchLiveRobotStatuses = async () => {
             if (result.data && result.data.success && result.data.data) {
                 const data = result.data.data;
                 const batVal = data.battery !== undefined ? parseInt(data.battery) : (data.power !== undefined ? parseInt(data.power) : 0);
-                const rawState = (data.run_state || data.runState || "IDLE").toUpperCase();
+                const rawState = String(data.run_state || data.runState || "IDLE").toUpperCase();
                 
-                // Check if charging: DISABLE or CHARGING or is_charging == 1 or charge_type > 0
-                const isCharging = (rawState.includes("DISABLE") || rawState.includes("CHARG") || data.is_charging == 1 || data.is_charging === true || (data.charge_type !== undefined && parseInt(data.charge_type) > 0));
+                // ACCURATE Charging Detection
+                const isCharging = (data.is_charging === 1 || data.is_charging === true || rawState === "DISABLE" || rawState === "CHARGING" || (data.charge_stage && String(data.charge_stage).trim() !== ""));
 
                 let displayState = "Idle";
-                let badgeColor = "bg-blue-100 text-blue-700";
+                let badgeColor = "bg-slate-100 text-slate-700 border border-slate-200";
 
                 if (isCharging) {
                     displayState = "Charging";
-                    badgeColor = "bg-emerald-100 text-emerald-700 border border-emerald-200";
+                    badgeColor = "bg-emerald-100 text-emerald-700 border border-emerald-300";
                 } else if (rawState.includes("BUSY") || rawState.includes("WORK") || rawState.includes("DELIVER")) {
                     displayState = "Working";
-                    badgeColor = "bg-amber-100 text-amber-700";
+                    badgeColor = "bg-blue-100 text-blue-700 border border-blue-200";
                 } else if (rawState.includes("ERROR")) {
                     displayState = "Error";
-                    badgeColor = "bg-rose-100 text-rose-700";
+                    badgeColor = "bg-rose-100 text-rose-700 border border-rose-200";
                 }
                 
-                // Update UI for Card
+                // Update Card Elements
                 const batCircle = document.getElementById('bat-circle-' + r.id);
                 const batText = document.getElementById('bat-text-' + r.id);
                 const badge = document.getElementById('pudu-badge-' + r.id);
@@ -11808,6 +11808,9 @@ window.fetchLiveRobotStatuses = async () => {
                     if (isCharging) {
                         batCircle.setAttribute('class', "text-emerald-500 stroke-current transition-all duration-700 animate-pulse");
                     } else {
+                        // 🔴 Under 20% -> Red
+                        // 🟠 21% - 50% -> Orange
+                        // 🟢 Above 50% -> Green
                         if (batVal <= 20) {
                             batCircle.setAttribute('class', "text-rose-500 stroke-current transition-all duration-700");
                         } else if (batVal <= 50) {
@@ -11847,10 +11850,13 @@ window.refreshRobotStatus = async () => {
             const rawState = String(data.run_state || data.runState || "IDLE").toUpperCase();
             const bat = data.battery !== undefined ? parseInt(data.battery) : (data.power !== undefined ? parseInt(data.power) : 0);
             
-            // Check if charging: DISABLE or CHARGING or is_charging == 1 or charge_type > 0
-            const isCharging = (rawState.includes("DISABLE") || rawState.includes("CHARG") || data.is_charging == 1 || data.is_charging === true || (data.charge_type !== undefined && parseInt(data.charge_type) > 0));
+            // ACCURATE Charging Detection:
+            // 1. is_charging is explicitly 1 or true
+            // 2. rawState is DISABLE or CHARGING
+            // 3. charge_stage is non-empty
+            const isCharging = (data.is_charging === 1 || data.is_charging === true || rawState === "DISABLE" || rawState === "CHARGING" || (data.charge_stage && String(data.charge_stage).trim() !== ""));
             
-            // State Display
+            // Format state display
             let displayState = "Idle";
             if (isCharging) {
                 displayState = "Charging";
@@ -11862,27 +11868,39 @@ window.refreshRobotStatus = async () => {
                 displayState = "Idle";
             }
 
-            if (stateEl) stateEl.innerText = displayState;
+            if (stateEl) {
+                stateEl.innerText = displayState;
+                if (isCharging) {
+                    stateEl.className = "text-sm font-bold text-emerald-600 flex items-center gap-1";
+                    stateEl.innerHTML = '<i class="fa-solid fa-bolt text-emerald-500 animate-pulse"></i> Charging';
+                } else if (displayState === "Working") {
+                    stateEl.className = "text-sm font-bold text-blue-600";
+                } else {
+                    stateEl.className = "text-sm font-bold text-slate-700";
+                }
+            }
+
             if (iotEl) iotEl.innerText = "Online";
 
             // Battery Percentage Text
             if (batText) batText.innerText = bat + "%";
 
-            // Battery Bar Styling & Animation
+            // Battery Bar Styling & Looping Charging Animation
             if (batBar) {
-                batBar.style.width = bat + "%";
-                
                 if (isCharging) {
-                    // Charging animation & Green color
-                    batBar.className = "h-full rounded-full transition-all duration-700 charging-bar-animated";
+                    // While charging: Looping fill animation (0% -> 100% repeat) in green
+                    batBar.style.width = "";
+                    batBar.className = "h-full rounded-full charging-bar-loop";
                     if (chargingTag) chargingTag.classList.remove("hidden");
                 } else {
                     if (chargingTag) chargingTag.classList.add("hidden");
+                    batBar.style.animation = "none";
+                    batBar.style.width = bat + "%";
                     
-                    // Colors based on battery percentage:
-                    // Under 20%: Red
-                    // 21% - 50%: Orange
-                    // Above 50%: Green
+                    // Exact Color Thresholds:
+                    // 🔴 Under 20%: Red
+                    // 🟠 21% - 50%: Orange
+                    // 🟢 Above 50%: Green
                     if (bat <= 20) {
                         batBar.className = "bg-rose-500 h-full rounded-full transition-all duration-700";
                     } else if (bat <= 50) {
