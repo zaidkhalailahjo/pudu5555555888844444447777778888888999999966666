@@ -1711,53 +1711,25 @@ window.addClientRobotRow = (name='', serial='', date='', hasWarranty=false, warr
             }
 
             robots.forEach(r => {
-                const statusColor = r.status === 'جديد' ? 'text-green-500' : (r.status === 'معطل' ? 'text-red-500' : 'text-yellow-500');
-                const hasSN = r.serialNumber && r.serialNumber !== 'بدون رقم' && r.serialNumber.trim().length > 4;
-                const isPuduRobot = r.name && (r.name.toLowerCase().includes('bella') || r.name.toLowerCase().includes('ketty') || r.name.toLowerCase().includes('quill'));
-                const puduBtnCls = (hasSN && isPuduRobot) ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-700' : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-300 border-gray-300';
-                const controlBtn = isPuduRobot ? `<button onclick="window.openRobotControlPanel('${r.id}')" class="text-green-600 hover:bg-green-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold border border-green-200"><i class="fa-solid fa-gamepad mx-1"></i> تحكم</button>` : '';
-
-                let actionBtnsHtml = '';
-                if(canManageRobots) {
-                    actionBtnsHtml = `
-                        <div class="mt-auto pt-2 flex justify-between items-center border-t dark:border-gray-700 flex-wrap gap-1">
-                            ${controlBtn}
-                            <button onclick="window.moveRobotLocation('${r.id}', 'warehouse')" class="text-blue-600 hover:bg-blue-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold border border-blue-200"><i class="fa-solid fa-truck-moving mx-1"></i> للمستودع</button>
-                            <button onclick="window.openEditRobotModal('${r.id}')" class="text-indigo-500 hover:bg-indigo-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold"><i class="fa-solid fa-pen mx-1"></i> تعديل</button>
-                            <button onclick="window.deleteRobot('${r.id}')" class="text-red-500 hover:bg-red-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold"><i class="fa-solid fa-trash mx-1"></i> حذف</button>
-                        </div>
-                    `;
-                }
-
-                cont.innerHTML += `
-                    <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col h-full hover:shadow-md transition">
-                        <div class="flex justify-between items-start mb-3 border-b dark:border-gray-700 pb-2">
-                            <h3 class="font-bold text-base text-teal-700 dark:text-teal-400"><i class="fa-solid fa-robot mx-1"></i> ${escapeHTML(r.name)}</h3>
-                            <span id="pudu-badge-${r.id}" class="bg-gray-100 dark:bg-gray-700 text-gray-500 px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap">● غير متحقق</span>
-                        </div>
-                        <div class="text-xs text-gray-600 dark:text-gray-300 space-y-2 mb-3 flex-1">
-                            <p class="flex justify-between"><span>الرقم التسلسلي:</span> <span class="font-bold" dir="ltr">${escapeHTML(r.serialNumber)}</span></p>
-                            <p class="flex justify-between"><span>الحالة:</span> <span class="font-bold ${statusColor}">${escapeHTML(r.status)}</span></p>
-                            <p class="flex justify-between"><span>أضيف بواسطة:</span> <span>${escapeHTML(r.addedBy)}</span></p>
-                            <p class="flex justify-between text-gray-400 pt-2 border-t dark:border-gray-700 text-[10px]"><span>التاريخ:</span> <span>${new Date(r.timestamp).toLocaleDateString('ar-EG')}</span></p>
-                            ${r.notes ? `<p class="text-[10px] text-gray-500 mt-2 p-2 bg-gray-50 dark:bg-gray-900 rounded">${escapeHTML(r.notes)}</p>` : ''}
-                        </div>
-                        <div id="pudu-status-${r.id}" class="hidden mb-2 text-[10px] p-2 rounded-lg leading-relaxed"></div>
-                        ${r.puduLinked ? 
-                            `<div class="w-full mb-2 bg-emerald-50 border border-emerald-200 text-emerald-700 py-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-2 shadow-sm">
-                                <i class="fa-solid fa-link"></i> مرتبط بسيرفر Pudu
-                            </div>` 
-                            : 
-                            `<button id="pudu-btn-${r.id}"
-                                onclick="window.connectRobotToPudu('${r.id}', '${escapeHTML(r.serialNumber)}', '${escapeHTML(r.name)}')"
-                                class="w-full mb-2 ${puduBtnCls} border py-2 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-2 shadow-sm">
-                                <i class="fa-solid fa-plug-circle-bolt"></i> ربط بسيرفر Pudu
-                            </button>`
-                        }
-                        ${actionBtnsHtml}
-                    </div>
-                `;
-            });
+        const hasSN = r.serialNumber && r.serialNumber !== 'بدون رقم' && r.serialNumber.trim().length > 4;
+        const isPuduRobot = r.name && (r.name.toLowerCase().includes('bella') || r.name.toLowerCase().includes('ketty') || r.name.toLowerCase().includes('quill'));
+        const puduBtnCls = (hasSN && isPuduRobot) ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-400 border-gray-200';
+        
+        let actionBtnsHtml = '';
+        if(window.isAdmin() || (currentUserData.permissions && currentUserData.permissions.permManageRobots)) {
+            const locText = r.location === 'company' ? 'للمستودع' : 'للشركة';
+            const locTarget = r.location === 'company' ? 'warehouse' : 'company';
+            actionBtnsHtml = `
+                <button onclick="window.moveRobotLocation('${r.id}', '${locTarget}')" class="w-full text-right hover:bg-gray-50 px-2 py-1.5 rounded text-[11px] text-gray-700 transition flex items-center gap-2"><i class="fa-solid fa-truck-moving w-4 text-center"></i> نقل ${locText}</button>
+                <button onclick="window.openEditRobotModal('${r.id}')" class="w-full text-right hover:bg-gray-50 px-2 py-1.5 rounded text-[11px] text-gray-700 transition flex items-center gap-2"><i class="fa-solid fa-pen w-4 text-center"></i> تعديل بيانات الروبوت</button>
+                <button onclick="window.deleteRobot('${r.id}')" class="w-full text-right hover:bg-red-50 px-2 py-1.5 rounded text-[11px] text-red-600 transition flex items-center gap-2 mt-1 border-t"><i class="fa-solid fa-trash w-4 text-center"></i> حذف الروبوت</button>
+            `;
+        } else {
+            actionBtnsHtml = '<div class="text-[10px] text-center text-gray-400 py-2">لا تملك صلاحية الإدارة</div>';
+        }
+        
+        cont.innerHTML += window.buildRobotCardHTML(r, actionBtnsHtml, isPuduRobot, puduBtnCls, hasSN);
+    });;
         }
 
         function renderWarehouseRobots() {
@@ -1783,53 +1755,25 @@ window.addClientRobotRow = (name='', serial='', date='', hasWarranty=false, warr
             }
 
             robots.forEach(r => {
-                const statusColor = r.status === 'جديد' ? 'text-green-500' : (r.status === 'معطل' ? 'text-red-500' : 'text-yellow-500');
-                const hasSN = r.serialNumber && r.serialNumber !== 'بدون رقم' && r.serialNumber.trim().length > 4;
-                const isPuduRobot = r.name && (r.name.toLowerCase().includes('bella') || r.name.toLowerCase().includes('ketty') || r.name.toLowerCase().includes('quill'));
-                const puduBtnCls = (hasSN && isPuduRobot) ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-700' : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-300 border-gray-300';
-                const controlBtn = isPuduRobot ? `<button onclick="window.openRobotControlPanel('${r.id}')" class="text-green-600 hover:bg-green-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold border border-green-200"><i class="fa-solid fa-gamepad mx-1"></i> تحكم</button>` : '';
-
-                let actionBtnsHtml = '';
-                if(canManageRobots) {
-                    actionBtnsHtml = `
-                        <div class="mt-auto pt-2 flex justify-between items-center border-t dark:border-gray-700 flex-wrap gap-1">
-                            ${controlBtn}
-                            <button onclick="window.moveRobotLocation('${r.id}', 'company')" class="text-teal-600 hover:bg-teal-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold border border-teal-200"><i class="fa-solid fa-building-circle-arrow-right mx-1"></i> نقل للشركة</button>
-                            <button onclick="window.openEditRobotModal('${r.id}')" class="text-indigo-500 hover:bg-indigo-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold"><i class="fa-solid fa-pen mx-1"></i> تعديل</button>
-                            <button onclick="window.deleteRobot('${r.id}')" class="text-red-500 hover:bg-red-50 dark:hover:bg-gray-700 px-2 py-1 rounded transition text-[10px] font-bold"><i class="fa-solid fa-trash mx-1"></i> حذف</button>
-                        </div>
-                    `;
-                }
-
-                cont.innerHTML += `
-                    <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col h-full hover:shadow-md transition">
-                        <div class="flex justify-between items-start mb-3 border-b dark:border-gray-700 pb-2">
-                            <h3 class="font-bold text-base text-orange-700 dark:text-orange-400"><i class="fa-solid fa-robot mx-1"></i> ${escapeHTML(r.name)}</h3>
-                            <span id="pudu-badge-${r.id}" class="bg-gray-100 dark:bg-gray-700 text-gray-500 px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap">● غير متحقق</span>
-                        </div>
-                        <div class="text-xs text-gray-600 dark:text-gray-300 space-y-2 mb-3 flex-1">
-                            <p class="flex justify-between"><span>الرقم التسلسلي:</span> <span class="font-bold" dir="ltr">${escapeHTML(r.serialNumber)}</span></p>
-                            <p class="flex justify-between"><span>الحالة:</span> <span class="font-bold ${statusColor}">${escapeHTML(r.status)}</span></p>
-                            <p class="flex justify-between"><span>أضيف بواسطة:</span> <span>${escapeHTML(r.addedBy)}</span></p>
-                            <p class="flex justify-between text-gray-400 pt-2 border-t dark:border-gray-700 text-[10px]"><span>التاريخ:</span> <span>${new Date(r.timestamp).toLocaleDateString('ar-EG')}</span></p>
-                            ${r.notes ? `<p class="text-[10px] text-gray-500 mt-2 p-2 bg-gray-50 dark:bg-gray-900 rounded">${escapeHTML(r.notes)}</p>` : ''}
-                        </div>
-                        <div id="pudu-status-${r.id}" class="hidden mb-2 text-[10px] p-2 rounded-lg leading-relaxed"></div>
-                        ${r.puduLinked ? 
-                            `<div class="w-full mb-2 bg-emerald-50 border border-emerald-200 text-emerald-700 py-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-2 shadow-sm">
-                                <i class="fa-solid fa-link"></i> مرتبط بسيرفر Pudu
-                            </div>` 
-                            : 
-                            `<button id="pudu-btn-${r.id}"
-                                onclick="window.connectRobotToPudu('${r.id}', '${escapeHTML(r.serialNumber)}', '${escapeHTML(r.name)}')"
-                                class="w-full mb-2 ${puduBtnCls} border py-2 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-2 shadow-sm">
-                                <i class="fa-solid fa-plug-circle-bolt"></i> ربط بسيرفر Pudu
-                            </button>`
-                        }
-                        ${actionBtnsHtml}
-                    </div>
-                `;
-            });
+        const hasSN = r.serialNumber && r.serialNumber !== 'بدون رقم' && r.serialNumber.trim().length > 4;
+        const isPuduRobot = r.name && (r.name.toLowerCase().includes('bella') || r.name.toLowerCase().includes('ketty') || r.name.toLowerCase().includes('quill'));
+        const puduBtnCls = (hasSN && isPuduRobot) ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-400 border-gray-200';
+        
+        let actionBtnsHtml = '';
+        if(window.isAdmin() || (currentUserData.permissions && currentUserData.permissions.permManageRobots)) {
+            const locText = r.location === 'company' ? 'للمستودع' : 'للشركة';
+            const locTarget = r.location === 'company' ? 'warehouse' : 'company';
+            actionBtnsHtml = `
+                <button onclick="window.moveRobotLocation('${r.id}', '${locTarget}')" class="w-full text-right hover:bg-gray-50 px-2 py-1.5 rounded text-[11px] text-gray-700 transition flex items-center gap-2"><i class="fa-solid fa-truck-moving w-4 text-center"></i> نقل ${locText}</button>
+                <button onclick="window.openEditRobotModal('${r.id}')" class="w-full text-right hover:bg-gray-50 px-2 py-1.5 rounded text-[11px] text-gray-700 transition flex items-center gap-2"><i class="fa-solid fa-pen w-4 text-center"></i> تعديل بيانات الروبوت</button>
+                <button onclick="window.deleteRobot('${r.id}')" class="w-full text-right hover:bg-red-50 px-2 py-1.5 rounded text-[11px] text-red-600 transition flex items-center gap-2 mt-1 border-t"><i class="fa-solid fa-trash w-4 text-center"></i> حذف الروبوت</button>
+            `;
+        } else {
+            actionBtnsHtml = '<div class="text-[10px] text-center text-gray-400 py-2">لا تملك صلاحية الإدارة</div>';
+        }
+        
+        cont.innerHTML += window.buildRobotCardHTML(r, actionBtnsHtml, isPuduRobot, puduBtnCls, hasSN);
+    });;
         }
 
         window.openAddRentalModal = (id = null) => {
@@ -10848,935 +10792,28 @@ window.sendDiscussionMessage = async () => {
         
         if(data) {
             const runState = data.run_state || data.runState || "Running";
-            const bat = data.battery !== undefined ? data.battery : (data.power !== undefined ? data.power : 0);
             
-            if (batText) batText.innerText = bat + "%";
-            if (batBar) {
-                batBar.style.width = bat + "%";
-                if(bat > 50) batBar.className = "bg-emerald-500 h-2.5 rounded-full";
-                else if(bat > 20) batBar.className = "bg-amber-400 h-2.5 rounded-full";
-                else batBar.className = "bg-rose-500 h-2.5 rounded-full animate-pulse";
-            }
+            const batVal = data.battery !== undefined ? parseInt(data.battery) : (data.power !== undefined ? parseInt(data.power) : 0);
+            const batStr = batVal + '%';
             
-            if (stateEl) stateEl.innerText = runState;
-            if (iotEl) {
-                iotEl.innerHTML = '<span class="relative flex h-2.5 w-2.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span></span> Online';
-                iotEl.className = "text-sm font-bold text-emerald-600 flex items-center gap-1.5";
-            }
-            if (macEl) macEl.innerText = data.mac || data.macAddress || "10:2C:6B:--:--:--";
-            
-            // Deep search for map name in all possible fields
-            let finalMapName = "غير متوفرة";
-            const searchMapName = (obj, depth) => {
-                if (!obj || typeof obj !== 'object' || depth > 3) return null;
-                // Direct field names Pudu might use
-                const keys = ['map_name', 'mapName', 'mapCode', 'current_map', 'currentMap', 'map'];
-                for (const k of keys) {
-                    if (obj[k] && typeof obj[k] === 'string' && obj[k].length > 0) return obj[k];
-                }
-                // Search nested objects
-                for (const k of Object.keys(obj)) {
-                    if (typeof obj[k] === 'object' && obj[k] !== null) {
-                        const found = searchMapName(obj[k], depth + 1);
-                        if (found) return found;
-                    }
-                }
-                return null;
-            };
-            const foundMap = searchMapName(data, 0);
-            if (foundMap) finalMapName = foundMap;
-
-            // Extract MAC Address
-            if (document.getElementById("rc-mac")) {
-                let mac = data.mac || data.macAddress || data.mac_address || "--:--:--:--:--:--";
-                document.getElementById("rc-mac").innerText = mac;
+            const batCircle = document.getElementById('bat-circle-' + robotId);
+            const batText = document.getElementById('bat-text-' + robotId);
+            if(batCircle && batText) {
+                batText.innerText = batStr;
+                batCircle.setAttribute('stroke-dasharray', batVal + ', 100');
+                if(batVal > 50) batCircle.setAttribute('class', "text-emerald-500 stroke-current transition-all duration-700");
+                else if(batVal > 20) batCircle.setAttribute('class', "text-amber-400 stroke-current transition-all duration-700");
+                else batCircle.setAttribute('class', "text-rose-500 stroke-current transition-all duration-700");
             }
             
-            // Extract Version
-            if (document.getElementById("rc-version")) {
-                let ver = data.softwareVersion || data.version || data.appVersion || data.systemVersion || "--";
-                document.getElementById("rc-version").innerText = ver;
-            }
+            const state = data.run_state || data.runState || 'Working';
+            let badgeColor = 'bg-blue-100 text-blue-700';
+            let displayState = 'Working';
+            if (state.toUpperCase().includes('CHARG') || data.is_charging == 1) { badgeColor = 'bg-emerald-100 text-emerald-700'; displayState = 'Charging'; }
+            else if (state.toUpperCase().includes('IDLE')) { badgeColor = 'bg-amber-100 text-amber-700'; displayState = 'Idle'; }
+            else if (state.toUpperCase().includes('ERROR')) { badgeColor = 'bg-rose-100 text-rose-700'; displayState = 'Error'; }
             
-            // Extract Location X, Y
-            if (document.getElementById("rc-locX") && document.getElementById("rc-locY")) {
-                let x = "--", y = "--";
-                if (data.location && typeof data.location.x !== 'undefined') {
-                    x = data.location.x.toFixed(2);
-                    y = data.location.y.toFixed(2);
-                } else if (data.pose && typeof data.pose.x !== 'undefined') {
-                    x = data.pose.x.toFixed(2);
-                    y = data.pose.y.toFixed(2);
-                } else if (data.position && typeof data.position.x !== 'undefined') {
-                    x = data.position.x.toFixed(2);
-                    y = data.position.y.toFixed(2);
-                }
-                document.getElementById("rc-locX").innerText = x;
-                document.getElementById("rc-locY").innerText = y;
-            }
-
-            
-            // Log full API response so user can see what fields exist (for debugging)
-            console.log("[Pudu Status Full Response]", JSON.stringify(data, null, 2));
-            
-            if (mapNameEl) {
-                mapNameEl.innerText = finalMapName;
-                mapNameEl.className = finalMapName === "غير متوفرة" 
-                    ? "text-sm font-bold text-slate-400" 
-                    : "text-sm font-bold text-emerald-600";
-            }
-
-            
-            const stateStr = (data.run_state || data.runState || "").toString().toUpperCase();
-            if (locWarnEl) {
-                if (stateStr.includes("LOST") || stateStr.includes("UNPOSITION")) {
-                    locWarnEl.classList.remove("hidden");
-                    if (stateEl) {
-                        stateEl.innerText = "فاقد التمركز (Lost Position)";
-                        stateEl.className = "text-sm font-bold text-rose-500";
-                    }
-                } else {
-                    locWarnEl.classList.add("hidden");
-                }
-            }
-            
-        } else {
-            if (stateEl) stateEl.innerText = "Offline";
-            if (iotEl) {
-                iotEl.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Offline';
-                iotEl.className = "text-sm font-bold text-rose-500 flex items-center gap-1.5";
-            }
-            if (batText) batText.innerText = "--%";
-            if (batBar) batBar.style.width = "0%";
-        }
-    } catch (err) {
-        console.error("Error refreshing status", err);
-    }
-};
-        globalUsers.forEach(u => {
-            if(text.includes(`@${u.name}`) && u.uid !== currentUserData.uid) mentionedUids.push(u.uid);
-        });
-    }
-
-    try {
-        const payload = {
-            uid: currentUserData.uid,
-            name: currentUserData.name,
-            photoURL: currentUserData.photoURL || 'https://ui-avatars.com/api/?name=User',
-            text: text,
-            groupId: currentGroupId || 'general', // تأكيد المجموعة هنا
-            timestamp: Date.now()
-        };
-        // إضافة الرد فقط إذا كان موجوداً لمنع خطأ Undefined
-        if (currentReplyTo) {
-            payload.replyTo = currentReplyTo;
-        }
-
-        await addDoc(getColRef('discussions'), payload);
-        
-        input.value = ''; 
-        input.style.height = 'auto';
-        document.getElementById('sendChatIcon').className = 'fa-solid fa-microphone';
-        window.cancelReply();
-
-        mentionedUids.forEach(uid => {
-            window.sendSystemNotification(uid, 'إشارة جديدة', `قام ${currentUserData.name} بالإشارة إليك في المناقشة.`, 'chat', 'discussion');
-        });
-
-    } catch(e) { 
-        console.error("Chat Send Error: ", e);
-        showToast('حدث خطأ، تأكد من اتصال الإنترنت', 'error'); 
-    } finally { 
-        btn.disabled = false;
-        btn.innerHTML = '<i id="sendChatIcon" class="fa-solid fa-microphone"></i>';
-        input.disabled = false; 
-        input.focus(); 
-    }
-};
-
-window.deleteGroup = async (groupId) => {
-    if(confirm('هل أنت متأكد من حذف هذه المجموعة؟')) {
-        try {
-            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'chat_groups', groupId));
-            currentGroupId = 'general';
-            document.getElementById('currentChatTitle').innerText = 'الدردشة العامة للشركة';
-            window.cancelReply();
-            window.renderDiscussion();
-            showToast('تم حذف المجموعة بنجاح', 'success');
-        } catch(e) { console.error(e); showToast('حدث خطأ أثناء الحذف', 'error'); }
-    }
-};
-
-// --- دوال المجموعات والأعضاء ---
-window.openCreateGroupModal = () => {
-    document.getElementById('createGroupForm').reset();
-    const list = document.getElementById('newGroupMembersList');
-    list.innerHTML = '';
-    globalUsers.forEach(u => {
-        if(u.uid !== currentUserData.uid) {
-            list.innerHTML += `
-                <label class="flex items-center gap-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded cursor-pointer transition">
-                    <input type="checkbox" value="${u.uid}" class="group-member-cb w-4 h-4 text-secondary rounded">
-                    <img src="${u.photoURL}" class="w-6 h-6 rounded-full object-cover">
-                    <span class="text-sm font-bold text-gray-700 dark:text-gray-200">${escapeHTML(u.name)}</span>
-                </label>
-            `;
-        }
-    });
-    window.openModal('createGroupModal');
-};
-
-window.handleCreateGroup = async (e) => {
-    e.preventDefault();
-    const name = document.getElementById('newGroupName').value.trim();
-    const cbs = document.querySelectorAll('.group-member-cb:checked');
-    const members = Array.from(cbs).map(cb => cb.value);
-    members.push(currentUserData.uid);
-
-    if(members.length < 2) {
-        showToast('يجب اختيار عضو واحد على الأقل (غيرك)', 'warning'); return;
-    }
-
-    try {
-        const docRef = await addDoc(getColRef('chat_groups'), {
-            name: name,
-            members: members,
-            createdBy: currentUserData.uid,
-            timestamp: Date.now()
-        });
-        
-        window.closeModal('createGroupModal');
-        showToast('تم إنشاء المجموعة بنجاح', 'success');
-        
-        // الانتقال تلقائياً للمجموعة الجديدة
-        currentGroupId = docRef.id;
-        document.getElementById('currentChatTitle').innerText = name;
-        
-        // إرسال رسالة نظام آلية تفيد بمن أنشأ المجموعة
-        await addDoc(getColRef('discussions'), {
-            uid: 'system',
-            name: 'نظام Quill',
-            photoURL: 'https://quill.world/wp-content/uploads/2022/01/New-Project-10-1.png',
-            text: `تم إنشاء المجموعة بواسطة ${currentUserData.name}`,
-            groupId: currentGroupId,
-            timestamp: Date.now()
-        });
-
-        window.cancelReply();
-        window.renderDiscussion();
-        
-    } catch(err) { console.error(err); showToast('حدث خطأ', 'error'); }
-};
-
-window.openChatMembersModal = () => {
-    const list = document.getElementById('chatMembersList');
-    list.innerHTML = '';
-    
-    let membersToShow = [];
-    if(currentGroupId === 'general') {
-        membersToShow = globalUsers; // الجميع في الدردشة العامة
-    } else {
-        const group = globalGroups.find(g => g.id === currentGroupId);
-        if(group) {
-            membersToShow = globalUsers.filter(u => group.members.includes(u.uid));
-        }
-    }
-
-    document.getElementById('currentChatMembersCount').innerText = `${membersToShow.length} عضو`;
-
-    membersToShow.forEach(u => {
-        list.innerHTML += `
-            <div class="flex items-center gap-3 bg-gray-50 dark:bg-gray-700 p-2 rounded-lg border border-gray-200 dark:border-gray-600">
-                <img src="${u.photoURL}" class="w-8 h-8 rounded-full object-cover border border-gray-300">
-                <div>
-                    <p class="text-xs font-bold text-gray-800 dark:text-white">${escapeHTML(u.name)}</p>
-                    <p class="text-[10px] text-gray-500">${escapeHTML(u.role)}</p>
-                </div>
-            </div>
-        `;
-    });
-    window.openModal('chatMembersModal');
-};
-
-// 1. دالة تأكيد العودة وحفظ السبب
-window.confirmReEntry = async () => {
-            const reasonInput = document.getElementById('reEntryReasonInput');
-            const reason = reasonInput.value.trim();
-            
-            // --- نظام الكشف الصارم (Gibberish Detector Pro) ---
-            const cleanReason = reason.replace(/[\.\-\_\s]/g, ''); 
-            const words = reason.split(/\s+/).filter(w => w.length > 0);
-
-            if (cleanReason.length < 15) {
-                showToast('مرفوض: يجب كتابة مبرر حقيقي وواضح لا يقل عن 15 حرفاً!', 'error');
-                reasonInput.focus(); 
-                return;
-            }
-            if (words.length < 3) {
-                showToast('مرفوض: يجب أن تتكون الجملة من 3 كلمات على الأقل لتوضيح السبب.', 'warning');
-                reasonInput.focus();
-                return;
-            }
-            if (/(.)\1{4,}/.test(reason)) {
-                showToast('مرفوض: يرجى عدم تكرار الحروف بشكل عشوائي!', 'warning');
-                return;
-            }
-            for (let w of words) {
-                // الكلمات الطويلة جداً التي لا تحتوي على 'ال' تعتبر في الغالب ضرباً عشوائياً على لوحة المفاتيح
-                if (w.length > 10 && !w.startsWith('ال') && !w.startsWith('وال')) {
-                    showToast('مرفوض: تم اكتشاف كلمات عشوائية غير مفهومة! يرجى الكتابة بشكل صحيح.', 'warning');
-                    return;
-                }
-            }
-
-            const btn = document.getElementById('confirmReEntryBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mx-1"></i> جاري تأكيد العودة...';
-
-            const today = getTodayDateString();
-            const docId = `${currentUserData.uid}_${today}`;
-            
-            // الدالة المساعدة لحفظ البيانات في قاعدة البيانات بعد محاولة تحديد الموقع
-            const processSave = async (locationData) => {
-                try {
-                    let record = globalAttendance.find(a => a.id === docId);
-                    let reEntries = record && record.reEntries ? record.reEntries : [];
-                    
-                    // إضافة الموقع مع السبب
-                    reEntries.push({ time: Date.now(), reason: reason, location: locationData });
-
-                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance', docId), {
-                        status: 'active',
-                        punchOut: null, 
-                        reEntries: reEntries
-                    });
-
-                    localStorage.setItem('quill_my_attendance_state', JSON.stringify({ date: today, status: 'active' }));
-                    hasPunchedInToday = true;
-                    unlockNavigation();
-                    document.getElementById('reEntryMainBtn').classList.add('hidden');
-                    
-                    showToast('تم تأكيد عودتك للعمل وإبلاغ الإدارة.', 'success');
-                    window.closeModal('reEntryModal');
-                    reasonInput.value = '';
-                    window.renderEmpAttendanceView();
-                    
-                    const ceoUsers = globalUsers.filter(u => u.role === 'CEO' || u.role === 'مطور' || (u.role && u.role.toUpperCase() === 'DEVELOPER'));
-                    ceoUsers.forEach(ceo => {
-                        window.sendSystemNotification(ceo.uid, 'عودة للعمل بعد الانصراف', `عاد الموظف ${currentUserData.name} للعمل. السبب: ${reason}`, 'attendance', 'attendance');
-                    });
-                } catch (error) {
-                    console.error("ReEntry Error:", error);
-                    showToast('حدث خطأ أثناء الاتصال بقاعدة البيانات.', 'error');
-                } finally {
-                    btn.disabled = false;
-                    btn.innerHTML = 'تأكيد العودة';
-                }
-            };
-
-            // محاولة التقاط الموقع الجغرافي (GPS) بصمت تام للمدير (بدون شاشات مزعجة للموظف)
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const gpsLink = `http://maps.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}`;
-                        processSave({ type: 'gps', link: gpsLink });
-                    },
-                    (error) => {
-                        // إذا رفض الموظف أو فشل التقاط الموقع، نمشيها له بصمت ولكن نسجل أن الموقع غير متوفر
-                        processSave({ type: 'unavailable', text: 'الموقع غير متوفر / مرفوض' });
-                    },
-                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-                );
-            } else {
-                processSave({ type: 'unavailable', text: 'المتصفح لا يدعم تحديد الموقع' });
-            }
-        };
-
-window.renderReEntryLogBadge = () => {
-    if (!currentUserData || !window.isAdmin()) return;
-    const btn = document.getElementById('ceoReEntryLogBtn');
-    const badge = document.getElementById('reEntryBadge');
-    if(!btn || !badge) return;
-    
-    const today = getTodayDateString();
-    let count = 0;
-    globalAttendance.forEach(a => {
-        if (a.date === today && a.reEntries && a.reEntries.length > 0) count += a.reEntries.length;
-    });
-
-    if (count > 0) {
-        btn.classList.remove('hidden'); btn.classList.add('flex');
-        badge.innerText = count; badge.classList.remove('hidden');
-    } else {
-        btn.classList.add('hidden'); btn.classList.remove('flex');
-    }
-};
-
-window.openReEntryLogModal = () => {
-    const list = document.getElementById('ceoReEntryLogList');
-    list.innerHTML = '';
-    const today = getTodayDateString();
-    
-    let logs = [];
-    globalAttendance.forEach(a => {
-        if (a.date === today && a.reEntries && a.reEntries.length > 0) {
-            const user = globalUsers.find(u => u.uid === a.uid);
-            const photo = user ? user.photoURL : 'https://ui-avatars.com/api/?name=User';
-            a.reEntries.forEach((re, index) => {
-                logs.push({ recordId: a.id, index: index, name: a.name, photo: photo, time: re.time, reason: re.reason, count: index + 1 });
-            });
-        }
-    });
-
-    logs.sort((a, b) => b.time - a.time);
-    document.getElementById('reEntryModalTitleTxt').innerText = `سجل العودة بعد الانصراف (اليوم)`;
-
-    if (logs.length === 0) {
-        list.innerHTML = '<p class="text-center text-gray-500 font-bold py-6">لا توجد أي حالات عودة للعمل اليوم.</p>';
-    } else {
-        logs.forEach(log => {
-            const timeStr = new Date(log.time).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
-            list.innerHTML += `
-                <div class="bg-white dark:bg-gray-800 p-3.5 rounded-xl shadow-sm border border-orange-200 dark:border-gray-700 flex items-start gap-3 flex-col relative">
-                    <div class="flex items-center gap-3 w-full">
-                        <img src="${log.photo}" class="w-10 h-10 rounded-full border border-gray-200 object-cover mt-1">
-                        <div class="flex-1">
-                            <div class="flex justify-between items-center mb-1">
-                                <h4 class="font-bold text-sm text-[#002d74] dark:text-white">${escapeHTML(log.name)}</h4>
-                                <span class="text-[9px] bg-red-100 text-red-600 px-2 py-0.5 rounded-md font-bold border border-red-200">عودة للمرة ${log.count}</span>
-                            </div>
-                            <p class="text-[10px] text-gray-500 mb-2 font-bold"><i class="fa-solid fa-clock-rotate-left mx-1 text-orange-500"></i>سجل عودة بعد الانصراف الساعة ${timeStr}</p>
-                        </div>
-                    </div>
-                    <div class="w-full bg-gray-50 dark:bg-gray-900 p-2.5 rounded-lg border border-gray-100 dark:border-gray-700 text-xs font-bold text-gray-700 dark:text-gray-300 shadow-inner">
-                        <span class="text-orange-600"><i class="fa-solid fa-circle-info mx-1"></i>السبب:</span> ${escapeHTML(log.reason)}
-                    </div>
-                    <button onclick="window.openSpecificReEntryLog('${log.recordId}', ${log.index})" class="w-full bg-orange-100 hover:bg-orange-200 text-orange-700 py-1.5 rounded text-[11px] font-bold transition border border-orange-200 mt-1"><i class="fa-solid fa-eye mx-1"></i> عرض القوائم التي دخل عليها</button>
-                </div>
-            `;
-        });
-    }
-    window.openModal('ceoReEntryLogModal');
-};
-
-window.openSpecificReEntryLog = async (recordId, entryIndex) => {
-    const record = globalAttendance.find(a => a.id === recordId);
-    if(!record || !record.reEntries || !record.reEntries[entryIndex]) return;
-    
-    const re = record.reEntries[entryIndex];
-    const nextRe = record.reEntries[entryIndex + 1];
-    const endTime = nextRe ? nextRe.time : (record.punchOut || Date.now()); 
-    
-    const user = globalUsers.find(u => u.uid === record.uid);
-    const photo = user ? user.photoURL : 'https://ui-avatars.com/api/?name=User';
-    
-    const list = document.getElementById('ceoReEntryLogList');
-    // إزالة النص المزعج ووضع دائرة تحميل سريعة فقط
-    list.innerHTML = '<div class="text-center p-6"><i class="fa-solid fa-spinner fa-spin text-2xl text-orange-500"></i></div>';
-    
-    // عرض التاريخ ليتذكر المدير
-    document.getElementById('reEntryModalTitleTxt').innerText = `سجل العودة والتتبع | تاريخ: ${record.date}`;
-    window.openModal('ceoReEntryLogModal');
-    
-    try {
-        // جلبنا فقط سجلات هذا الموظف، وسنقوم بالفلترة برمجياً لتخطي مشكلة فايربيس
-        const { getDocs, query, where, collection } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-        const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'logs'), 
-            where('uid', '==', record.uid)
-        );
-        const querySnapshot = await getDocs(q);
-        
-        let actions = [];
-        querySnapshot.forEach(doc => {
-            const data = doc.data();
-            // فلترة الوقت هنا بدلاً من قاعدة البيانات
-            if(data.timestamp >= re.time && data.timestamp <= endTime) {
-                actions.push(data);
-            }
-        });
-        actions.sort((a,b) => b.timestamp - a.timestamp);
-        
-        let actionsHtml = '';
-        if(actions.length === 0) {
-            actionsHtml = '<p class="text-center text-gray-500 text-xs py-4 font-bold bg-gray-50 rounded-lg border dark:border-gray-700">لم يقم الموظف بالدخول لأي قوائم بعد عودته.</p>';
-        } else {
-            actionsHtml = actions.map(act => {
-                const t = new Date(act.timestamp).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
-                
-                // تحديد الأيقونات بناءً على القسم الذي تمت زيارته
-                let icon = 'fa-bolt'; let color = 'text-gray-500';
-                if(act.details.includes('المستندات')) { icon = 'fa-folder-open'; color = 'text-cyan-500'; }
-                else if(act.details.includes('المهام') || act.action.includes('مهمة')) { icon = 'fa-list-check'; color = 'text-emerald-500'; }
-                else if(act.details.includes('المصاريف')) { icon = 'fa-file-invoice-dollar'; color = 'text-teal-500'; }
-                else if(act.details.includes('الاجتماعات')) { icon = 'fa-video'; color = 'text-blue-500'; }
-                else if(act.details.includes('العملاء')) { icon = 'fa-users'; color = 'text-lime-500'; }
-                else if(act.details.includes('الجرد')) { icon = 'fa-boxes-stacked'; color = 'text-purple-500'; }
-                else if(act.details.includes('الروبوتات')) { icon = 'fa-robot'; color = 'text-blue-600'; }
-                else if(act.details.includes('التعميمات')) { icon = 'fa-bullhorn'; color = 'text-yellow-500'; }
-                else if(act.details.includes('الحضور')) { icon = 'fa-user-clock'; color = 'text-indigo-500'; }
-                else if(act.details.includes('الإجازات')) { icon = 'fa-plane-departure'; color = 'text-pink-500'; }
-                else if(act.details.includes('الرئيسية')) { icon = 'fa-house'; color = 'text-primary'; }
-                
-                return `
-                    <div class="flex items-center gap-3 bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm mb-2 hover:border-orange-200 transition">
-                        <div class="w-8 h-8 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 flex items-center justify-center shrink-0">
-                            <i class="fa-solid ${icon} ${color}"></i>
-                        </div>
-                        <div class="flex-1">
-                            <p class="text-[11px] font-bold text-gray-800 dark:text-gray-200">${escapeHTML(act.action)}</p>
-                            <p class="text-[10px] text-gray-500 truncate" title="${escapeHTML(act.details)}">${escapeHTML(act.details)}</p>
-                        </div>
-                        <span class="text-[9px] text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded shrink-0" dir="ltr">${t}</span>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        const timeStr = new Date(re.time).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
-        list.innerHTML = `
-            <div class="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
-                <div class="flex items-center gap-3 mb-4">
-                    <img src="${photo}" class="w-12 h-12 rounded-full border border-gray-300 object-cover">
-                    <div>
-                        <h4 class="font-bold text-sm text-[#002d74] dark:text-white">${escapeHTML(record.name)}</h4>
-                        <p class="text-[10px] text-gray-500 font-bold bg-white dark:bg-gray-800 px-2 py-0.5 rounded shadow-sm inline-block mt-1 border dark:border-gray-700">توقيت العودة: ${timeStr}</p>
-                    </div>
-                </div>
-                <div class="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg border border-orange-200 dark:border-orange-800 mb-4">
-                    <span class="text-orange-700 dark:text-orange-400 font-bold text-xs flex items-center gap-1 mb-1"><i class="fa-solid fa-quote-right"></i> السبب المدخل:</span>
-                    <p class="text-xs text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed font-semibold">${escapeHTML(re.reason)}</p>
-                </div>
-                <h5 class="text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 border-b dark:border-gray-700 pb-2"><i class="fa-solid fa-shoe-prints mx-1 text-orange-500"></i>القوائم التي دخل عليها:</h5>
-                <div class="max-h-48 overflow-y-auto custom-scrollbar pr-1">
-                    ${actionsHtml}
-                </div>
-            </div>
-            <button onclick="window.openReEntryLogModal()" class="w-full mt-3 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border dark:border-gray-600 py-2 rounded-lg font-bold text-xs transition"><i class="fa-solid fa-arrow-right mx-1"></i> العودة للقائمة السابقة</button>
-        `;
-    } catch(e) { 
-        console.error(e); 
-        list.innerHTML = '<div class="p-6 text-center text-red-500 font-bold">حدث خطأ أثناء جلب البيانات. يرجى المحاولة لاحقاً.</div>';
-    }
-};
-
-// ================== نظام الـ OTP التفاعلي داخل الإعدادات ==================
-        
-        window.startSettingsEmailVerification = async () => {
-    let email = document.getElementById('settingsEmail').value.trim();
-    if(!email) { 
-        showToast('لا يوجد بريد إلكتروني للتحقق منه', 'error'); 
-        return; 
-    }
-
-    const otpUI = document.getElementById('settingsOtpUI');
-    otpUI.classList.remove('hidden');
-    
-    const boxes = document.querySelectorAll('.otp-box');
-    boxes.forEach(b => {
-        b.value = '';
-        b.classList.remove('shake-error', 'otp-merged', 'otp-hidden', 'bg-red-100');
-        b.disabled = false;
-    });
-    boxes[0].focus();
-
-    try {
-        const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-        window.settingsEmailOTP = generatedOtp;
-
-        fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({
-                action: 'sendVerificationOTP',
-                employeeName: currentUserData.name,
-                to_email: email,
-                otpCode: generatedOtp
-            })
-        }).catch(e => console.error(e));
-
-        showToast('تم إرسال رمز التحقق (OTP) إلى بريدك الإلكتروني', 'success');
-    } catch (err) {
-        console.error(err);
-        showToast('حدث خطأ في الإرسال: ' + err.message, 'error');
-    }
-};
-
-        document.addEventListener('paste', (e) => {
-            if(e.target && e.target.classList && e.target.classList.contains('otp-box')) {
-                e.preventDefault();
-                let pasteData = (e.clipboardData || window.clipboardData).getData('text').trim();
-                // Extract only numbers
-                pasteData = pasteData.replace(/\D/g, '');
-                if (pasteData.length >= 6) {
-                    const boxes = document.querySelectorAll('.otp-box');
-                    for(let i = 0; i < 6; i++) {
-                        if(boxes[i]) boxes[i].value = pasteData[i];
-                    }
-                    window.verifySettingsOtpCode(pasteData.substring(0, 6), boxes);
-                }
-            }
-        });
-
-        window.moveOtpFocus = (input, index) => {
-            // الانتقال للمربع التالي
-            if (input.value.length === 1 && index < 6) {
-                document.querySelectorAll('.otp-box')[index].focus();
-            }
-            // إذا اكتملت الـ 6 أرقام نقوم بالتحقق فوراً
-            const boxes = document.querySelectorAll('.otp-box');
-            let enteredOtp = '';
-            boxes.forEach(b => enteredOtp += b.value);
-            
-            if (enteredOtp.length === 6) {
-                window.verifySettingsOtpCode(enteredOtp, boxes);
-            }
-        };
-
-        window.verifySettingsOtpCode = async (enteredOtp, boxes) => {
-    if (!window.settingsEmailOTP) {
-        showToast('يرجى طلب رمز OTP أولاً', 'warning');
-        return;
-    }
-
-    try {
-        if (enteredOtp !== window.settingsEmailOTP) {
-            throw new Error('invalid-otp');
-        }
-        
-        // نجاح التحقق
-        boxes.forEach(b => b.disabled = true);
-        boxes[0].value = '✓';
-        boxes[0].classList.add('otp-merged');
-        for (let i = 1; i < 6; i++) {
-            boxes[i].classList.add('otp-hidden');
-        }
-
-        const fw = document.getElementById('fireworksOverlay');
-        const sound = document.getElementById('fireworksSound');
-        if(fw) {
-            fw.classList.remove('hidden', 'opacity-0');
-            fw.classList.add('opacity-100');
-            fw.querySelector('p').innerText = "تم التحقق من البريد الإلكتروني بنجاح 📧✨";
-            if(sound) { sound.currentTime = 0; sound.play().catch(()=>{}); }
-            if(window.confetti) {
-                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ['#22c55e', '#ffffff', '#00839b'] });
-            }
-            setTimeout(() => {
-                fw.classList.replace('opacity-100', 'opacity-0');
-                setTimeout(() => fw.classList.add('hidden'), 500);
-            }, 3000);
-        }
-
-        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUserData.uid), {
-            emailVerified: true
-        });
-        
-        currentUserData.emailVerified = true;
-        localStorage.setItem('quill_user_cache_services', JSON.stringify(currentUserData));
-        
-        setTimeout(() => {
-            document.getElementById('settingsOtpUI').classList.add('hidden');
-            document.getElementById('emailVerificationSection').classList.add('hidden');
-            document.getElementById('emailVerifiedBadge').classList.remove('hidden');
-            document.getElementById('settingsNotifDot').classList.add('hidden');
-        }, 1500);
-
-        window.settingsEmailOTP = null;
-
-    } catch (err) {
-        console.error(err);
-        const statusIcon = document.getElementById('otpStatusIcon');
-        boxes.forEach(b => {
-            b.classList.add('shake-error', 'bg-red-100');
-            b.value = '';
-        });
-        statusIcon.innerHTML = '<i class="fa-solid fa-xmark text-6xl text-red-500 animate-bounce"></i>';
-        statusIcon.classList.remove('hidden');
-        statusIcon.classList.replace('opacity-0', 'opacity-100');
-        setTimeout(() => {
-            boxes.forEach(b => b.classList.remove('shake-error', 'bg-red-100'));
-            statusIcon.classList.replace('opacity-100', 'opacity-0');
-            setTimeout(() => statusIcon.classList.add('hidden'), 300);
-            boxes[0].focus();
-        }, 1200);
-    }
-};
-
-window.showRejectReason = (reason) => {
-            // نستخدم نافذة التنبيهات المخصصة أو alert بسيط (المخصص أفضل)
-            document.getElementById('customConfirmMessage').innerText = reason;
-            document.getElementById('customConfirmMessage').classList.add('whitespace-pre-wrap', 'text-right', 'font-bold', 'text-red-600');
-            document.querySelector('#customConfirmModal h3').innerText = 'سبب الرفض والتعديل المطلوب';
-            document.querySelector('#customConfirmModal i').className = 'fa-solid fa-clipboard-list text-3xl text-orange-500';
-            
-            const modal = document.getElementById('customConfirmModal');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-            
-            const actionBtn = document.getElementById('customConfirmActionBtn');
-            actionBtn.innerText = 'حسناً';
-            actionBtn.classList.replace('bg-red-500', 'bg-orange-500');
-            actionBtn.classList.replace('hover:bg-red-600', 'hover:bg-orange-600');
-            
-            const cancelBtn = modal.querySelector('.bg-gray-100');
-            if(cancelBtn) cancelBtn.classList.add('hidden');
-            
-            actionBtn.onclick = () => {
-                modal.classList.add('hidden');
-                modal.classList.remove('flex');
-                if(cancelBtn) cancelBtn.classList.remove('hidden');
-                // إعادة الزر لشكله الأصلي لعمليات الحذف المستقبلية
-                actionBtn.innerText = 'نعم، احذف';
-                actionBtn.classList.replace('bg-orange-500', 'bg-red-500');
-                actionBtn.classList.replace('hover:bg-orange-600', 'hover:bg-red-600');
-                document.querySelector('#customConfirmModal h3').innerText = 'تأكيد الحذف';
-                document.querySelector('#customConfirmModal i').className = 'fa-solid fa-trash-can text-3xl text-red-500';
-                document.getElementById('customConfirmMessage').classList.remove('whitespace-pre-wrap', 'text-right', 'font-bold', 'text-red-600');
-            };
-        };
-// ==========================================
-// ??? ?????? ????????? ???????? ??? Firebase Functions
-// ==========================================
-
-
-window.closeRobotControlPanel = () => {
-    document.getElementById('robotControlModal').classList.add('hidden');
-    document.getElementById('robotControlModal').classList.remove('flex');
-};
-
-
-
-window.refreshRobotStatus = async () => {
-    const stateEl = document.getElementById('rc-state');
-    const batEl = document.getElementById('rc-bat');
-    
-    stateEl.innerText = 'جاري الفحص...';
-    
-    const res = await window.callPuduApi('status', {}, true);
-    const data = res && res.data ? res.data : res;
-    
-    if(data) {
-        const runState = data.run_state || data.runState;
-        const bat = data.battery !== undefined ? data.battery : (data.power !== undefined ? data.power : 0);
-        
-        batEl.innerText = bat + '%';
-        if(bat > 50) batEl.className = 'font-bold text-green-400 text-xl';
-        else if(bat > 20) batEl.className = 'font-bold text-yellow-400 text-xl';
-        else batEl.className = 'font-bold text-red-500 text-xl animate-pulse';
-        
-        stateEl.innerText = runState || 'متصل (لا توجد حالة)';
-        stateEl.className = 'font-bold text-green-400';
-    } else {
-        stateEl.innerText = 'غير متصل';
-        stateEl.className = 'font-bold text-red-500';
-    }
-};
-
-window.sendRobotTo = async (pointName) => {
-    showToast('جاري توجيه الروبوت إلى ' + pointName + '...', 'info');
-    
-    // بناء الطلب كما في لوحة التحكم القديمة الناجحة
-    const payload = {
-        point: pointName,
-        point_type: pointName === 'Pick up' || pointName.includes('استلام') ? 'dining_outlet' : 'table',
-        call_mode: 'CALL',
-        do_not_queue: true,
-        priority: 1
-    };
-    
-    const res = await window.callPuduApi('call', payload);
-    if(res) {
-        showToast('تم إرسال الروبوت بنجاح! 🚀', 'success');
-        window.refreshRobotStatus();
-    } else {
-        showToast('فشل في توجيه الروبوت', 'warning');
-    }
-};
-
-window.sendRobotVoice = async () => {
-    const text = document.getElementById('rc-voiceText').value;
-    if(!text) { showToast('اكتب النص أولاً!', 'warning'); return; }
-    
-    showToast('جاري إرسال النص...', 'info');
-    
-    // بناء الطلب كما في اللوحة القديمة
-    const payload = {
-        payload: {
-            callMode: 'TEXT',
-            modeData: {
-                text: text,
-                showTimeout: 10
-            }
-        }
-    };
-    
-    const res = await window.callPuduApi('speak', payload);
-    if(res) {
-        showToast('تم نطق/عرض النص بنجاح 🔊', 'success');
-        document.getElementById('rc-voiceText').value = '';
-    } else {
-        showToast('فشل إرسال النص', 'warning');
-    }
-};
-
-window.fetchRobotMap = async () => {
-    const tablesList = document.getElementById('rc-tablesList');
-    
-    const res = await window.callPuduApi('map');
-    const data = res && res.data ? res.data : res;
-    
-    if(data && data.standList && data.standList.length > 0) {
-        tablesList.innerHTML = '';
-        data.standList.forEach(t => {
-            const btnHtml = `
-                <button onclick="window.sendRobotTo('${escapeHTML(t.name)}')" class="bg-gray-700 hover:bg-indigo-600 text-white font-bold py-2 px-3 rounded text-sm transition flex flex-col items-center gap-1 border border-gray-600 hover:border-indigo-400">
-                    <i class="fa-solid fa-location-dot text-indigo-400 text-lg"></i>
-                    <span>${escapeHTML(t.name)}</span>
-                </button>
-            `;
-            tablesList.innerHTML += btnHtml;
-        });
-        
-        // زر الاستلام
-        tablesList.innerHTML += `
-            <button onclick="window.sendRobotTo('Pick up')" class="bg-orange-600 hover:bg-orange-500 text-white font-bold py-2 px-3 rounded text-sm transition flex flex-col items-center gap-1 border border-orange-400 col-span-2 mt-2 shadow-lg">
-                <i class="fa-solid fa-house-flag text-lg"></i>
-                <span>عودة للاستلام (Pick up)</span>
-            </button>
-        `;
-    } else {
-        // افتراضي في حال فشل الخريطة (نفس اللي كان باللوحة القديمة)
-        tablesList.innerHTML = `
-            <button onclick="window.sendRobotTo('1')" class="bg-gray-700 hover:bg-indigo-600 text-white py-2 rounded text-sm font-bold border border-gray-600">طاولة 1</button>
-            <button onclick="window.sendRobotTo('2')" class="bg-gray-700 hover:bg-indigo-600 text-white py-2 rounded text-sm font-bold border border-gray-600">طاولة 2</button>
-            <button onclick="window.sendRobotTo('Zaid')" class="bg-gray-700 hover:bg-indigo-600 text-white py-2 rounded text-sm font-bold border border-gray-600">Zaid</button>
-            <button onclick="window.sendRobotTo('Pick up')" class="bg-orange-600 hover:bg-orange-500 text-white py-2 rounded text-sm font-bold border border-orange-400 col-span-2">عودة للاستلام</button>
-            <p class="col-span-2 text-center text-yellow-500 text-[10px] mt-1">لم يتم جلب الخريطة، تظهر الأزرار الافتراضية.</p>
-        `;
-    }
-};
-
-
-window.connectRobotToPudu = async (robotId, sn, robotName) => {
-    window.currentRobotSn = sn;
-    window.currentRobotName = robotName;
-    const rcTitle = document.getElementById('rc-title');
-    if (rcTitle) rcTitle.innerText = robotName;
-    
-    // Handle Model Specific UI
-    const isKetty = sn.toLowerCase().startsWith('pnt') || sn.toLowerCase().startsWith('kty') || robotName.toLowerCase().includes('ketty');
-    const isBella = sn.toLowerCase().startsWith('bl') || robotName.toLowerCase().includes('bella');
-    
-    document.querySelectorAll('.rc-ketty-only').forEach(el => {
-        if (isKetty) {
-            el.style.display = '';
-        } else {
-            el.style.display = 'none';
-        }
-    });
-    
-    window.switchRcTab('status');
-
-    const btn = document.getElementById('pudu-btn-' + robotId);
-    const badge = document.getElementById('pudu-badge-' + robotId);
-    const statusDiv = document.getElementById('pudu-status-' + robotId);
-
-    const setStatus = (icon, msg, color, badgeText, badgeColor) => {
-        if(statusDiv) {
-            statusDiv.className = 'mb-2 text-[10px] p-2 rounded-lg ' + color;
-            statusDiv.innerHTML = icon + ' ' + msg;
-            statusDiv.classList.remove('hidden');
-        }
-        if(badge) {
-            badge.textContent = badgeText;
-            badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold ' + badgeColor;
-        }
-    };
-
-    // --- فحص 1: هل الاسم مدعوم ---
-    const isSupported = robotName && (
-        robotName.toLowerCase().includes('bella') ||
-        robotName.toLowerCase().includes('ketty') ||
-        robotName.toLowerCase().includes('quill')
-    );
-    if (!isSupported) {
-        setStatus('⚠️', 'هذا الروبوت ليس من أنواع Pudu المدعومة (Bella / Ketty / Quill). لا يمكن الاتصال.', 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300', '⚠️ غير مدعوم', 'bg-yellow-100 text-yellow-700');
-        return;
-    }
-
-    // --- فحص 2: هل يوجد SN ---
-    if (!sn || sn === 'بدون رقم' || sn.trim() === '') {
-        setStatus('❌', 'الرقم التسلسلي (SN) مفقود! اضغط على "تعديل" وأدخل الرقم التسلسلي الصحيح للروبوت.', 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300', '❌ SN مفقود', 'bg-red-100 text-red-700');
-        return;
-    }
-
-    // --- فحص 3: هل SN يبدو صحيحاً (أقل من 5 أحرف مشبوه) ---
-    if (sn.trim().length < 5) {
-        setStatus('⚠️', 'الرقم التسلسلي (SN) قصير جداً ويبدو غير صحيح. تأكد منه واضغط "تعديل" لتصحيحه.', 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300', '⚠️ SN مشبوه', 'bg-yellow-100 text-yellow-700');
-        return;
-    }
-
-    // --- الاتصال الفعلي ---
-    if(btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الاتصال بسيرفر Pudu...';
-    }
-    setStatus('⏳', 'يتم الاتصال بسيرفرات Pudu Cloud عبر البوابة الآمنة...', 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300', '⏳ جاري الاتصال...', 'bg-blue-100 text-blue-700');
-
-    try {
-        const puduGateway = httpsCallable(cloudFunctions, 'puduGateway');
-        const result = await puduGateway({ action: 'status', sn: sn.trim(), payload: {} });
-
-        if(btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fa-solid fa-plug-circle-bolt"></i> اتصال بسيرفر Pudu';
-        }
-
-        // --- تحليل الرد الذكي ---
-        if (!result.data) {
-            setStatus('❌', 'لا يوجد رد من السيرفر. تحقق من اتصالك بالإنترنت وأعد المحاولة.', 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300', '❌ لا يوجد رد', 'bg-red-100 text-red-700');
-            return;
-        }
-
-        if (!result.data.success) {
-            const errMsg = result.data.error || 'خطأ غير معروف';
-            let friendlyMsg = 'خطأ من سيرفر Pudu: ' + errMsg;
-            
-            if (errMsg.includes('404') || errMsg.toLowerCase().includes('not found')) {
-                friendlyMsg = 'الرقم التسلسلي (SN) غير موجود في سيرفر Pudu. تأكد أن الروبوت مسجل في منصة Pudu وأن الـ SN صحيح.';
-            } else if (errMsg.includes('401') || errMsg.toLowerCase().includes('unauthorized')) {
-                friendlyMsg = 'خطأ في مفاتيح API. تحقق من APP_KEY و APP_SECRET في Firebase Functions.';
-            } else if (errMsg.includes('403')) {
-                friendlyMsg = 'ليس لديك صلاحية الوصول لهذا الروبوت في سيرفر Pudu.';
-            } else if (errMsg.includes('timeout') || errMsg.includes('ECONNREFUSED')) {
-                friendlyMsg = 'انتهت مهلة الاتصال. الروبوت غير متصل بالإنترنت أو السيرفر بعيد.';
-            }
-            
-            setStatus('❌', friendlyMsg, 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300', '❌ فشل الاتصال', 'bg-red-100 text-red-700');
-            return;
-        }
-
-        // --- نجح الاتصال! ---
-        if (robotId) {
-            try {
-                
-                await updateDoc(doc(db, "robots", robotId), { puduLinked: true });
-                const r = globalRobots.find(x => x.id === robotId);
-                if(r) r.puduLinked = true;
-            } catch(e) { console.error("Failed to save puduLinked state:", e); }
-        }
-
-        const data = result.data.data && result.data.data.data ? result.data.data.data : result.data.data;
-        if (data) {
-            const bat = data.battery !== undefined ? data.battery + '%' : 'غير محدد';
-            const state = data.run_state || 'متصل';
-            setStatus(
-                '✅',
-                `الروبوت متصل بنجاح بسيرفر Pudu! | البطارية: ${bat} | الحالة: ${state}`,
-                'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300',
-                '✅ متصل - ' + bat,
-                'bg-green-100 text-green-700'
-            );
+            setStatus('✅', 'الروبوت متصل بنجاح بسيرفر Pudu! | البطارية: ' + batStr + ' | الحالة: ' + displayState, 'bg-green-50 text-green-700', displayState, badgeColor);
         } else {
             setStatus('✅', 'الاتصال بسيرفر Pudu ناجح! الروبوت مسجل ومتاح.', 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300', '✅ متصل', 'bg-green-100 text-green-700');
         }
@@ -12303,37 +11340,7 @@ window.setRobotVolume = async () => {
 // ADVANCED CLOUD FEATURES (UPLOADS & APK)
 // ==========================================
 
-window.uploadAndPushAd = async () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*,video/mp4';
-    input.onchange = async (e) => {
-        const file = e.target.files[0];
-        if(!file) return;
-        
-        showToast("جاري الرفع إلى السحابة الخاصة بك (Firebase)...", "info");
-        try {
-            const url = await window.uploadToFirebase(file, 'pudu_ads');
-            showToast("تم الرفع! جاري البث للروبوت...", "info");
-            
-            const isVideo = file.type.includes('video');
-            const payload = { 
-                payload: { 
-                    callMode: isVideo ? "VIDEO" : "PICTURE", 
-                    modeData: { url: url } 
-                } 
-            };
-            const res = await window.callPuduApi("speak", payload);
-            if(res) {
-                showToast("تم عرض الإعلان على شاشة الروبوت 📺", "success");
-            }
-        } catch(err) {
-            console.error(err);
-            showToast("حدث خطأ أثناء الرفع", "error");
-        }
-    };
-    input.click();
-};
+
 
 window.installApk = async () => {
     const input = document.createElement('input');
@@ -12622,5 +11629,146 @@ window.removeImageBackground = async () => {
     } catch (e) {
         console.error(e);
         showToast("حدث خطأ في الاتصال", "error");
+    }
+};
+
+
+window.buildRobotCardHTML = function(r, actionBtnsHtml, isPuduRobot, puduBtnCls, hasSN) {
+    let type = "PuduBot";
+    let img = "https://businesss.pudutech.com/robot-image-proxy/robot-image-resource/small-size/62.png";
+    const n = (r.name || "").toLowerCase();
+    const snLower = (r.serialNumber || "").toLowerCase();
+    
+    if (n.includes("bella") || snLower.startsWith('bl') || snLower.startsWith('sv')) { 
+        type = "BellaBot"; 
+        img = "https://businesss.pudutech.com/robot-image-proxy/robot-image-resource/small-size/62.png"; 
+    }
+    else if (n.includes("ketty") || snLower.startsWith('pnt') || snLower.startsWith('kty')) { 
+        type = "KettyBot"; 
+        img = "https://businesss.pudutech.com/robot-image-proxy/robot-image-resource/small-size/67.png"; 
+    }
+    else if (n.includes("quill") || n.includes("flash")) { 
+        type = "FlashBot"; 
+        img = "https://businesss.pudutech.com/robot-image-proxy/robot-image-resource/small-size/73.png"; 
+    }
+
+    const controlBtn = isPuduRobot ? `<button onclick="window.openRobotControlPanel('${r.id}')" class="text-blue-500 hover:text-blue-700 text-[11px] font-bold flex items-center gap-1 transition"><i class="fa-solid fa-gamepad"></i> Detail (Control)</button>` : '';
+
+    return `
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col h-full hover:shadow-md transition overflow-hidden">
+            <!-- Top Section -->
+            <div class="p-4 flex gap-4 items-center">
+                <!-- Image -->
+                <div class="w-16 h-16 bg-gray-50 rounded-lg flex items-center justify-center p-1 shrink-0 border border-gray-100">
+                    <img src="${img}" alt="Robot" class="max-h-full object-contain drop-shadow-sm">
+                </div>
+                
+                <!-- Info -->
+                <div class="flex-1 min-w-0">
+                    <h3 class="font-bold text-gray-800 dark:text-gray-200 text-sm truncate">${escapeHTML(r.name)}</h3>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="text-[11px] text-gray-500">${type}</span>
+                        <span id="pudu-badge-${r.id}" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-500">Offline</span>
+                    </div>
+                    <div class="text-[10px] text-gray-400 mt-1 truncate">SN: ${escapeHTML(r.serialNumber)}</div>
+                </div>
+                
+                <!-- Circular Battery -->
+                <div class="shrink-0 flex flex-col items-center justify-center w-14">
+                    <div class="relative w-12 h-12 flex items-center justify-center">
+                        <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                            <path class="text-gray-100 stroke-current" stroke-width="3" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            <path id="bat-circle-${r.id}" class="text-gray-300 stroke-current transition-all duration-700" stroke-width="3" stroke-dasharray="0, 100" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <span id="bat-text-${r.id}" class="text-[10px] font-bold text-gray-700 dark:text-gray-300">--%</span>
+                            <span class="text-[6px] text-gray-400 uppercase tracking-tighter -mt-1">Battery</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Connection Status -->
+            <div id="pudu-status-${r.id}" class="hidden text-center text-[10px] px-2 py-1 mx-4 mb-2 rounded bg-gray-50 text-gray-500"></div>
+            ${isPuduRobot ? `<div class="px-4 mb-2"><button id="pudu-btn-${r.id}" onclick="window.connectRobotToPudu('${r.id}', '${escapeHTML(r.serialNumber)}', '${escapeHTML(r.name)}')" class="w-full ${puduBtnCls} border py-1 rounded text-[10px] font-bold transition flex items-center justify-center gap-1 shadow-sm"><i class="fa-solid fa-plug-circle-bolt"></i> جلب الحالة</button></div>` : ''}
+
+            <!-- Footer / Actions -->
+            <div class="mt-auto flex border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                <div class="flex-1 p-2 flex justify-center border-r border-gray-100 dark:border-gray-700 opacity-50 cursor-not-allowed text-[11px] font-medium text-gray-500">
+                    <i class="fa-solid fa-desktop mr-1 mt-0.5"></i> Remote D...
+                </div>
+                <div class="flex-1 p-2 flex justify-center border-r border-gray-100 dark:border-gray-700">
+                    ${controlBtn}
+                </div>
+                
+                <!-- Dropdown for Old Actions -->
+                <div class="flex-1 p-2 flex justify-center relative group cursor-pointer text-gray-500 hover:text-indigo-600 transition">
+                    <div class="text-[11px] font-medium flex items-center gap-1"><i class="fa-solid fa-ellipsis-vertical"></i> إدارة</div>
+                    <!-- Hover Menu -->
+                    <div class="absolute bottom-full right-0 mb-1 hidden group-hover:flex flex-col bg-white dark:bg-gray-800 shadow-xl border border-gray-200 dark:border-gray-700 rounded-lg p-2 w-48 z-50">
+                        <div class="text-[10px] text-gray-400 mb-1 border-b pb-1 font-bold">معلومات: ${escapeHTML(r.status)} | القسم: ${escapeHTML(r.department||'عادي')}</div>
+                        ${actionBtnsHtml}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+};
+
+
+
+window.previewAdFile = (input) => {
+    const file = input.files[0];
+    if(!file) return;
+    
+    const imgPreview = document.getElementById('adImagePreview');
+    const vidPreview = document.getElementById('adVideoPreview');
+    const emptyState = document.getElementById('adEmptyState');
+    
+    imgPreview.classList.add('hidden');
+    vidPreview.classList.add('hidden');
+    emptyState.classList.add('hidden');
+    
+    const url = URL.createObjectURL(file);
+    
+    if(file.type.includes('video')) {
+        vidPreview.src = url;
+        vidPreview.classList.remove('hidden');
+    } else {
+        imgPreview.src = url;
+        imgPreview.classList.remove('hidden');
+    }
+    
+    window.currentAdFile = file; // Save globally for the push function
+};
+
+window.saveAndPushAd = async () => {
+    if(!window.currentAdFile) {
+        showToast("يرجى اختيار صورة أو فيديو أولاً", "error");
+        return;
+    }
+    
+    showToast("جاري الرفع إلى السحابة الخاصة بك...", "info");
+    const file = window.currentAdFile;
+    
+    try {
+        const url = await window.uploadToFirebase(file, 'pudu_ads');
+        showToast("تم الرفع! جاري البث للروبوت...", "info");
+        
+        const isVideo = file.type.includes('video');
+        const payload = { 
+            payload: { 
+                callMode: isVideo ? "VIDEO" : "PICTURE", 
+                modeData: { url: url } 
+            } 
+        };
+        const res = await window.callPuduApi("speak", payload);
+        if(res) {
+            showToast("✅ تم عرض الإعلان على شاشة الروبوت بنجاح!", "success");
+            // Here you could also save the start/end dates to your Firestore robot document if needed.
+        }
+    } catch(err) {
+        console.error(err);
+        showToast("حدث خطأ أثناء الرفع", "error");
     }
 };
