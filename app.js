@@ -12498,7 +12498,7 @@ window.refreshRobotStatus = async () => {
                 
                 // Charging Detection
                 const stateStr = JSON.stringify(data).toUpperCase();
-                const isCharging = stateStr.includes("CHARGING") || runState.toUpperCase().includes('CHARG');
+                const isCharging = (data.is_charging == 1 || data.is_charging === true || data.charge_state === "CHARGING" || runState.toUpperCase().includes("CHARG"));
                 
                 if (isCharging) {
                     if (chargingIcon) chargingIcon.classList.remove("hidden");
