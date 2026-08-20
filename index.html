@@ -3776,97 +3776,160 @@
         <div class="flex-1 overflow-y-auto p-6 bg-slate-50 custom-scrollbar relative">
             
             <!-- TAB: STATUS -->
-            <div id="rc-content-status" class="rc-tab-content block max-w-5xl mx-auto w-full">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <!-- Status Card -->
-                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-center">
-                        <p class="text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wider">حالة التشغيل</p>
-                        <p id="rc-state" class="text-lg font-bold text-slate-800">جاري الفحص...</p>
-                        <div class="mt-2 text-sm font-bold text-emerald-500 flex items-center gap-1.5" id="rc-iotStatus">
-                            <i class="fa-solid fa-circle-check"></i> Online
+            <div id="rc-content-status" class="rc-tab-content block max-w-6xl mx-auto w-full bg-slate-50 p-6 rounded-lg">
+                <div class="flex flex-col md:flex-row gap-6">
+                    
+                    <!-- Left Sidebar (Info Card) -->
+                    <div class="w-full md:w-[320px] bg-white border border-slate-200 rounded-sm shadow-sm flex flex-col p-6 h-fit shrink-0">
+                        <div class="flex items-center gap-4 border-b border-slate-100 pb-6 mb-6">
+                            <div class="w-16 h-16 bg-slate-50 flex items-center justify-center p-1 rounded">
+                                <img id="rc-info-img" src="https://businesss.pudutech.com/robot-image-proxy/robot-image-resource/small-size/62.png" class="object-contain w-full h-full drop-shadow-sm" />
+                            </div>
+                            <div>
+                                <h3 id="rc-title" class="font-bold text-sm text-slate-800 mb-1">Robot Name</h3>
+                                <p id="rc-robotType" class="text-xs text-slate-500">PuduBot</p>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-6">
+                            <div>
+                                <p class="text-xs text-slate-500 mb-1.5">MAC</p>
+                                <div class="flex items-center gap-2">
+                                    <p id="rc-mac" class="text-sm text-slate-700">10:2C:6B:97:C9:64</p>
+                                    <i class="fa-regular fa-copy text-blue-500 cursor-pointer hover:text-blue-700 transition" onclick="navigator.clipboard.writeText(document.getElementById('rc-mac').innerText); showToast('تم النسخ', 'success');"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-500 mb-1.5 flex items-center gap-1">Machine operating status <i class="fa-regular fa-circle-question text-slate-400"></i></p>
+                                <p id="rc-state" class="text-sm text-slate-700">Running</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-500 mb-1.5 flex items-center gap-1">Remote Maintenance of IoT Status <i class="fa-regular fa-circle-question text-slate-400"></i></p>
+                                <p id="rc-iotStatus" class="text-sm text-slate-700">Online</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-500 mb-1.5">Machine power</p>
+                                <p id="rc-batText" class="text-sm text-slate-700">47%</p>
+                                <div class="w-full bg-slate-100 h-1 mt-2"><div id="rc-batBar" class="bg-blue-500 h-1"></div></div>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-500 mb-1.5">Software version</p>
+                                <p id="rc-version" class="text-sm text-slate-700">6.13.0.51</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-500 mb-1.5">Current Map</p>
+                                <div class="flex justify-between items-center">
+                                    <p id="rc-mapName" class="text-sm text-slate-700 truncate max-w-[200px]">Unknown</p>
+                                    <button onclick="window.fetchRobotMap()" class="text-xs text-blue-500 hover:underline">تحديث</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <!-- Battery Card -->
-                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-center">
-                        <p class="text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wider">البطارية (Power)</p>
-                        <div class="flex items-center gap-2 mb-2">
-                            <p id="rc-batText" class="text-xl font-black text-slate-700">--%</p>
-                            <span id="rc-chargingIcon" class="hidden text-emerald-500 text-lg"><i class="fa-solid fa-bolt"></i></span>
-                        </div>
-                        <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                            <div id="rc-batBar" class="bg-emerald-500 h-2.5 rounded-full transition-all duration-700" style="width: 0%"></div>
-                        </div>
-                    </div>
-                    <!-- Map Card -->
-                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-center">
-                        <p class="text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wider">الخريطة (Current Map)</p>
-                        <p id="rc-mapName" class="text-sm font-bold text-slate-400">غير متوفرة</p>
-                        <button onclick="window.fetchRobotMap()" class="mt-2 text-xs text-indigo-600 bg-indigo-50 hover:bg-indigo-100 py-1 px-2 rounded w-fit transition">تحديث الخريطة <i class="fa-solid fa-rotate"></i></button>
-                    </div>
-                    <!-- System Info Card -->
-                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-center col-span-1 md:col-span-2 lg:col-span-3">
-                        <p class="text-xs text-slate-400 mb-3 font-semibold uppercase tracking-wider">معلومات النظام (System Info)</p>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div>
-                                <p class="text-[10px] text-slate-400 mb-1 uppercase">MAC Address</p>
-                                <p id="rc-mac" class="text-xs font-bold text-indigo-600 font-mono bg-indigo-50 px-2 py-1 rounded inline-block">--:--:--:--:--:--</p>
-                            </div>
-                            <div>
-                                <p class="text-[10px] text-slate-400 mb-1 uppercase">Version</p>
-                                <p id="rc-version" class="text-xs font-bold text-slate-700 font-mono bg-slate-100 px-2 py-1 rounded inline-block">--</p>
-                            </div>
-                            <div>
-                                <p class="text-[10px] text-slate-400 mb-1 uppercase">Location X</p>
-                                <p id="rc-locX" class="text-xs font-bold text-slate-700 font-mono bg-slate-100 px-2 py-1 rounded inline-block">--</p>
-                            </div>
-                            <div>
-                                <p class="text-[10px] text-slate-400 mb-1 uppercase">Location Y</p>
-                                <p id="rc-locY" class="text-xs font-bold text-slate-700 font-mono bg-slate-100 px-2 py-1 rounded inline-block">--</p>
+
+                    <!-- Right Side (Management Cards) -->
+                    <div class="flex-1 flex flex-col gap-4">
+                        
+                        <!-- File Management -->
+                        <div class="bg-white border border-slate-200 rounded-sm p-5 shadow-sm">
+                            <h4 class="font-bold text-sm text-slate-800 mb-4">File Management</h4>
+                            <div class="flex flex-wrap gap-3">
+                                <button onclick="window.exportRobotLogs()" class="border border-slate-200 text-slate-600 text-[13px] px-4 py-2 hover:bg-slate-50 rounded-sm transition flex items-center gap-2"><i class="fa-regular fa-file-lines text-blue-500"></i> Log Export</button>
+                                <button onclick="window.pullMapFromRobot()" class="border border-slate-200 text-slate-600 text-[13px] px-4 py-2 hover:bg-slate-50 rounded-sm transition flex items-center gap-2"><i class="fa-solid fa-download text-blue-500"></i> Pull Map</button>
+                                <button onclick="window.pushMapToRobot()" class="border border-slate-200 text-slate-600 text-[13px] px-4 py-2 hover:bg-slate-50 rounded-sm transition flex items-center gap-2"><i class="fa-solid fa-upload text-blue-500"></i> Push Map</button>
+                                <button class="border border-slate-200 text-slate-600 text-[13px] px-4 py-2 hover:bg-slate-50 rounded-sm transition flex items-center gap-2"><i class="fa-solid fa-volume-high text-blue-500"></i> Upload Audio</button>
+                                <button class="border border-slate-200 text-slate-600 text-[13px] px-4 py-2 hover:bg-slate-50 rounded-sm transition flex items-center gap-2"><i class="fa-regular fa-folder-open text-blue-500"></i> Upload Files</button>
                             </div>
                         </div>
+
+                        <!-- APK Management -->
+                        <div class="bg-white border border-slate-200 rounded-sm p-5 shadow-sm">
+                            <h4 class="font-bold text-sm text-slate-800 mb-4">APK Management</h4>
+                            <div class="flex flex-wrap gap-3">
+                                <button onclick="window.installApk()" class="border border-slate-200 text-slate-600 text-[13px] px-4 py-2 hover:bg-slate-50 rounded-sm transition flex items-center gap-2"><i class="fa-solid fa-bolt text-blue-500"></i> Upload APK And Install</button>
+                                <button class="border border-slate-200 text-slate-600 text-[13px] px-4 py-2 hover:bg-slate-50 rounded-sm transition flex items-center gap-2"><i class="fa-regular fa-trash-can text-blue-500"></i> Uninstalling Robot Software</button>
+                                <button class="border border-slate-200 text-slate-600 text-[13px] px-4 py-2 hover:bg-slate-50 rounded-sm transition flex items-center gap-2"><i class="fa-solid fa-mobile-screen text-blue-500"></i> Uninstall the mapping tool</button>
+                            </div>
+                        </div>
+
+                        <!-- Remote Desktop -->
+                        <div class="bg-white border border-slate-200 rounded-sm p-5 shadow-sm">
+                            <h4 class="font-bold text-sm text-slate-800 mb-4">Remote Desktop</h4>
+                            <div class="flex flex-wrap gap-3">
+                                <button class="border border-slate-200 text-slate-600 text-[13px] px-4 py-2 hover:bg-slate-50 rounded-sm transition flex items-center gap-2"><i class="fa-solid fa-desktop text-blue-500"></i> Remote Desktop</button>
+                                <button class="border border-slate-200 text-slate-600 text-[13px] px-4 py-2 hover:bg-slate-50 rounded-sm transition flex items-center gap-2"><i class="fa-regular fa-image text-blue-500"></i> Screenshot</button>
+                                <button class="border border-slate-200 text-slate-600 text-[13px] px-4 py-2 hover:bg-slate-50 rounded-sm transition flex items-center gap-2"><i class="fa-solid fa-video text-blue-500"></i> Record Video</button>
+                            </div>
+                        </div>
+
+                        <!-- Terminal -->
+                        <div class="bg-white border border-slate-200 rounded-sm p-5 shadow-sm">
+                            <h4 class="font-bold text-sm text-slate-800 mb-4">Terminal</h4>
+                            <div class="flex flex-wrap gap-3">
+                                <button class="border border-slate-200 text-slate-600 text-[13px] px-4 py-2 hover:bg-slate-50 rounded-sm transition flex items-center gap-2"><i class="fa-solid fa-terminal text-blue-500"></i> Terminal</button>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
-
+            
             <!-- TAB: MOVE -->
-            <div id="rc-content-move" class="rc-tab-content hidden max-w-5xl mx-auto w-full">
+            <div id="rc-content-move" class="rc-tab-content hidden max-w-6xl mx-auto w-full">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- Destinations -->
+                    
+                    <!-- Quick Manual Control (Destination & Pickup) -->
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden col-span-1 md:col-span-3 lg:col-span-1">
+                        <div class="bg-slate-50 px-5 py-4 border-b border-slate-200">
+                            <h3 class="font-bold text-slate-700 text-sm"><i class="fa-solid fa-gamepad text-indigo-500 mr-2"></i> توجيه يدوي للروبوت</h3>
+                        </div>
+                        <div class="p-5 flex flex-col gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-2">إرسال إلى نقطة (Destination)</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="manualDestInput" placeholder="مثال: 1, 2, Zaid" class="flex-1 border border-slate-300 rounded px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none">
+                                    <button onclick="window.sendRobotTo(document.getElementById('manualDestInput').value)" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 rounded transition"><i class="fa-solid fa-paper-plane"></i></button>
+                                </div>
+                            </div>
+                            <hr class="border-slate-100">
+                            <div>
+                                <h4 class="text-xs font-bold text-slate-500 mb-3">إجراءات سريعة</h4>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button onclick="window.sendRobotTo('Pick up')" class="flex flex-col items-center justify-center p-3 bg-amber-50 hover:bg-amber-100 border border-amber-100 text-amber-700 text-xs font-bold rounded-lg transition gap-1">
+                                        <i class="fa-solid fa-house text-lg"></i>
+                                        <span>عودة للاستلام</span>
+                                    </button>
+                                    <button onclick="window.chargeRobot()" class="flex flex-col items-center justify-center p-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 text-emerald-700 text-xs font-bold rounded-lg transition gap-1">
+                                        <i class="fa-solid fa-plug text-lg"></i>
+                                        <span>شحن</span>
+                                    </button>
+                                    <button onclick="window.cruiseRobot()" class="flex flex-col items-center justify-center p-3 bg-blue-50 hover:bg-blue-100 border border-blue-100 text-blue-700 text-xs font-bold rounded-lg transition gap-1">
+                                        <i class="fa-solid fa-route text-lg"></i>
+                                        <span>تجول (Cruise)</span>
+                                    </button>
+                                    <button onclick="window.cancelRobotTask()" class="flex flex-col items-center justify-center p-3 bg-rose-50 hover:bg-rose-100 border border-rose-100 text-rose-700 text-xs font-bold rounded-lg transition gap-1">
+                                        <i class="fa-solid fa-stop text-lg"></i>
+                                        <span>إيقاف المهمة</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Map Points List -->
                     <div class="md:col-span-2 bg-white rounded-xl shadow-sm border border-emerald-100 overflow-hidden">
-                        <div class="bg-emerald-50/50 px-5 py-3 border-b border-emerald-100 flex justify-between items-center">
+                        <div class="bg-emerald-50/50 px-5 py-4 border-b border-emerald-100 flex justify-between items-center">
                             <h3 class="font-bold text-emerald-800 flex items-center gap-2 text-sm"><i class="fa-solid fa-map-location-dot"></i> طاولات ونقاط الخريطة</h3>
-                            <button onclick="window.fetchRobotMap()" class="text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-100/50 px-2.5 py-1 rounded-md transition"><i class="fa-solid fa-rotate"></i> تحديث</button>
+                            <button onclick="window.fetchRobotMap()" class="text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-100/50 px-3 py-1.5 rounded-md transition border border-emerald-200"><i class="fa-solid fa-rotate"></i> تحديث القائمة</button>
                         </div>
                         <div class="p-5">
-                            <div id="rc-tablesList" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
-                                <!-- Points go here -->
-                                <div class="col-span-full text-center text-slate-400 py-4 text-sm">اضغط تحديث لجلب النقاط</div>
+                            <div id="rc-tablesList" class="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[350px] overflow-y-auto custom-scrollbar pr-1">
+                                <div class="col-span-full text-center text-slate-400 py-8 text-sm bg-slate-50 rounded border border-dashed border-slate-200">اضغط "تحديث القائمة" لجلب النقاط من الروبوت</div>
                             </div>
-                        </div>
-                    </div>
-                    <!-- Quick Actions -->
-                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div class="bg-slate-50 px-5 py-3 border-b border-slate-200">
-                            <h3 class="font-bold text-slate-700 text-sm"><i class="fa-solid fa-bolt"></i> أوامر سريعة</h3>
-                        </div>
-                        <div class="p-5 flex flex-col gap-3">
-                            <button onclick="window.sendRobotTo('Pick up')" class="flex items-center justify-between px-4 py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-bold rounded-lg transition">
-                                <span>عودة للاستلام (Pick up)</span> <i class="fa-solid fa-house"></i>
-                            </button>
-                            <button onclick="window.chargeRobot()" class="flex items-center justify-between px-4 py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-sm font-bold rounded-lg transition">
-                                <span>الذهاب للشاحن (Charge)</span> <i class="fa-solid fa-plug"></i>
-                            </button>
-                            <button onclick="window.cruiseRobot()" class="flex items-center justify-between px-4 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm font-bold rounded-lg transition">
-                                <span>وضع التجول (Cruise)</span> <i class="fa-solid fa-route"></i>
-                            </button>
-                            <button onclick="window.cancelRobotTask()" class="flex items-center justify-between px-4 py-3 bg-rose-50 hover:bg-rose-100 text-rose-700 text-sm font-bold rounded-lg transition mt-4 border border-rose-200">
-                                <span>إيقاف الروبوت (Cancel Task)</span> <i class="fa-solid fa-stop"></i>
-                            </button>
                         </div>
                     </div>
                 </div>
             </div>
-
+            
             <!-- TAB: INTERACT -->
             
             <!-- TAB: INTERACT -->
