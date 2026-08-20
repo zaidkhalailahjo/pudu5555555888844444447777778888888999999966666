@@ -10825,9 +10825,6 @@ window.refreshRobotStatus = async () => {
         const iotEl = document.getElementById("rc-iotStatus");
         const batText = document.getElementById("rc-batText");
         const batBar = document.getElementById("rc-batBar");
-        const macEl = document.getElementById("rc-mac");
-        const mapNameEl = document.getElementById("rc-mapName");
-        const locWarnEl = document.getElementById("rc-locationWarning");
         
         if (stateEl) stateEl.innerText = "جاري الفحص...";
         
@@ -10836,50 +10833,73 @@ window.refreshRobotStatus = async () => {
         
         if(data) {
             const runState = data.run_state || data.runState || "Running";
+            const bat = data.battery !== undefined ? data.battery : (data.power !== undefined ? data.power : 0);
             
-            const batVal = data.battery !== undefined ? parseInt(data.battery) : (data.power !== undefined ? parseInt(data.power) : 0);
-            const batStr = batVal + '%';
-            
-            const batCircle = document.getElementById('bat-circle-' + robotId);
-            const batText = document.getElementById('bat-text-' + robotId);
-            if(batCircle && batText) {
-                batText.innerText = batStr;
-                batCircle.setAttribute('stroke-dasharray', batVal + ', 100');
-                if(batVal > 50) batCircle.setAttribute('class', "text-emerald-500 stroke-current transition-all duration-700");
-                else if(batVal > 20) batCircle.setAttribute('class', "text-amber-400 stroke-current transition-all duration-700");
-                else batCircle.setAttribute('class', "text-rose-500 stroke-current transition-all duration-700");
+            // Battery Update
+            if (batText) batText.innerText = bat + "%";
+            if (batBar) {
+                batBar.style.width = bat + "%";
+                let colorClass = "bg-emerald-500 h-full transition-all duration-700";
+                if(bat <= 20) colorClass = "bg-rose-500 h-full transition-all duration-700 animate-pulse";
+                else if(bat <= 50) colorClass = "bg-amber-400 h-full transition-all duration-700";
+                
+                // Charging Detection
+                const stateStr = JSON.stringify(data).toUpperCase();
+                const isCharging = (data.is_charging == 1 || data.is_charging === true || data.charge_state === "CHARGING" || runState.toUpperCase().includes("CHARG"));
+                
+                if (isCharging) {
+                    batBar.style.animation = "pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite";
+                    batBar.style.backgroundColor = "#10b981"; // Emerald
+                } else {
+                    batBar.style.animation = "none";
+                }
+                
+                batBar.className = colorClass;
             }
             
-            const state = data.run_state || data.runState || 'Working';
-            let badgeColor = 'bg-blue-100 text-blue-700';
-            let displayState = 'Working';
-            if (state.toUpperCase().includes('CHARG') || data.is_charging == 1) { badgeColor = 'bg-emerald-100 text-emerald-700'; displayState = 'Charging'; }
-            else if (state.toUpperCase().includes('IDLE')) { badgeColor = 'bg-amber-100 text-amber-700'; displayState = 'Idle'; }
-            else if (state.toUpperCase().includes('ERROR')) { badgeColor = 'bg-rose-100 text-rose-700'; displayState = 'Error'; }
+            // State Display
+            if (stateEl) stateEl.innerText = runState;
+            if (iotEl) {
+                iotEl.innerText = "Online";
+            }
             
-            setStatus('✅', 'الروبوت متصل بنجاح بسيرفر Pudu! | البطارية: ' + batStr + ' | الحالة: ' + displayState, 'bg-green-50 text-green-700', displayState, badgeColor);
-        } else {
-            setStatus('✅', 'الاتصال بسيرفر Pudu ناجح! الروبوت مسجل ومتاح.', 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300', '✅ متصل', 'bg-green-100 text-green-700');
+            // Extract MAC Address
+            if (document.getElementById("rc-mac")) {
+                let mac = data.mac || data.macAddress || data.mac_address || "--:--:--:--:--:--";
+                document.getElementById("rc-mac").innerText = mac;
+            }
+            
+            // Extract Version
+            if (document.getElementById("rc-version")) {
+                let ver = data.softwareVersion || data.version || data.appVersion || data.systemVersion || "--";
+                document.getElementById("rc-version").innerText = ver;
+            }
+            
+            // Extract Map Name
+            let finalMapName = "غير متوفرة";
+            function searchMapName(obj) {
+                if(!obj || typeof obj !== 'object') return null;
+                for(let key in obj) {
+                    if (key === 'mapName' || key === 'map_name' || key === 'currentMap') {
+                        if (obj[key] && obj[key].trim() !== '') return obj[key];
+                    }
+                    if(typeof obj[key] === 'object') {
+                        let res = searchMapName(obj[key]);
+                        if(res) return res;
+                    }
+                }
+                return null;
+            }
+            
+            let foundMap = searchMapName(data);
+            if (foundMap) finalMapName = foundMap;
+            
+            if (document.getElementById("rc-mapName")) {
+                document.getElementById("rc-mapName").innerText = finalMapName;
+            }
         }
-
-        // إخفاء زر الاتصال بعد النجاح
-        if(btn) btn.style.display = 'none';
-
-    } catch(err) {
-        if(btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fa-solid fa-plug-circle-bolt"></i> اتصال بسيرفر Pudu';
-        }
-        let errMsg = 'فشل الاتصال بالسيرفر الآمن (Firebase Functions).';
-        if (err.code === 'functions/unauthenticated') {
-            errMsg = 'يجب تسجيل الدخول أولاً للاتصال بسيرفر Pudu.';
-        } else if (err.code === 'functions/unavailable') {
-            errMsg = 'سيرفر Firebase غير متاح حالياً. أعد المحاولة بعد قليل.';
-        } else if (err.message) {
-            errMsg = 'خطأ: ' + err.message;
-        }
-        setStatus('❌', errMsg, 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300', '❌ خطأ', 'bg-red-100 text-red-700');
-        console.error('[Pudu Connect]', err);
+    } catch(e) {
+        console.error("Error refreshing robot status", e);
     }
 };
 
@@ -11465,9 +11485,17 @@ window.openRobotControlPanel = async (robotId) => {
         window.currentRobotSn = r.serialNumber;
         window.currentRobotName = r.name;
         
-        // Update Title in Modal
+        // Update Title and Image in Modal
         const titleEl = document.getElementById("rc-title");
         if(titleEl) titleEl.innerText = r.name || "روبوت Pudu";
+        
+        let imgUrl = "https://businesss.pudutech.com/robot-image-proxy/robot-image-resource/small-size/62.png"; // default Bella
+        if((r.name || '').toLowerCase().includes('ketty')) imgUrl = "https://businesss.pudutech.com/robot-image-proxy/robot-image-resource/small-size/67.png";
+        if((r.name || '').toLowerCase().includes('quill') || (r.name || '').toLowerCase().includes('pudu')) imgUrl = "https://businesss.pudutech.com/robot-image-proxy/robot-image-resource/small-size/73.png";
+
+        if(document.getElementById('rc-info-img')) document.getElementById('rc-info-img').src = imgUrl;
+        if(document.getElementById('rc-robotType')) document.getElementById('rc-robotType').innerText = (r.name || '').toLowerCase().includes('ketty') ? 'KettyBot' : ((r.name || '').toLowerCase().includes('quill') ? 'QuillBot' : 'BellaBot');
+
         
         // Handle Model Specific UI
         const isKetty = r.serialNumber.toLowerCase().startsWith('pnt') || r.serialNumber.toLowerCase().startsWith('kty') || (r.name || '').toLowerCase().includes('ketty');
