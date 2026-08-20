@@ -12435,3 +12435,106 @@ window.setRobotVolume = async () => {
         showToast("تم تطبيق مستوى الصوت 🔊", "success");
     }
 };
+
+
+// ==========================================
+// ADVANCED CLOUD FEATURES (UPLOADS & APK)
+// ==========================================
+
+window.uploadAndPushAd = async () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*,video/mp4';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        
+        showToast("جاري الرفع إلى السحابة الخاصة بك (Firebase)...", "info");
+        try {
+            const url = await window.uploadToFirebase(file, 'pudu_ads');
+            showToast("تم الرفع! جاري البث للروبوت...", "info");
+            
+            const isVideo = file.type.includes('video');
+            const payload = { 
+                payload: { 
+                    callMode: isVideo ? "VIDEO" : "PICTURE", 
+                    modeData: { url: url } 
+                } 
+            };
+            const res = await window.callPuduApi("speak", payload);
+            if(res) {
+                showToast("تم عرض الإعلان على شاشة الروبوت 📺", "success");
+            }
+        } catch(err) {
+            console.error(err);
+            showToast("حدث خطأ أثناء الرفع", "error");
+        }
+    };
+    input.click();
+};
+
+window.installApk = async () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.apk';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        
+        // SAFETY WARNING as requested by the user
+        const confirmed = confirm("⚠️ تحذير تقني خطير جداً ⚠️\n\nتثبيت تطبيق (APK) أو تحديث نظام غير متوافق عن بُعد قد يؤدي إلى تعطل الروبوت بالكامل (Brick) ويكلف آلاف الدولارات لإصلاحه من الوكيل.\n\nهل أنت متأكد 100% من مسؤوليتك عن هذا الملف؟");
+        if(!confirmed) return;
+        
+        showToast("جاري رفع التطبيق (APK) للسحابة...", "info");
+        try {
+            const url = await window.uploadToFirebase(file, 'pudu_apks');
+            showToast("تم الرفع بنجاح! جاري إرسال أمر التثبيت للروبوت...", "info");
+            
+            // Sending a generic custom command for APK installation
+            const payload = { cmd: "install_apk", params: { url: url, force: true } };
+            const res = await window.callPuduApi("call", payload);
+            if(res) {
+                showToast("تم استلام أمر التثبيت من الروبوت 🤖", "success");
+            }
+        } catch(err) {
+            console.error(err);
+            showToast("حدث خطأ أثناء العملية", "error");
+        }
+    };
+    input.click();
+};
+
+window.pushMapToRobot = async () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdmap,.zip';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        
+        showToast("جاري رفع الخريطة للسحابة...", "info");
+        try {
+            const url = await window.uploadToFirebase(file, 'pudu_maps');
+            showToast("تم الرفع! جاري إرسالها للروبوت للاعتماد...", "info");
+            
+            const payload = { cmd: "push_map", params: { url: url, mapName: file.name } };
+            const res = await window.callPuduApi("call", payload);
+            if(res) {
+                showToast("تم استلام الخريطة، قد يستغرق الروبوت دقيقة لمعالجتها 🗺️", "success");
+            }
+        } catch(err) {
+            console.error(err);
+            showToast("حدث خطأ", "error");
+        }
+    };
+    input.click();
+};
+
+window.exportRobotLogs = async () => {
+    showToast("جاري إرسال طلب تجهيز السجلات من الروبوت...", "info");
+    const payload = { cmd: "export_log", params: {} };
+    const res = await window.callPuduApi("call", payload);
+    if(res) {
+        showToast("سيقوم الروبوت برفع السجلات قريباً، راجع لوحة Pudu IoT", "success");
+    }
+};
