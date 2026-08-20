@@ -11011,35 +11011,46 @@ window.fetchRobotMap = async () => {
     if(!list) return;
     list.innerHTML = `<div class="col-span-full py-6 flex flex-col items-center justify-center text-slate-400">
         <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-emerald-400"></i>
-        <p class="text-xs font-medium">جاري جلب الخريطة من الروبوت...</p>
+        <p class="text-xs font-medium">جاري جلب الخريطة والنقاط...</p>
     </div>`;
     
-    const res = await window.callPuduApi("map", {}, true);
-    const data = res && res.data ? res.data : res;
-    list.innerHTML = "";
-    
-    if(data && data.points && data.points.length > 0) {
-        data.points.forEach(pt => {
-            const btn = document.createElement("button");
-            btn.className = "bg-white border border-emerald-100 hover:border-emerald-300 hover:bg-emerald-50 text-emerald-800 py-2 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 shadow-sm";
-            btn.innerHTML = `<i class="fa-solid fa-map-pin text-emerald-500"></i> ${pt.name}`;
-            btn.onclick = () => window.sendRobotTo(pt.name);
-            list.appendChild(btn);
-        });
+    try {
+        const res = await window.callPuduApi("map", {}, true);
+        const data = res && res.data ? res.data : res;
+        list.innerHTML = "";
         
-        // Pick up btn
-        const btnReturn = document.createElement("button");
-        btnReturn.className = "bg-emerald-100 border border-emerald-200 hover:bg-emerald-200 text-emerald-800 py-2 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 shadow-sm";
-        btnReturn.innerHTML = `<i class="fa-solid fa-house"></i> العودة`;
-        btnReturn.onclick = () => window.sendRobotTo("Pick up");
-        list.appendChild(btnReturn);
+        // Aggressively find the array of points/tables
+        let pointsArray = [];
+        if (data && data.points && Array.isArray(data.points)) pointsArray = data.points;
+        else if (data && data.poiList && Array.isArray(data.poiList)) pointsArray = data.poiList;
+        else if (data && data.poi_list && Array.isArray(data.poi_list)) pointsArray = data.poi_list;
+        else if (data && data.tableList && Array.isArray(data.tableList)) pointsArray = data.tableList;
+        else if (data && data.tables && Array.isArray(data.tables)) pointsArray = data.tables;
+        else if (data && typeof data === 'object') {
+            // Search all keys for arrays that might contain points
+            for (let key in data) {
+                if (Array.isArray(data[key]) && data[key].length > 0 && (data[key][0].name || data[key][0].pointName || data[key][0].tableId)) {
+                    pointsArray = data[key];
+                    break;
+                }
+            }
+        }
         
-    } else {
-        list.innerHTML = `<div class="col-span-full py-6 flex flex-col items-center justify-center text-slate-400">
-        <i class="fa-solid fa-map-location-dot text-3xl mb-3 text-slate-300"></i>
-        <p class="text-sm font-bold mb-1">الخريطة غير متوفرة</p>
-        <p class="text-xs text-center px-4">لم يتم العثور على خريطة، أو أن السيرفر رفض الطلب (404). تأكد من إعدادات Pudu Cloud.</p>
-    </div>`;
+        if (pointsArray && pointsArray.length > 0) {
+            pointsArray.forEach(pt => {
+                const ptName = pt.name || pt.pointName || pt.tableId || pt.id || "نقطة مجهولة";
+                const btn = document.createElement("button");
+                btn.className = "bg-white border border-emerald-100 hover:border-emerald-300 hover:bg-emerald-50 text-emerald-800 py-2 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 shadow-sm";
+                btn.innerHTML = `<i class="fa-solid fa-map-pin text-emerald-500"></i> ${ptName}`;
+                btn.onclick = () => window.sendRobotTo(ptName);
+                list.appendChild(btn);
+            });
+        } else {
+            list.innerHTML = `<div class="col-span-full text-center text-rose-500 py-6 text-sm font-bold bg-rose-50 rounded border border-rose-100"><i class="fa-solid fa-circle-exclamation mb-2 text-xl block"></i> الخريطة الحالية لا تحتوي على نقاط مسجلة أو أن الروبوت لا يرسل النقاط حالياً.</div>`;
+        }
+    } catch(err) {
+        console.error("Error fetching map points", err);
+        list.innerHTML = `<div class="col-span-full text-center text-rose-500 py-6 text-sm font-bold"><i class="fa-solid fa-triangle-exclamation"></i> فشل في الاتصال وجلب النقاط</div>`;
     }
 };
 
@@ -11762,7 +11773,7 @@ window.buildRobotCardHTML = function(r, actionBtnsHtml, isPuduRobot, puduBtnCls,
             
             <!-- Connection Status -->
             <div id="pudu-status-${r.id}" class="hidden text-center text-[10px] px-2 py-1 mx-4 mb-2 rounded bg-gray-50 text-gray-500"></div>
-            ${isPuduRobot ? `<div class="px-4 mb-2"><button id="pudu-btn-${r.id}" onclick="window.connectRobotToPudu('${r.id}', '${escapeHTML(r.serialNumber)}', '${escapeHTML(r.name)}')" class="w-full ${puduBtnCls} border py-1 rounded text-[10px] font-bold transition flex items-center justify-center gap-1 shadow-sm"><i class="fa-solid fa-plug-circle-bolt"></i> جلب الحالة</button></div>` : ''}
+            ${isPuduRobot ? (r.puduLinked ? `<div class="px-4 mb-2"><div class="w-full bg-emerald-50 border border-emerald-200 text-emerald-700 py-1 rounded text-[10px] font-bold flex items-center justify-center gap-1 shadow-sm"><i class="fa-solid fa-link"></i> مرتبط بسيرفر Pudu</div></div>` : `<div class="px-4 mb-2"><button id="pudu-btn-${r.id}" onclick="window.connectRobotToPudu('${r.id}', '${escapeHTML(r.serialNumber)}', '${escapeHTML(r.name)}')" class="w-full ${puduBtnCls} border py-1 rounded text-[10px] font-bold transition flex items-center justify-center gap-1 shadow-sm hover:bg-indigo-100 hover:text-indigo-800"><i class="fa-solid fa-plug-circle-bolt"></i> اتصال بسيرفر بودو</button></div>`) : ''}
 
             <!-- Footer / Actions -->
             <div class="mt-auto flex border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
@@ -11842,5 +11853,49 @@ window.saveAndPushAd = async () => {
     } catch(err) {
         console.error(err);
         showToast("حدث خطأ أثناء الرفع", "error");
+    }
+};
+
+
+window.fetchLiveRobotStatuses = async () => {
+    if (!globalRobots || !Array.isArray(globalRobots)) return;
+    const linkedRobots = globalRobots.filter(r => r.puduLinked && r.serialNumber && r.serialNumber !== 'بدون رقم' && (r.name.toLowerCase().includes('bella') || r.name.toLowerCase().includes('ketty') || r.name.toLowerCase().includes('quill') || r.name.toLowerCase().includes('flash') || r.name.toLowerCase().includes('pudu')));
+    
+    for (const r of linkedRobots) {
+        try {
+            const puduGateway = window.httpsCallable(window.cloudFunctions, "puduGateway");
+            const result = await puduGateway({ action: "status", sn: r.serialNumber.trim(), payload: {} });
+            if (result.data && result.data.success && result.data.data) {
+                const data = result.data.data;
+                const batVal = data.battery !== undefined ? parseInt(data.battery) : (data.power !== undefined ? parseInt(data.power) : 0);
+                const runState = data.run_state || data.runState || "Running";
+                
+                // Update UI for Card
+                const batCircle = document.getElementById('bat-circle-' + r.id);
+                const batText = document.getElementById('bat-text-' + r.id);
+                const badge = document.getElementById('pudu-badge-' + r.id);
+                
+                if (batCircle && batText) {
+                    batText.innerText = batVal + '%';
+                    batCircle.setAttribute('stroke-dasharray', batVal + ', 100');
+                    if(batVal > 50) batCircle.setAttribute('class', "text-emerald-500 stroke-current transition-all duration-700");
+                    else if(batVal > 20) batCircle.setAttribute('class', "text-amber-400 stroke-current transition-all duration-700");
+                    else batCircle.setAttribute('class', "text-rose-500 stroke-current transition-all duration-700");
+                }
+                
+                if (badge) {
+                    let badgeColor = 'bg-blue-100 text-blue-700';
+                    let displayState = 'Working';
+                    if (runState.toUpperCase().includes('CHARG') || data.is_charging == 1) { badgeColor = 'bg-emerald-100 text-emerald-700'; displayState = 'Charging'; }
+                    else if (runState.toUpperCase().includes('IDLE')) { badgeColor = 'bg-amber-100 text-amber-700'; displayState = 'Idle'; }
+                    else if (runState.toUpperCase().includes('ERROR')) { badgeColor = 'bg-rose-100 text-rose-700'; displayState = 'Error'; }
+                    
+                    badge.className = `px-1.5 py-0.5 rounded text-[10px] font-bold ${badgeColor}`;
+                    badge.innerText = displayState;
+                }
+            }
+        } catch (err) {
+            console.error("Failed to fetch live status for", r.serialNumber, err);
+        }
     }
 };
