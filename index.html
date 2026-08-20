@@ -3893,6 +3893,11 @@
                     <!-- Expressions (KettyBot Only) -->
                     <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm rc-ketty-only">
                         <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-face-laugh-beam text-amber-500"></i> تعبيرات الوجه (شاشة الدعايات)</h3>
+                        <div class="mb-4">
+                            <button onclick="window.uploadAndPushAd()" class="w-full bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 py-2 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> رفع إعلان (صورة/فيديو) للشاشة
+                            </button>
+                        </div>
                         <div class="grid grid-cols-3 gap-3">
                             <button onclick="window.setExpression('happy')" class="bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg py-3 flex flex-col items-center gap-1 transition">
                                 <i class="fa-solid fa-face-laugh text-2xl"></i> <span class="text-xs font-bold">سعيد</span>
@@ -3925,14 +3930,14 @@
                         <button onclick="window.openMapExportModal()" class="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 text-sm font-bold rounded-lg shadow-sm transition">
                             <i class="fa-solid fa-download"></i> Pull Map (.pdmap)
                         </button>
-                        <button onclick="window.puduNotSupported()" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm font-medium rounded shadow-sm transition opacity-60">
+                        <button onclick="window.pushMapToRobot()" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-emerald-50 text-emerald-700 text-sm font-medium rounded shadow-sm transition">
                             <i class="fa-solid fa-upload text-emerald-500"></i> Push Map
                         </button>
-                        <button onclick="window.puduNotSupported()" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm font-medium rounded shadow-sm transition opacity-60">
+                        <button onclick="window.exportRobotLogs()" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium rounded shadow-sm transition">
                             <i class="fa-solid fa-file-export text-slate-500"></i> Log Export
                         </button>
-                        <button onclick="window.puduNotSupported()" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm font-medium rounded shadow-sm transition opacity-60">
-                            <i class="fa-brands fa-android text-emerald-500"></i> Install APK
+                        <button onclick="window.installApk()" class="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 hover:bg-red-100 text-red-700 text-sm font-bold rounded shadow-sm transition">
+                            <i class="fa-brands fa-android"></i> Install APK
                         </button>
                     </div>
                 </div>
