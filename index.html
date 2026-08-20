@@ -36,6 +36,17 @@
         .dark .flatpickr-time input { color: white !important; }
         .dark .flatpickr-time .flatpickr-am-pm { color: white !important; }
         .swal2-container { z-index: 9999999 !important; }
+    
+        /* Charging Animation */
+        @keyframes chargingWave {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .charging-animation {
+            background: linear-gradient(90deg, #22c55e 0%, #4ade80 25%, #86efac 50%, #4ade80 75%, #22c55e 100%) !important;
+            background-size: 200% 100% !important;
+            animation: chargingWave 2s linear infinite !important;
+        }
     </style>
     
     <script>
@@ -3771,6 +3782,7 @@
                             <p class="text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wider">Machine power</p>
                             <div class="flex items-center gap-2">
                                 <p id="rc-batText" class="text-xl font-black text-slate-700">--%</p>
+                                  <span id="rc-chargingIcon" class="hidden text-emerald-500 text-lg"><i class="fa-solid fa-bolt"></i></span>
                                 <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
                                     <div id="rc-batBar" class="bg-emerald-500 h-2.5 rounded-full" style="width: 0%"></div>
                                 </div>
