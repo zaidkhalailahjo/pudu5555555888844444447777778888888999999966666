@@ -1166,111 +1166,62 @@
 
             
             <!-- مسح وتعديل الخلفية AI Studio -->
-            <section id="bgremove" class="section-content hidden animate-fade-in p-4 md:p-6">
-                <div class="max-w-5xl mx-auto flex flex-col items-center">
+            <section id="bgremove" class="section-content hidden animate-fade-in p-2 md:p-4">
+                <div class="max-w-2xl mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-6 flex flex-col items-center">
                     
-                    <!-- Top Floating Studio Toolbar (Matching Image) -->
-                    <div class="w-full bg-white dark:bg-gray-800 rounded-full shadow-lg border border-gray-200 dark:border-gray-700 px-4 py-2.5 flex items-center justify-between gap-2 mb-8" dir="ltr">
-                        <!-- Left Tools -->
-                        <div class="flex items-center gap-1 sm:gap-3 overflow-x-auto custom-scrollbar">
-                            <button onclick="window.processBgRemoveLive()" id="bgTool-cutout" class="flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700 transition">
-                                <i class="fa-solid fa-wand-magic-sparkles text-amber-500"></i>
-                                <span>Cutout</span>
-                            </button>
-                            
-                            <div class="relative">
-                                <button onclick="window.toggleBgColorMenu()" id="bgTool-bg" class="flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700 transition">
-                                    <i class="fa-regular fa-image text-blue-500"></i>
-                                    <span>Background</span>
-                                </button>
-                                <!-- Color Picker Dropdown -->
-                                <div id="bgColorDropdown" class="hidden absolute top-full left-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl rounded-xl p-3 z-50 flex gap-2">
-                                    <button onclick="window.changeCanvasBg('transparent')" class="w-7 h-7 rounded-full border border-gray-300 bg-checkerboard shadow-xs" title="شفاف"></button>
-                                    <button onclick="window.changeCanvasBg('#ffffff')" class="w-7 h-7 rounded-full border border-gray-300 bg-white shadow-xs" title="أبيض"></button>
-                                    <button onclick="window.changeCanvasBg('#000000')" class="w-7 h-7 rounded-full border border-gray-700 bg-black shadow-xs" title="أسود"></button>
-                                    <button onclick="window.changeCanvasBg('#3b82f6')" class="w-7 h-7 rounded-full bg-blue-500 shadow-xs" title="أزرق"></button>
-                                    <button onclick="window.changeCanvasBg('#10b981')" class="w-7 h-7 rounded-full bg-emerald-500 shadow-xs" title="أخضر"></button>
-                                    <button onclick="window.changeCanvasBg('#f59e0b')" class="w-7 h-7 rounded-full bg-amber-500 shadow-xs" title="أصفر"></button>
-                                </div>
+                    <!-- Header with Title & Action Buttons -->
+                    <div class="w-full flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-4 mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-amber-50 dark:bg-amber-900/30 text-amber-500 rounded-xl flex items-center justify-center text-lg">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i>
                             </div>
-
-                            <button onclick="window.applyCanvasEffect('shadow')" class="flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700 transition">
-                                <i class="fa-solid fa-circle-half-stroke text-purple-500"></i>
-                                <span>Effects</span>
-                            </button>
-
-                            <button onclick="window.applyCanvasEffect('adjust')" class="flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700 transition">
-                                <i class="fa-solid fa-sliders text-emerald-500"></i>
-                                <span>Adjust</span>
-                            </button>
-
-                            <button onclick="showToast('ميزة إضافة النصوص والأشكال قريباً', 'info')" class="flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700 transition">
-                                <i class="fa-solid fa-layer-group text-rose-500"></i>
-                                <span>Design</span>
-                            </button>
+                            <div>
+                                <h3 class="text-base font-bold text-gray-800 dark:text-white">مسح الخلفية</h3>
+                                <p class="text-xs text-gray-400">إزالة الخلفية بالذكاء الاصطناعي بدقة عالية</p>
+                            </div>
                         </div>
-
-                        <!-- Right Actions -->
-                        <div class="flex items-center gap-2 border-l border-gray-200 pl-3">
-                            <button onclick="window.toggleSplitCompare()" class="p-2 text-gray-500 hover:text-gray-800 dark:hover:text-white transition rounded-full" title="مقارنة قبل وبعد">
-                                <i class="fa-solid fa-columns"></i>
+                        
+                        <div class="flex items-center gap-2">
+                            <button onclick="document.getElementById('studioFileInput').click()" class="bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs font-bold px-3.5 py-2 rounded-lg flex items-center gap-2 transition">
+                                <i class="fa-solid fa-cloud-arrow-up text-blue-500"></i>
+                                <span>رفع صورة</span>
                             </button>
-                            <button onclick="window.undoCanvasAction()" class="p-2 text-gray-500 hover:text-gray-800 dark:hover:text-white transition rounded-full" title="تراجع">
-                                <i class="fa-solid fa-rotate-left"></i>
+                            <button onclick="window.downloadEditedImage('png')" id="studioDownloadBtn" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition">
+                                <i class="fa-solid fa-download"></i>
+                                <span>تحميل الصورة</span>
                             </button>
-                            <button onclick="window.redoCanvasAction()" class="p-2 text-gray-500 hover:text-gray-800 dark:hover:text-white transition rounded-full" title="إعادة">
-                                <i class="fa-solid fa-rotate-right"></i>
-                            </button>
-                            
-                            <!-- Download Blue Button -->
-                            <div class="relative">
-                                <button onclick="window.downloadEditedImage('png')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded-full flex items-center gap-2 shadow-md transition">
-                                    <span>Download</span>
-                                    <i class="fa-solid fa-chevron-down text-[10px]"></i>
-                                </button>
-                            </div>
                         </div>
                     </div>
 
-                    <!-- Center Canvas Area with Checkerboard (Matching Image) -->
-                    <div class="w-full max-w-xl aspect-square rounded-3xl overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-700 relative flex items-center justify-center bg-checkerboard" id="studioCanvasWrapper">
+                    <!-- Compact Center Canvas (Fits Single Screen) -->
+                    <div class="w-full max-w-md h-[340px] md:h-[380px] rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 relative flex items-center justify-center bg-checkerboard shadow-inner" id="studioCanvasWrapper">
                         
-                        <!-- Empty Upload Dropzone -->
-                        <div id="studioEmptyDropzone" class="flex flex-col items-center justify-center p-8 text-center cursor-pointer" onclick="document.getElementById('studioFileInput').click()">
-                            <div class="w-20 h-20 bg-blue-50 text-blue-500 rounded-3xl flex items-center justify-center text-3xl mb-4 shadow-sm group-hover:scale-105 transition">
-                                <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <!-- Empty Dropzone -->
+                        <div id="studioEmptyDropzone" class="flex flex-col items-center justify-center p-6 text-center cursor-pointer" onclick="document.getElementById('studioFileInput').click()">
+                            <div class="w-16 h-16 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center text-2xl mb-3 shadow-xs hover:scale-105 transition">
+                                <i class="fa-solid fa-image"></i>
                             </div>
-                            <h3 class="text-base font-bold text-gray-800 dark:text-white mb-1">اضغط هنا لرفع صورة أو اسحبها إلى هنا</h3>
-                            <p class="text-xs text-gray-400">يدعم PNG, JPG, WEBP بدقة فائقة</p>
+                            <h4 class="text-sm font-bold text-gray-700 dark:text-gray-200 mb-1">اضغط لاختيار صورة من جهازك</h4>
+                            <p class="text-[11px] text-gray-400">سيتم مسح الخلفية فوراً وبشكل تلقائي</p>
                             <input type="file" id="studioFileInput" accept="image/*" class="hidden" onchange="window.handleStudioUpload(this)">
                         </div>
 
                         <!-- Live Processed Image Display -->
-                        <div id="studioImageContainer" class="hidden w-full h-full relative flex items-center justify-center p-6">
-                            <img id="studioMainImg" class="max-w-full max-h-full object-contain drop-shadow-md transition-all duration-300" />
+                        <div id="studioImageContainer" class="hidden w-full h-full relative flex items-center justify-center p-4">
+                            <img id="studioMainImg" class="max-w-full max-h-full object-contain drop-shadow-md" />
                             
                             <!-- Loading Spinner Overlay -->
-                            <div id="studioLoadingOverlay" class="hidden absolute inset-0 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xs flex flex-col items-center justify-center gap-3">
-                                <div class="w-10 h-10 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                                <p class="text-xs font-bold text-blue-600 animate-pulse">جاري إزالة الخلفية بالذكاء الاصطناعي...</p>
+                            <div id="studioLoadingOverlay" class="hidden absolute inset-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xs flex flex-col items-center justify-center gap-2">
+                                <div class="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                                <p class="text-xs font-bold text-blue-600">جاري مسح الخلفية بالذكاء الاصطناعي...</p>
                             </div>
                         </div>
 
                     </div>
 
-                    <!-- Bottom Thumbnail Strip Selector (Matching Image) -->
-                    <div class="flex items-center gap-3 mt-6">
-                        <button onclick="document.getElementById('studioFileInput').click()" class="w-12 h-12 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 flex items-center justify-center text-gray-500 shadow-sm transition">
-                            <i class="fa-solid fa-plus text-lg"></i>
-                        </button>
-                        <div id="studioThumbnailsStrip" class="flex items-center gap-3">
-                            <!-- Populated with uploaded images -->
-                        </div>
-                    </div>
-
                 </div>
             </section>
-
+            
             <!-- إدارة العملاء -->
             <section id="clients_mgmt" class="section-content hidden animate-fade-in p-4 md:p-0">
                 <div class="bg-white dark:bg-gray-800 p-4 md:p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 mb-6 flex flex-col gap-4">
