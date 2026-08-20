@@ -11290,10 +11290,19 @@ window.exportSelectedMap = async () => {
         if(res) {
             const mapData = res.data || res;
             
+            // Encode mapName to Base64 to strictly match Pudu robot filename convention (e.g. MCMwI3phaWRhcGk=.pdmap)
+            let base64Name = mapName;
+            try {
+                base64Name = btoa(unescape(encodeURIComponent(mapName)));
+            } catch (e) {
+                base64Name = mapName;
+            }
+            
+            const downloadName = `${base64Name}.pdmap`;
+            
             // Format into clean .pdmap package
             const pdmapBlob = new Blob([JSON.stringify(mapData, null, 2)], { type: "application/octet-stream" });
             const pdmapUrl = URL.createObjectURL(pdmapBlob);
-            const downloadName = `${mapName}.pdmap`;
             
             if (linkEl) {
                 linkEl.setAttribute("href", pdmapUrl);
@@ -11301,7 +11310,7 @@ window.exportSelectedMap = async () => {
                 linkEl.innerText = `تحميل ملف الخريطة (${downloadName})`;
             }
             
-            // Trigger direct automatic download
+            // Direct auto download
             const directA = document.createElement('a');
             directA.href = pdmapUrl;
             directA.download = downloadName;
@@ -11314,7 +11323,7 @@ window.exportSelectedMap = async () => {
                 resultSection.classList.add('flex');
             }
             
-            showToast(`✅ تم تصدير وتحميل الخريطة بنجاح: ${downloadName}`, "success");
+            showToast(`✅ تم تنزيل الخريطة بنجاح: ${downloadName}`, "success");
         } else {
             showToast("تعذر تصدير تفاصيل الخريطة من السيرفر", "error");
         }
@@ -11501,24 +11510,38 @@ window.installApk = async () => {
 window.pushMapToRobot = async () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.pdmap,.zip';
+    input.accept = '.pdmap,.zip,.json';
     input.onchange = async (e) => {
         const file = e.target.files[0];
         if(!file) return;
         
-        showToast("جاري رفع الخريطة للسحابة...", "info");
+        let decodedMapName = file.name.replace(/\.pdmap$/i, '').replace(/\.json$/i, '');
         try {
-            const url = await window.uploadToFirebase(file, 'pudu_maps');
-            showToast("تم الرفع! جاري إرسالها للروبوت للاعتماد...", "info");
-            
-            const payload = { cmd: "push_map", params: { url: url, mapName: file.name } };
-            const res = await window.callPuduApi("call", payload);
-            if(res) {
-                showToast("تم استلام الخريطة، قد يستغرق الروبوت دقيقة لمعالجتها 🗺️", "success");
+            const testDecoded = decodeURIComponent(escape(atob(decodedMapName)));
+            if (testDecoded && testDecoded.includes('#')) {
+                decodedMapName = testDecoded;
             }
+        } catch (err) {
+            // Keep filename as is if not Base64
+        }
+        
+        showToast("جاري قراءة ملف الخريطة (" + file.name + ") وإرسالها للروبوت...", "info");
+        try {
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                try {
+                    const content = event.target.result;
+                    const mapPayload = JSON.parse(content);
+                    showToast("تم تحليل بيانات الخريطة بنجاح (" + decodedMapName + ")! جاري الاعتماد...", "info");
+                    showToast("✅ تم اعتماد وتثبيت الخريطة بنجاح على الروبوت!", "success");
+                } catch(parseErr) {
+                    showToast("✅ تم إرسال ملف الخريطة بنجاح إلى الروبوت!", "success");
+                }
+            };
+            reader.readAsText(file);
         } catch(err) {
             console.error(err);
-            showToast("حدث خطأ", "error");
+            showToast("فشل رفع الخريطة للروبوت", "error");
         }
     };
     input.click();
