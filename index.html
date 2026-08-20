@@ -18,6 +18,17 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/ar.js"></script>
     <style>
+        /* Charging flow animation */
+        @keyframes chargingFlow {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .charging-bar-animated {
+            background: linear-gradient(90deg, #10b981 0%, #6ee7b7 50%, #10b981 100%) !important;
+            background-size: 200% 100% !important;
+            animation: chargingFlow 2s linear infinite !important;
+        }
+
         /* تخصيص ألوان الكلندر لتطابق هوية النظام Quill */
         .flatpickr-calendar { font-family: 'Cairo', sans-serif !important; border-radius: 16px !important; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important; border: 1px solid #e5e7eb !important; overflow: hidden; padding: 0 !important; }
         .dark .flatpickr-calendar { background: #1f2937 !important; border-color: #374151 !important; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5) !important; }
@@ -3808,11 +3819,20 @@
                                 <p id="rc-iotStatus" class="text-sm text-slate-700">Online</p>
                             </div>
                             <div>
-                                <p class="text-xs text-slate-500 mb-1.5">Machine power</p>
-                                <p id="rc-batText" class="text-sm text-slate-700">47%</p>
-                                <div class="w-full bg-slate-100 h-1 mt-2"><div id="rc-batBar" class="bg-blue-500 h-1"></div></div>
+                                <div class="flex items-center justify-between mb-1.5">
+                                <span class="text-xs text-slate-500">Machine power</span>
+                                <span id="rc-chargingTag" class="hidden text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-200">
+                                    <i class="fa-solid fa-bolt text-emerald-500 animate-pulse"></i> Charging
+                                </span>
                             </div>
-                            <div>
+                            <div class="flex items-baseline gap-2">
+                                <p id="rc-batText" class="text-lg font-bold text-slate-800">--%</p>
+                            </div>
+                            <div class="w-full bg-slate-100 h-2.5 rounded-full mt-1.5 overflow-hidden border border-slate-200">
+                                <div id="rc-batBar" class="bg-emerald-500 h-full rounded-full transition-all duration-700" style="width: 0%"></div>
+                            </div>
+                            </div>
+                            
                                 <p class="text-xs text-slate-500 mb-1.5">Software version</p>
                                 <p id="rc-version" class="text-sm text-slate-700">6.13.0.51</p>
                             </div>
