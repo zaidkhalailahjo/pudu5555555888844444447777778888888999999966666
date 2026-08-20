@@ -11402,45 +11402,7 @@ window.installApk = async () => {
     input.click();
 };
 
-window.pushMapToRobot = async () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.pdmap,.zip,.json';
-    input.onchange = async (e) => {
-        const file = e.target.files[0];
-        if(!file) return;
-        
-        let decodedMapName = file.name.replace(/\.pdmap$/i, '').replace(/\.json$/i, '');
-        try {
-            const testDecoded = decodeURIComponent(escape(atob(decodedMapName)));
-            if (testDecoded && testDecoded.includes('#')) {
-                decodedMapName = testDecoded;
-            }
-        } catch (err) {
-            // Keep filename as is if not Base64
-        }
-        
-        showToast("جاري قراءة ملف الخريطة (" + file.name + ") وإرسالها للروبوت...", "info");
-        try {
-            const reader = new FileReader();
-            reader.onload = async (event) => {
-                try {
-                    const content = event.target.result;
-                    const mapPayload = JSON.parse(content);
-                    showToast("تم تحليل بيانات الخريطة بنجاح (" + decodedMapName + ")! جاري الاعتماد...", "info");
-                    showToast("✅ تم اعتماد وتثبيت الخريطة بنجاح على الروبوت!", "success");
-                } catch(parseErr) {
-                    showToast("✅ تم إرسال ملف الخريطة بنجاح إلى الروبوت!", "success");
-                }
-            };
-            reader.readAsText(file);
-        } catch(err) {
-            console.error(err);
-            showToast("فشل رفع الخريطة للروبوت", "error");
-        }
-    };
-    input.click();
-};
+
 
 window.exportRobotLogs = async () => {
     showToast("جاري إرسال طلب تجهيز السجلات من الروبوت...", "info");
@@ -12138,3 +12100,153 @@ window.downloadExportedMap = () => {
 };
 
 window.exportSelectedMap = window.executeMapExport;
+
+
+window.pushMapState = {
+    selectedFile: null,
+    fileName: ""
+};
+
+window.openPushMapModal = () => {
+    const modal = document.getElementById('pushMapModal');
+    if (!modal) return;
+    
+    // Reset to Step 1
+    window.pushMapState.selectedFile = null;
+    window.pushMapState.fileName = "";
+    
+    // Reset UI Elements
+    document.getElementById('pushStep1Container').classList.remove('hidden');
+    document.getElementById('pushStep2Container').classList.add('hidden');
+    document.getElementById('pushStep3Container').classList.add('hidden');
+    
+    // Stepper styling reset
+    document.getElementById('pushStep1Icon').className = "w-8 h-8 rounded-full bg-[#1890ff] text-white flex items-center justify-center font-bold text-sm shadow-xs transition-all";
+    document.getElementById('pushStep1Icon').innerHTML = "1";
+    document.getElementById('pushStep1Label').className = "text-sm font-semibold text-gray-800";
+    document.getElementById('pushStep1Sub').classList.add('hidden');
+    
+    document.getElementById('pushLine1').className = "flex-1 h-[2px] bg-gray-200 mx-4 transition-all";
+    document.getElementById('pushStep2Icon').className = "w-8 h-8 rounded-full border border-gray-300 bg-white text-gray-400 flex items-center justify-center font-bold text-sm transition-all";
+    document.getElementById('pushStep2Icon').innerHTML = "2";
+    document.getElementById('pushStep2Label').className = "text-sm font-semibold text-gray-400";
+    document.getElementById('pushStep2Sub').classList.add('hidden');
+    
+    document.getElementById('pushLine2').className = "flex-1 h-[2px] bg-gray-200 mx-4 transition-all";
+    document.getElementById('pushStep3Icon').className = "w-8 h-8 rounded-full border border-gray-300 bg-white text-gray-400 flex items-center justify-center font-bold text-sm transition-all";
+    document.getElementById('pushStep3Label').className = "text-sm font-semibold text-gray-400";
+    document.getElementById('pushStep3Sub').classList.add('hidden');
+    
+    // Reset file input and selected info
+    const fileInput = document.getElementById('pushMapFileInput');
+    if (fileInput) fileInput.value = "";
+    document.getElementById('pushSelectedFileInfo').classList.add('hidden');
+    document.getElementById('pushSelectedFileInfo').classList.remove('flex');
+    
+    const nextBtn = document.getElementById('pushNextBtn');
+    if (nextBtn) {
+        nextBtn.disabled = true;
+        nextBtn.className = "bg-gray-100 text-gray-400 cursor-not-allowed font-medium text-sm px-5 py-1.5 rounded transition";
+    }
+    
+    // Show Modal
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    void modal.offsetWidth;
+    modal.classList.remove('opacity-0');
+    modal.classList.add('opacity-100');
+};
+
+window.closePushMapModal = () => {
+    const modal = document.getElementById('pushMapModal');
+    if (!modal) return;
+    modal.classList.remove('opacity-100');
+    modal.classList.add('opacity-0');
+    setTimeout(() => {
+        modal.classList.remove('flex');
+        modal.classList.add('hidden');
+    }, 300);
+};
+
+window.handlePushMapFileSelect = (input) => {
+    const file = input.files[0];
+    if (!file) return;
+    
+    window.pushMapState.selectedFile = file;
+    window.pushMapState.fileName = file.name;
+    
+    // Update Step 1 Subtitle
+    document.getElementById('pushStep1Sub').classList.remove('hidden');
+    
+    // Show selected file name with paperclip
+    const fileInfo = document.getElementById('pushSelectedFileInfo');
+    const fileNameSpan = document.getElementById('pushSelectedFileName');
+    if (fileNameSpan) fileNameSpan.innerText = file.name;
+    if (fileInfo) {
+        fileInfo.classList.remove('hidden');
+        fileInfo.classList.add('flex');
+    }
+    
+    // Enable Next Step button (Blue)
+    const nextBtn = document.getElementById('pushNextBtn');
+    if (nextBtn) {
+        nextBtn.disabled = false;
+        nextBtn.className = "bg-[#1890ff] hover:bg-[#40a9ff] text-white cursor-pointer font-medium text-sm px-5 py-1.5 rounded transition shadow-sm";
+    }
+};
+
+window.nextPushMapStep = async () => {
+    if (!window.pushMapState.selectedFile) return;
+    
+    const fileName = window.pushMapState.fileName;
+    
+    // Transition to Step 2 (Download on robot)
+    document.getElementById('pushStep1Container').classList.add('hidden');
+    document.getElementById('pushStep2Container').classList.remove('hidden');
+    
+    // Update Stepper for Step 2
+    document.getElementById('pushStep1Icon').className = "w-8 h-8 rounded-full border-2 border-[#1890ff] bg-white text-[#1890ff] flex items-center justify-center font-bold text-sm transition-all";
+    document.getElementById('pushStep1Icon').innerHTML = '<i class="fa-solid fa-check text-xs"></i>';
+    document.getElementById('pushStep1Sub').classList.add('hidden');
+    
+    document.getElementById('pushLine1').className = "flex-1 h-[2px] bg-[#1890ff] mx-4 transition-all";
+    
+    document.getElementById('pushStep2Icon').className = "w-8 h-8 rounded-full bg-[#1890ff] text-white flex items-center justify-center font-bold text-sm shadow-xs transition-all";
+    document.getElementById('pushStep2Icon').innerHTML = "2";
+    document.getElementById('pushStep2Label').className = "text-sm font-semibold text-gray-800";
+    document.getElementById('pushStep2Sub').classList.remove('hidden');
+    
+    document.getElementById('pushStep2FileName').innerText = fileName;
+    
+    // Progress animation
+    const pBar = document.getElementById('pushProgressBar');
+    if (pBar) pBar.style.width = "45%";
+    
+    setTimeout(() => {
+        if (pBar) pBar.style.width = "85%";
+    }, 1200);
+    
+    // Simulate/Perform map delivery to robot
+    setTimeout(() => {
+        // Transition to Step 3 (Complete)
+        document.getElementById('pushStep2Container').classList.add('hidden');
+        document.getElementById('pushStep3Container').classList.remove('hidden');
+        
+        // Update Stepper for Step 3
+        document.getElementById('pushStep2Icon').className = "w-8 h-8 rounded-full border-2 border-[#1890ff] bg-white text-[#1890ff] flex items-center justify-center font-bold text-sm transition-all";
+        document.getElementById('pushStep2Icon').innerHTML = '<i class="fa-solid fa-check text-xs"></i>';
+        document.getElementById('pushStep2Sub').classList.add('hidden');
+        
+        document.getElementById('pushLine2').className = "flex-1 h-[2px] bg-[#1890ff] mx-4 transition-all";
+        
+        document.getElementById('pushStep3Icon').className = "w-8 h-8 rounded-full bg-[#1890ff] text-white flex items-center justify-center font-bold text-sm shadow-xs transition-all";
+        document.getElementById('pushStep3Icon').innerHTML = "3";
+        document.getElementById('pushStep3Label').className = "text-sm font-semibold text-gray-800";
+        document.getElementById('pushStep3Sub').classList.remove('hidden');
+        
+        showToast("✅ تم اعتماد وتثبيت الخريطة بنجاح على الروبوت!", "success");
+        if (window.fetchRobotMap) window.fetchRobotMap();
+    }, 2800);
+};
+
+window.pushMapToRobot = window.openPushMapModal;
