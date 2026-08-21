@@ -12723,7 +12723,8 @@ window.syncAttractionWithPuduCloud = async () => {
     try {
         let syncedGrids = null;
         
-        if (typeof db !== 'undefined' && typeof appId !== 'undefined') {
+        // 1. Fetch from Central Cloud DB
+        if (typeof db !== 'undefined' && typeof appId !== 'undefined' && typeof getDoc !== 'undefined') {
             try {
                 const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robot_attraction_settings', sn));
                 if (snap && snap.exists() && snap.data().grids && snap.data().grids.length >= 3) {
@@ -12732,10 +12733,16 @@ window.syncAttractionWithPuduCloud = async () => {
             } catch(e) {}
         }
         
+        // 2. Check live Pudu Cloud API
+        let isOnline = false;
         try {
             const res = await window.callPuduApi("status", { sn: sn }, true);
-            if (res && res.data && res.data.custom_scenarios) {
-                syncedGrids = res.data.custom_scenarios;
+            if (res && res.data) {
+                const rawState = String(res.data.run_state || "").toUpperCase();
+                isOnline = (rawState !== "OFFLINE" && rawState !== "");
+                if (res.data.custom_scenarios && Array.isArray(res.data.custom_scenarios)) {
+                    syncedGrids = res.data.custom_scenarios;
+                }
             }
         } catch(puduErr) {}
 
@@ -12743,10 +12750,14 @@ window.syncAttractionWithPuduCloud = async () => {
             window.currentRobotAttractionGrids = syncedGrids;
             localStorage.setItem('ketty_attraction_grids_' + sn, JSON.stringify(syncedGrids));
             window.renderAttractionGridsForm();
-            showToast("✅ تمت مزامنة وجلب أحدث الإعدادات بنجاح من سيرفر Pudu!", "success");
+            showToast("✅ تمت مزامنة وجلب أحدث إعدادات بنجاح من سيرفر Pudu!", "success");
         } else {
             window.renderAttractionGridsForm();
-            showToast("✅ تم تحديث وتأكيد الإعدادات بنجاح", "success");
+            if (!isOnline) {
+                showToast("ℹ الروبوت مطفأ (Offline) حالياً - تم تثبيت آخر إعدادات سحابية", "info");
+            } else {
+                showToast("✅ الإعدادات متطابقة مع سيرفر Pudu بالفعل", "success");
+            }
         }
     } catch (err) {
         console.error("Sync error:", err);
