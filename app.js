@@ -12483,37 +12483,7 @@ const linkOptionsList = [
     { value: "Custom external link", label: "Custom external link (رابط موقع مخصص)", icon: "fa-solid fa-globe", bg: "bg-gradient-to-br from-[#fb923c] to-[#ea580c]" }
 ];
 
-function getDefaultGridsForRobot() {
-    return [
-        {
-            id: "grid-1",
-            name: "Queuing up",
-            linkType: "Queuing up",
-            customUrl: "",
-            bgClass: "bg-gradient-to-br from-[#4ade80] to-[#22c55e]",
-            icon: "fa-solid fa-location-dot"
-        },
-        {
-            id: "grid-2",
-            name: "Our Website",
-            linkType: "Custom external link",
-            customUrl: "https://www.isoeducation.edu.jo/",
-            bgClass: "bg-gradient-to-br from-[#fb923c] to-[#ea580c]",
-            icon: "fa-solid fa-ticket"
-        },
-        {
-            id: "grid-3",
-            name: "ISO Booth",
-            linkType: "Map Location",
-            customUrl: "",
-            bgClass: "bg-gradient-to-br from-[#3b82f6] to-[#1d4ed8]",
-            icon: "fa-solid fa-bell-concierge"
-        }
-    ];
-}
-
-// Initialized with standard defaults immediately to NEVER be blank
-window.currentRobotAttractionGrids = getDefaultGridsForRobot();
+window.currentRobotAttractionGrids = [];
 
 window.loadRobotAttractionGrids = (robotSn) => {
     const sn = robotSn || window.currentRobotSn || "default";
@@ -12530,9 +12500,7 @@ window.loadRobotAttractionGrids = (robotSn) => {
         }
     } catch(e) {}
     
-    if (!loadedGrids) {
-        loadedGrids = getDefaultGridsForRobot();
-    }
+    if (!loadedGrids) { loadedGrids = []; }
     
     window.currentRobotAttractionGrids = loadedGrids;
     window.renderAttractionGridsForm();
@@ -12555,57 +12523,67 @@ window.renderAttractionGridsForm = () => {
     const container = document.getElementById('attractionGridsContainer');
     if (!container) return;
     
-    if (!window.currentRobotAttractionGrids || !Array.isArray(window.currentRobotAttractionGrids) || window.currentRobotAttractionGrids.length < 3) {
-        window.currentRobotAttractionGrids = getDefaultGridsForRobot();
+    window.currentRobotAttractionGrids = window.currentRobotAttractionGrids || [];
+    // Only reset to empty if it's broken data, but if it's less than 3 we still show what they have
+    if (!Array.isArray(window.currentRobotAttractionGrids)) {
+        window.currentRobotAttractionGrids = [];
     }
     
     let html = '';
     const totalGrids = window.currentRobotAttractionGrids.length;
 
-    window.currentRobotAttractionGrids.forEach((grid, idx) => {
-        let optionsHtml = '';
-        linkOptionsList.forEach(opt => {
-            const isSelected = (opt.value === grid.linkType) ? 'selected' : '';
-            optionsHtml += `<option value="${opt.value}" ${isSelected}>${opt.label}</option>`;
-        });
+    if (totalGrids === 0) {
+        html = `<div class="text-center p-8 bg-gray-50 border border-dashed border-gray-300 rounded-xl transition hover:border-[#1890ff]">
+            <i class="fa-solid fa-robot text-4xl text-gray-300 mb-3 block"></i>
+            <p class="text-sm text-gray-500 font-bold mb-1">لم يتم العثور على إعدادات محفوظة لهذا الروبوت</p>
+            <p class="text-xs text-gray-400">يرجى إضافة قوائم جديدة أسفل أو الضغط على (Sync from Pudu) للمزامنة إن كان الروبوت متصلاً.</p>
+        </div>`;
+    } else {
+        window.currentRobotAttractionGrids.forEach((grid, idx) => {
+            let optionsHtml = '';
+            linkOptionsList.forEach(opt => {
+                const isSelected = (opt.value === grid.linkType) ? 'selected' : '';
+                optionsHtml += \`<option value="\${opt.value}" \${isSelected}>\${opt.label}</option>\`;
+            });
 
-        const isCustomLink = grid.linkType === 'Custom external link';
-        const canDelete = totalGrids > 3;
+            const isCustomLink = grid.linkType === 'Custom external link';
+            const canDelete = true;
 
-        html += `
-        <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-xs relative group transition hover:border-[#1890ff]">
-            <div class="flex items-center justify-between mb-3">
-                <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Grid ${idx + 1}</span>
-                ${canDelete ? `<button onclick="window.removeAttractionGrid(${idx})" class="text-gray-400 hover:text-rose-500 transition text-sm p-1" title="Delete Grid"><i class="fa-regular fa-trash-can"></i></button>` : `<span class="text-[10px] text-gray-300 font-medium">Fixed (Min 3)</span>`}
-            </div>
-
-            <!-- Grid Name -->
-            <div class="flex items-center gap-3 mb-3">
-                <label class="text-xs font-semibold text-gray-700 w-28 shrink-0"><span class="text-rose-500">*</span> Grid Name:</label>
-                <input type="text" value="${grid.name || ''}" oninput="window.updateGridName(${idx}, this.value)" class="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-[#1890ff] focus:ring-1 focus:ring-[#1890ff] transition" placeholder="Enter grid name...">
-            </div>
-
-            <!-- Redirect Link -->
-            <div class="flex items-center gap-3 ${isCustomLink ? 'mb-3' : ''}">
-                <label class="text-xs font-semibold text-gray-700 w-28 shrink-0"><span class="text-rose-500">*</span> Redirect Link:</label>
-                <div class="relative flex-1">
-                    <select onchange="window.updateGridLink(${idx}, this.value)" class="w-full appearance-none border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-[#1890ff] focus:ring-1 focus:ring-[#1890ff] bg-white transition pr-8">
-                        ${optionsHtml}
-                    </select>
-                    <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 pointer-events-none"></i>
+            html += `
+            <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-xs relative group transition hover:border-[#1890ff] mb-4">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Grid ${idx + 1}</span>
+                    <button onclick="window.removeAttractionGrid(${idx})" class="text-gray-400 hover:text-rose-500 transition text-sm p-1" title="Delete Grid"><i class="fa-regular fa-trash-can"></i></button>
                 </div>
-            </div>
 
-            <!-- Custom external link (Conditional) -->
-            ${isCustomLink ? `
-            <div class="flex items-center gap-3">
-                <label class="text-xs font-semibold text-gray-700 w-28 shrink-0"><span class="text-rose-500">*</span> Custom external link:</label>
-                <input type="url" value="${grid.customUrl || ''}" oninput="window.updateGridCustomLink(${idx}, this.value)" class="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-[#1890ff] focus:ring-1 focus:ring-[#1890ff] transition" placeholder="https://www.example.com">
+                <!-- Grid Name -->
+                <div class="flex items-center gap-3 mb-3">
+                    <label class="text-xs font-semibold text-gray-700 w-28 shrink-0"><span class="text-rose-500">*</span> Grid Name:</label>
+                    <input type="text" value="${grid.name || ''}" oninput="window.updateGridName(${idx}, this.value)" class="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-[#1890ff] focus:ring-1 focus:ring-[#1890ff] transition" placeholder="Enter grid name...">
+                </div>
+
+                <!-- Redirect Link -->
+                <div class="flex items-center gap-3 ${isCustomLink ? 'mb-3' : ''}">
+                    <label class="text-xs font-semibold text-gray-700 w-28 shrink-0"><span class="text-rose-500">*</span> Redirect Link:</label>
+                    <div class="relative flex-1">
+                        <select onchange="window.updateGridLink(${idx}, this.value)" class="w-full appearance-none border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-[#1890ff] focus:ring-1 focus:ring-[#1890ff] bg-white transition pr-8">
+                            ${optionsHtml}
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 pointer-events-none"></i>
+                    </div>
+                </div>
+
+                <!-- Custom external link -->
+                ${isCustomLink ? `
+                <div class="flex items-center gap-3">
+                    <label class="text-xs font-semibold text-gray-700 w-28 shrink-0"><span class="text-rose-500">*</span> Custom external link:</label>
+                    <input type="url" value="${grid.customUrl || ''}" oninput="window.updateGridCustomLink(${idx}, this.value)" class="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-[#1890ff] focus:ring-1 focus:ring-[#1890ff] transition" placeholder="https://www.example.com">
+                </div>
+                ` : ''}
             </div>
-            ` : ''}
-        </div>
-        `;
-    });
+            `;
+        });
+    }
 
     container.innerHTML = html;
 
@@ -12627,12 +12605,18 @@ window.renderAttractionScreenPreview = () => {
     const previewContainer = document.getElementById('screenPreviewTiles');
     if (!previewContainer) return;
 
-    if (!window.currentRobotAttractionGrids || window.currentRobotAttractionGrids.length === 0) {
-        window.currentRobotAttractionGrids = getDefaultGridsForRobot();
-    }
+    window.currentRobotAttractionGrids = window.currentRobotAttractionGrids || [];
+    const total = window.currentRobotAttractionGrids.length;
 
     let html = '';
-    const total = window.currentRobotAttractionGrids.length;
+    
+    if (total === 0) {
+        previewContainer.innerHTML = `<div class="col-span-2 h-full min-h-[200px] flex flex-col items-center justify-center border-2 border-dashed border-[#8eb4d3] rounded-2xl bg-white/20">
+            <i class="fa-solid fa-border-none text-2xl text-[#8eb4d3] mb-2 opacity-60"></i>
+            <span class="text-[#597893] text-xs font-semibold text-center">شاشة الروبوت التفاعلية لا تحتوي على أي قوائم محفوظة</span>
+        </div>`;
+        return;
+    }
 
     window.currentRobotAttractionGrids.forEach((grid, idx) => {
         let opt = linkOptionsList.find(o => o.value === grid.linkType) || linkOptionsList[0];
@@ -12683,8 +12667,8 @@ window.addAttractionGrid = () => {
 };
 
 window.removeAttractionGrid = (idx) => {
-    if (window.currentRobotAttractionGrids.length <= 3) {
-        showToast("الحد الأدنى هو 3 قوائم ولا يمكن الحذف", "warning");
+    if (window.currentRobotAttractionGrids.length <= 3 && window.currentRobotAttractionGrids.length > 0) {
+        showToast("الحد الأدنى هو 3 قوائم، يمكنك الإضافة لزيادتها", "warning");
         return;
     }
     window.currentRobotAttractionGrids.splice(idx, 1);
@@ -12746,9 +12730,9 @@ window.syncAttractionWithPuduCloud = async () => {
             } catch(e) {}
         }
 
-        // 3. Fallback default
-        if (!syncedGrids || !Array.isArray(syncedGrids) || syncedGrids.length < 3) {
-            syncedGrids = getDefaultGridsForRobot();
+        // 3. Fallback default (Do NOT auto-populate fake info)
+        if (!syncedGrids || !Array.isArray(syncedGrids)) {
+            syncedGrids = [];
         }
 
         window.currentRobotAttractionGrids = syncedGrids;
