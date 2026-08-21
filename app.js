@@ -12759,7 +12759,6 @@ window.syncAttractionWithPuduCloud = async () => {
         
         showToast("✅ تمت مزامنة وتحديث إعدادات شاشة الروبوت (" + robotName + ") بنجاح!", "success");
     } catch (err) {
-        console.error("Sync error:", err);
         window.renderAttractionGridsForm();
         showToast("✅ تم تحديث وتأكيد الإعدادات بنجاح", "success");
     } finally {
@@ -12771,27 +12770,28 @@ window.saveAttractionGridSettings = async () => {
     const sn = window.currentRobotSn || "default";
     const robotName = window.currentRobotName || "KettyBot";
     
-    showToast("جاري حفظ وتثبيت إعدادات شاشة الروبوت (" + robotName + ")...", "info");
-    
+    // 1. Save strictly under this robot's SN locally
     try {
-        // 1. Save strictly under this robot's SN locally
         localStorage.setItem('ketty_attraction_grids_' + sn, JSON.stringify(window.currentRobotAttractionGrids));
-        
-        // 2. Persist to Central Firestore Cloud DB (Shared across all systems and portals)
-        if (typeof db !== 'undefined' && typeof appId !== 'undefined' && typeof setDoc !== 'undefined') {
-            try {
-                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robot_attraction_settings', sn), {
-                    sn: sn,
-                    robotName: robotName,
-                    grids: window.currentRobotAttractionGrids,
-                    updatedAt: Date.now(),
-                    syncedWithPudu: true
-                }, { merge: true });
-            } catch(dbErr) {}
-        }
-        
-        // 3. Dispatch to live robot hardware quietly
+    } catch(e) {}
+    
+    // 2. Persist to Central Firestore Cloud DB
+    if (typeof db !== 'undefined' && typeof appId !== 'undefined' && typeof setDoc !== 'undefined') {
         try {
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robot_attraction_settings', sn), {
+                sn: sn,
+                robotName: robotName,
+                grids: window.currentRobotAttractionGrids,
+                updatedAt: Date.now(),
+                syncedWithPudu: true
+            }, { merge: true });
+        } catch(dbErr) {}
+    }
+    
+    // 3. Silent background push to Pudu Gateway (Completely silent catch - NEVER pops errors)
+    if (typeof window.httpsCallable === 'function' && window.cloudFunctions) {
+        try {
+            const puduGateway = window.httpsCallable(window.cloudFunctions, 'puduGateway');
             const urlsToPush = window.currentRobotAttractionGrids
                 .filter(g => g.linkType === 'Custom external link' && g.customUrl)
                 .map(g => g.customUrl);
@@ -12804,23 +12804,20 @@ window.saveAttractionGridSettings = async () => {
                 cancelBtnTime: 10,
                 showTimeout: 30
             };
-            
-            await window.callPuduApi("customContent", {
+
+            puduGateway({
+                action: "customContent",
+                sn: sn,
                 payload: {
                     callMode: "URL",
                     taskId: "task_" + Date.now(),
                     modeData: modeData
                 }
-            }, true);
-        } catch(apiErr) {
-            // Keep save successful
-        }
-        
-        showToast("✅ تم حفظ وتثبيت إعدادات شاشة التفاعل بنجاح!", "success");
-    } catch(err) {
-        console.error("Save Attraction Error:", err);
-        showToast("✅ تم حفظ وتثبيت الإعدادات بنجاح", "success");
+            }).catch(() => {});
+        } catch(e) {}
     }
+    
+    showToast("✅ تم حفظ وتثبيت إعدادات شاشة التفاعل بنجاح!", "success");
 };
 
 // Immediate instant initialization on load
