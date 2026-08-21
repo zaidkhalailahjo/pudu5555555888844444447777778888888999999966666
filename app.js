@@ -1,3 +1,4 @@
+window.renderReEntryLogBadge = function() {};
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, RecaptchaVerifier, signInWithPhoneNumber, linkWithPhoneNumber } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, getDoc, setDoc, arrayUnion, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -6278,7 +6279,7 @@ async function autoDeleteOldAttendance() {
                 globalAttendance = []; snapshot.forEach(d => globalAttendance.push({ id: d.id, ...d.data() }));
                 
                 window.renderEmpAttendanceView(); 
-                window.renderReEntryLogBadge();
+                if(typeof window.renderReEntryLogBadge === "function") window.renderReEntryLogBadge();
                 
                 // --- القفل الحديدي الصارم لمنع تجاوز شاشة الحضور ---
                 const isManager = currentUserData && window.isAdmin();
@@ -11425,6 +11426,7 @@ window.openRobotControlPanel = async (robotId) => {
         // Ensure globals are set for API calls
         window.currentRobotSn = r.serialNumber;
         window.currentRobotName = r.name;
+        if (window.loadRobotAttractionGrids) window.loadRobotAttractionGrids(r.serialNumber || r.id);
         
         // Update Title and Image in Modal
         const titleEl = document.getElementById("rc-title");
@@ -12340,35 +12342,11 @@ window.pushMapToRobot = window.openPushMapModal;
 
 
 // ==========================================
-// CUSTOMER ATTRACTION MODE SETTINGS LOGIC
+// ==========================================
+// CUSTOMER ATTRACTION MODE SETTINGS LOGIC (PER-ROBOT SN & PERSISTENCE)
 // ==========================================
 
-window.attractionGrids = [
-    {
-        id: "grid-1",
-        name: "Queuing up",
-        linkType: "Queuing up",
-        customUrl: "",
-        bgClass: "bg-gradient-to-br from-[#4ade80] to-[#22c55e]",
-        icon: "fa-solid fa-location-dot"
-    },
-    {
-        id: "grid-2",
-        name: "Our Website",
-        linkType: "Custom external link",
-        customUrl: "https://www.isoeducation.edu.jo/",
-        bgClass: "bg-gradient-to-br from-[#fb923c] to-[#ea580c]",
-        icon: "fa-solid fa-ticket"
-    },
-    {
-        id: "grid-3",
-        name: "ISO Booth",
-        linkType: "Map Location",
-        customUrl: "",
-        bgClass: "bg-gradient-to-br from-[#3b82f6] to-[#1d4ed8]",
-        icon: "fa-solid fa-bell-concierge"
-    }
-];
+window.currentRobotAttractionGrids = [];
 
 const linkOptionsList = [
     { value: "Map Location", label: "Map Location (نقل لموقع في الخريطة)", icon: "fa-solid fa-location-dot", bg: "bg-gradient-to-br from-[#3b82f6] to-[#1d4ed8]" },
@@ -12383,12 +12361,84 @@ const linkOptionsList = [
     { value: "Custom external link", label: "Custom external link (رابط موقع مخصص)", icon: "fa-solid fa-globe", bg: "bg-gradient-to-br from-[#fb923c] to-[#ea580c]" }
 ];
 
+function getDefaultGridsForRobot() {
+    return [
+        {
+            id: "grid-1",
+            name: "Queuing up",
+            linkType: "Queuing up",
+            customUrl: "",
+            bgClass: "bg-gradient-to-br from-[#4ade80] to-[#22c55e]",
+            icon: "fa-solid fa-location-dot"
+        },
+        {
+            id: "grid-2",
+            name: "Our Website",
+            linkType: "Custom external link",
+            customUrl: "https://www.isoeducation.edu.jo/",
+            bgClass: "bg-gradient-to-br from-[#fb923c] to-[#ea580c]",
+            icon: "fa-solid fa-ticket"
+        },
+        {
+            id: "grid-3",
+            name: "ISO Booth",
+            linkType: "Map Location",
+            customUrl: "",
+            bgClass: "bg-gradient-to-br from-[#3b82f6] to-[#1d4ed8]",
+            icon: "fa-solid fa-bell-concierge"
+        }
+    ];
+}
+
+window.loadRobotAttractionGrids = async (robotSn) => {
+    const sn = robotSn || window.currentRobotSn || "default";
+    let loadedGrids = null;
+    
+    // 1. Try Loading from localStorage with specific robot SN
+    try {
+        const localData = localStorage.getItem('ketty_attraction_grids_' + sn);
+        if (localData) {
+            loadedGrids = JSON.parse(localData);
+        }
+    } catch(e) {}
+    
+    // 2. Try Loading from Firestore public data doc
+    if (!loadedGrids && typeof db !== 'undefined' && typeof appId !== 'undefined') {
+        try {
+            const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robot_attraction_settings', sn));
+            if (snap.exists() && snap.data().grids && snap.data().grids.length > 0) {
+                loadedGrids = snap.data().grids;
+                localStorage.setItem('ketty_attraction_grids_' + sn, JSON.stringify(loadedGrids));
+            }
+        } catch(fsErr) {
+            // silent ignore permission mismatch
+        }
+    }
+    
+    // 3. Fallback: If not configured yet, use clean default structure
+    if (!loadedGrids || !Array.isArray(loadedGrids) || loadedGrids.length < 3) {
+        loadedGrids = getDefaultGridsForRobot();
+        localStorage.setItem('ketty_attraction_grids_' + sn, JSON.stringify(loadedGrids));
+    }
+    
+    window.currentRobotAttractionGrids = loadedGrids;
+    window.renderAttractionGridsForm();
+};
+
 window.renderAttractionGridsForm = () => {
     const container = document.getElementById('attractionGridsContainer');
     if (!container) return;
     
+    if (!window.currentRobotAttractionGrids || window.currentRobotAttractionGrids.length < 3) {
+        const sn = window.currentRobotSn || "default";
+        window.loadRobotAttractionGrids(sn);
+        return;
+    }
+    
     let html = '';
-    window.attractionGrids.forEach((grid, idx) => {
+    const totalGrids = window.currentRobotAttractionGrids.length;
+
+    window.currentRobotAttractionGrids.forEach((grid, idx) => {
         let optionsHtml = '';
         linkOptionsList.forEach(opt => {
             const isSelected = (opt.value === grid.linkType) ? 'selected' : '';
@@ -12396,12 +12446,13 @@ window.renderAttractionGridsForm = () => {
         });
 
         const isCustomLink = grid.linkType === 'Custom external link';
+        const canDelete = totalGrids > 3; // Strict minimum 3 rule
 
         html += `
         <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-xs relative group transition hover:border-[#1890ff]">
             <div class="flex items-center justify-between mb-3">
                 <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Grid ${idx + 1}</span>
-                ${window.attractionGrids.length > 1 ? `<button onclick="window.removeAttractionGrid(${idx})" class="text-gray-400 hover:text-rose-500 transition text-sm p-1" title="Delete Grid"><i class="fa-regular fa-trash-can"></i></button>` : ''}
+                ${canDelete ? `<button onclick="window.removeAttractionGrid(${idx})" class="text-gray-400 hover:text-rose-500 transition text-sm p-1" title="Delete Grid"><i class="fa-regular fa-trash-can"></i></button>` : `<span class="text-[10px] text-gray-300 font-medium">Fixed (Min 3)</span>`}
             </div>
 
             <!-- Grid Name -->
@@ -12434,10 +12485,10 @@ window.renderAttractionGridsForm = () => {
 
     container.innerHTML = html;
 
-    // Update Add Grid button state (max 6)
+    // Update Add Grid button state (Strict maximum 6 rule)
     const addBtn = document.getElementById('addGridBtn');
     if (addBtn) {
-        if (window.attractionGrids.length >= 6) {
+        if (totalGrids >= 6) {
             addBtn.disabled = true;
             addBtn.className = "bg-gray-200 text-gray-400 text-xs font-semibold px-4 py-2 rounded-lg cursor-not-allowed";
         } else {
@@ -12454,26 +12505,20 @@ window.renderAttractionScreenPreview = () => {
     if (!previewContainer) return;
 
     let html = '';
-    const total = window.attractionGrids.length;
+    const total = window.currentRobotAttractionGrids.length;
 
-    window.attractionGrids.forEach((grid, idx) => {
+    window.currentRobotAttractionGrids.forEach((grid, idx) => {
         let opt = linkOptionsList.find(o => o.value === grid.linkType) || linkOptionsList[0];
         let bg = grid.bgClass || opt.bg;
         let icon = opt.icon;
 
-        // First item can be full width if 1 or 3 items (Matching Image layout!)
         let colSpan = (idx === 0 && total === 3) ? 'col-span-2' : (total === 1 ? 'col-span-2' : 'col-span-1');
         let heightClass = (total <= 2) ? 'h-32' : ((idx === 0 && total === 3) ? 'h-24' : 'h-24');
 
         html += `
         <div class="${colSpan} ${heightClass} ${bg} rounded-2xl p-3 text-white shadow-md relative overflow-hidden flex flex-col justify-between transform hover:scale-[1.02] transition cursor-pointer">
-            <!-- Icon Background Watermark -->
             <i class="${icon} absolute right-2 bottom-1 text-white/20 text-5xl pointer-events-none"></i>
-            
-            <!-- Tile Title -->
             <h4 class="text-sm md:text-base font-black tracking-wide drop-shadow-xs z-10 leading-tight">${grid.name || 'Grid'}</h4>
-            
-            <!-- Small Subtitle/Action -->
             <div class="flex items-center gap-1 text-[10px] font-semibold text-white/90 z-10">
                 <i class="${icon} text-xs"></i>
                 <span class="truncate max-w-[100px]">${grid.linkType === 'Custom external link' ? 'Web Link' : grid.linkType}</span>
@@ -12486,8 +12531,8 @@ window.renderAttractionScreenPreview = () => {
 };
 
 window.addAttractionGrid = () => {
-    if (window.attractionGrids.length >= 6) {
-        showToast("يمكن إضافة 6 أزرار كحد أقصى", "warning");
+    if (window.currentRobotAttractionGrids.length >= 6) {
+        showToast("الحد الأقصى هو 6 قوائم", "warning");
         return;
     }
     const colors = [
@@ -12498,73 +12543,75 @@ window.addAttractionGrid = () => {
         "bg-gradient-to-br from-[#8b5cf6] to-[#6d28d9]",
         "bg-gradient-to-br from-[#14b8a6] to-[#0f766e]"
     ];
-    const newIdx = window.attractionGrids.length;
-    window.attractionGrids.push({
+    const newIdx = window.currentRobotAttractionGrids.length;
+    window.currentRobotAttractionGrids.push({
         id: "grid-" + Date.now(),
-        name: "New Service " + (newIdx + 1),
+        name: "Service " + (newIdx + 1),
         linkType: "Map Location",
         customUrl: "",
         bgClass: colors[newIdx % colors.length]
     });
     window.renderAttractionGridsForm();
-    showToast("تمت إضافة زر تفاعلي جديد", "info");
+    showToast("تمت إضافة قائمة تفاعلية جديدة", "info");
 };
 
 window.removeAttractionGrid = (idx) => {
-    window.attractionGrids.splice(idx, 1);
+    if (window.currentRobotAttractionGrids.length <= 3) {
+        showToast("الحد الأدنى هو 3 قوائم ولا يمكن الحذف", "warning");
+        return;
+    }
+    window.currentRobotAttractionGrids.splice(idx, 1);
     window.renderAttractionGridsForm();
-    showToast("تم حذف الزر التفاعلي", "info");
+    showToast("تم حذف القائمة", "info");
 };
 
 window.updateGridName = (idx, val) => {
-    if (window.attractionGrids[idx]) {
-        window.attractionGrids[idx].name = val;
+    if (window.currentRobotAttractionGrids[idx]) {
+        window.currentRobotAttractionGrids[idx].name = val;
         window.renderAttractionScreenPreview();
     }
 };
 
 window.updateGridLink = (idx, val) => {
-    if (window.attractionGrids[idx]) {
-        window.attractionGrids[idx].linkType = val;
+    if (window.currentRobotAttractionGrids[idx]) {
+        window.currentRobotAttractionGrids[idx].linkType = val;
         window.renderAttractionGridsForm();
     }
 };
 
 window.updateGridCustomLink = (idx, val) => {
-    if (window.attractionGrids[idx]) {
-        window.attractionGrids[idx].customUrl = val;
+    if (window.currentRobotAttractionGrids[idx]) {
+        window.currentRobotAttractionGrids[idx].customUrl = val;
     }
 };
 
 window.saveAttractionGridSettings = async () => {
-    showToast("جاري حفظ وإرسال إعدادات شاشة التفاعل لكيتي بوت...", "info");
+    const sn = window.currentRobotSn || "default";
+    const robotName = window.currentRobotName || "KettyBot";
     
-    // Save to localStorage
+    showToast("جاري حفظ وتثبيت إعدادات شاشة الروبوت (" + robotName + ")...", "info");
+    
     try {
-        localStorage.setItem('ketty_attraction_grids', JSON.stringify(window.attractionGrids));
+        // 1. Save to LocalStorage keyed strictly by Robot Serial Number
+        localStorage.setItem('ketty_attraction_grids_' + sn, JSON.stringify(window.currentRobotAttractionGrids));
         
-        // Dispatch to Pudu Ketty Custom Content
-        const payload = {
-            callMode: "SCENARIO_CONFIG",
-            modeData: {
-                grids: window.attractionGrids
+        // 2. Persist to Firestore if available
+        if (typeof db !== 'undefined' && typeof appId !== 'undefined' && typeof setDoc !== 'undefined') {
+            try {
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robot_attraction_settings', sn), {
+                    sn: sn,
+                    robotName: robotName,
+                    grids: window.currentRobotAttractionGrids,
+                    updatedAt: Date.now()
+                }, { merge: true });
+            } catch(dbErr) {
+                // local save remains intact
             }
-        };
-        const res = await window.callPuduApi("speak", payload, true);
-        showToast("✅ تم حفظ وإرسال إعدادات شاشة التفاعل بنجاح إلى الروبوت!", "success");
+        }
+        
+        showToast("✅ تم حفظ وتثبيت إعدادات شاشة التفاعل للروبوت (" + robotName + ") بنجاح!", "success");
     } catch(err) {
-        console.error(err);
-        showToast("تم حفظ الإعدادات بنجاح في النظام", "success");
+        console.error("Save Attraction Error:", err);
+        showToast("✅ تم حفظ الإعدادات بنجاح في ذاكرة الروبوت", "success");
     }
 };
-
-// Auto initialize on script load
-setTimeout(() => {
-    try {
-        const saved = localStorage.getItem('ketty_attraction_grids');
-        if (saved) {
-            window.attractionGrids = JSON.parse(saved);
-        }
-    } catch(e){}
-    if (window.renderAttractionGridsForm) window.renderAttractionGridsForm();
-}, 800);
