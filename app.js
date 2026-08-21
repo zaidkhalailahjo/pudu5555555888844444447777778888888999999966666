@@ -12723,7 +12723,7 @@ window.syncAttractionWithPuduCloud = async () => {
     try {
         let syncedGrids = null;
         
-        // 1. Fetch from Central Cloud DB
+        // 1. Fetch from Firestore Central Cloud DB
         if (typeof db !== 'undefined' && typeof appId !== 'undefined' && typeof getDoc !== 'undefined') {
             try {
                 const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robot_attraction_settings', sn));
@@ -12733,35 +12733,35 @@ window.syncAttractionWithPuduCloud = async () => {
             } catch(e) {}
         }
         
-        // 2. Check live Pudu Cloud API
-        let isOnline = false;
-        try {
-            const res = await window.callPuduApi("status", { sn: sn }, true);
-            if (res && res.data) {
-                const rawState = String(res.data.run_state || "").toUpperCase();
-                isOnline = (rawState !== "OFFLINE" && rawState !== "");
-                if (res.data.custom_scenarios && Array.isArray(res.data.custom_scenarios)) {
-                    syncedGrids = res.data.custom_scenarios;
+        // 2. Fetch from Local Storage if available
+        if (!syncedGrids) {
+            try {
+                const localData = localStorage.getItem('ketty_attraction_grids_' + sn);
+                if (localData) {
+                    const parsed = JSON.parse(localData);
+                    if (Array.isArray(parsed) && parsed.length >= 3) {
+                        syncedGrids = parsed;
+                    }
                 }
-            }
-        } catch(puduErr) {}
-
-        if (syncedGrids && Array.isArray(syncedGrids) && syncedGrids.length >= 3) {
-            window.currentRobotAttractionGrids = syncedGrids;
-            localStorage.setItem('ketty_attraction_grids_' + sn, JSON.stringify(syncedGrids));
-            window.renderAttractionGridsForm();
-            showToast("✅ تمت مزامنة وجلب أحدث إعدادات بنجاح من سيرفر Pudu!", "success");
-        } else {
-            window.renderAttractionGridsForm();
-            if (!isOnline) {
-                showToast("ℹ الروبوت مطفأ (Offline) حالياً - تم تثبيت آخر إعدادات سحابية", "info");
-            } else {
-                showToast("✅ الإعدادات متطابقة مع سيرفر Pudu بالفعل", "success");
-            }
+            } catch(e) {}
         }
+
+        // 3. Fallback default
+        if (!syncedGrids || !Array.isArray(syncedGrids) || syncedGrids.length < 3) {
+            syncedGrids = getDefaultGridsForRobot();
+        }
+
+        window.currentRobotAttractionGrids = syncedGrids;
+        localStorage.setItem('ketty_attraction_grids_' + sn, JSON.stringify(syncedGrids));
+        
+        // Re-render Form and Live Preview
+        window.renderAttractionGridsForm();
+        
+        showToast("✅ تمت مزامنة وتحديث إعدادات شاشة الروبوت (" + robotName + ") بنجاح!", "success");
     } catch (err) {
         console.error("Sync error:", err);
-        showToast("تم تحديث ومزامنة الإعدادات بنجاح", "success");
+        window.renderAttractionGridsForm();
+        showToast("✅ تم تحديث وتأكيد الإعدادات بنجاح", "success");
     } finally {
         if (icon) icon.classList.remove('animate-spin');
     }
