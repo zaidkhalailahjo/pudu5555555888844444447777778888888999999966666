@@ -11437,7 +11437,13 @@ window.openRobotControlPanel = async (robotId) => {
         const robotNameLower = (r.name || "").toLowerCase();
         const robotTypeLower = (r.type || "").toLowerCase();
         
-        if (robotNameLower.includes("phantas") || robotTypeLower.includes("phantas")) {
+        if (robotNameLower.includes("mini") || robotTypeLower.includes("mini")) {
+            imgUrl = "https://static.wixstatic.com/media/3604a2_e592b88ce4184e06be0bdc836f065144~mv2.png/v1/fill/w_180,h_393,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/mini_edited.png";
+            robotTypeStr = "MiniBot";
+        } else if (robotNameLower.includes("nova") || robotTypeLower.includes("nova")) {
+            imgUrl = "https://www.orionstar.com/res/orics/down/ow001_20240613_99115e7a991e55b681cbed74fdd5cd0a.png";
+            robotTypeStr = "NovaBot";
+        } else if (robotNameLower.includes("phantas") || robotTypeLower.includes("phantas")) {
             imgUrl = "https://static.wixstatic.com/media/8b4c48_2fbf0768246a462f953fabc9834f14cc~mv2.png/v1/fill/w_280,h_157,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/Phantas_.png";
             robotTypeStr = "Phantas";
         } else if (robotNameLower.includes("omine") || robotNameLower.includes("omni") || robotTypeLower.includes("omine") || robotTypeLower.includes("omni")) {
@@ -11446,7 +11452,7 @@ window.openRobotControlPanel = async (robotId) => {
         } else if (robotNameLower.includes("beetle") || robotTypeLower.includes("beetle")) {
             imgUrl = "https://uploads.onecompiler.io/44krdug5q/1787318781856/image-removebg-preview%20(13).png";
             robotTypeStr = "Beetle";
-        } else if (robotNameLower.includes("ketty")) {
+        } else if (robotNameLower.includes("ketty") || robotTypeLower.includes("ketty")) {
             imgUrl = "https://businesss.pudutech.com/robot-image-proxy/robot-image-resource/small-size/67.png";
             robotTypeStr = "KettyBot";
         } else if (robotNameLower.includes("quill") || robotNameLower.includes("flash")) {
@@ -11593,7 +11599,15 @@ window.buildRobotCardHTML = function(r, actionBtnsHtml, isPuduRobot, puduBtnCls,
     const snLower = (r.serialNumber || "").toLowerCase();
     const typeLower = (r.type || "").toLowerCase();
     
-    if (n.includes("phantas") || typeLower.includes("phantas")) {
+    if (n.includes("mini") || typeLower.includes("mini")) {
+        type = "MiniBot";
+        img = "https://static.wixstatic.com/media/3604a2_e592b88ce4184e06be0bdc836f065144~mv2.png/v1/fill/w_180,h_393,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/mini_edited.png";
+    }
+    else if (n.includes("nova") || typeLower.includes("nova")) {
+        type = "NovaBot";
+        img = "https://www.orionstar.com/res/orics/down/ow001_20240613_99115e7a991e55b681cbed74fdd5cd0a.png";
+    }
+    else if (n.includes("phantas") || typeLower.includes("phantas")) {
         type = "Phantas";
         img = "https://static.wixstatic.com/media/8b4c48_2fbf0768246a462f953fabc9834f14cc~mv2.png/v1/fill/w_280,h_157,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/Phantas_.png";
     }
