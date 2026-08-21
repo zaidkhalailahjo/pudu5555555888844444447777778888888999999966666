@@ -4144,6 +4144,22 @@
     </div>
 </div>
 
+
+<!-- Elegant Centered Delete Robot Confirmation Modal -->
+<div id="deleteRobotConfirmModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[2147483647] hidden flex-col items-center justify-center p-4 transition-all duration-300 opacity-0">
+    <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col p-6 text-center transform transition-all duration-300 scale-95 border border-gray-100 dark:border-gray-700" id="deleteRobotModalCard">
+        <div class="w-16 h-16 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+            <i class="fa-solid fa-trash-can animate-bounce"></i>
+        </div>
+        <h3 class="text-base font-bold text-gray-800 dark:text-gray-100 mb-1">هل تريد حذف الروبوت؟</h3>
+        <p id="deleteRobotTargetName" class="text-xs text-gray-500 dark:text-gray-400 mb-6 font-bold truncate"></p>
+        <div class="flex items-center justify-center gap-3">
+            <button id="deleteRobotCancelBtn" onclick="window.closeDeleteRobotModal()" class="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 transition">لا</button>
+            <button id="deleteRobotConfirmBtn" onclick="window.confirmDeleteRobotAction()" class="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-md shadow-rose-600/30 transition flex items-center justify-center gap-1.5 focus:ring-2 focus:ring-rose-400">نعم</button>
+        </div>
+    </div>
+</div>
+
 <div id="mapExportModal" class="fixed inset-0 bg-slate-900/60 z-[2147483647] hidden flex-col items-center justify-center p-4 transition-all duration-300 opacity-0">
     <div class="bg-white rounded shadow-xl w-full max-w-3xl overflow-hidden flex flex-col transform transition-transform duration-300 translate-y-4" id="mapExportModalContent">
         <!-- Header -->
