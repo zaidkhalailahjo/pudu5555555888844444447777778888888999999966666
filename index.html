@@ -4173,6 +4173,10 @@
             <button onclick="window.mapStudioPushToRobot()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-sm transition flex items-center gap-1.5">
                 <i class="fa-solid fa-paper-plane"></i> تطبيق على الروبوت
             </button>
+            <input type="file" id="mapStudioFileInput" accept=".pdmap,.png,.jpg,.jpeg" onchange="window.mapStudioHandleFileUpload(event)" class="hidden">
+            <button onclick="document.getElementById('mapStudioFileInput').click()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5" title="رفع ملف خريطة حقيقي أو صورة ليدار">
+                <i class="fa-solid fa-cloud-arrow-up text-indigo-600"></i> رفع خريطة
+            </button>
             <button onclick="window.mapStudioExportPdmap()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold px-3 py-2 rounded-xl transition" title="تصدير ملف الخريطة .pdmap">
                 <i class="fa-solid fa-download"></i>
             </button>
