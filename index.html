@@ -1177,57 +1177,99 @@
 
             
             <!-- مسح وتعديل الخلفية AI Studio -->
-            <section id="bgremove" class="section-content hidden animate-fade-in p-2 md:p-4">
-                <div class="max-w-2xl mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-6 flex flex-col items-center">
+            <section id="bgremove" class="section-content hidden animate-fade-in p-2 md:p-4 relative min-h-[600px]">
+                
+                <!-- Fullscreen / Container Drag & Drop Overlay -->
+                <div id="bgRemoveDragOverlay" class="hidden absolute inset-0 z-50 bg-indigo-900/80 backdrop-blur-md rounded-3xl flex flex-col items-center justify-center text-white border-3 border-dashed border-white/60 transition-all pointer-events-none">
+                    <div class="w-20 h-20 rounded-3xl bg-white/20 flex items-center justify-center text-4xl mb-4 animate-bounce">
+                        <i class="fa-solid fa-cloud-arrow-down"></i>
+                    </div>
+                    <h3 class="text-xl font-extrabold tracking-wide mb-2">قم بإفلات الصورة هنا</h3>
+                    <p class="text-xs text-indigo-200">سيتم مسح الخلفية بالذكاء الاصطناعي فوراً تلقائياً</p>
+                </div>
+
+                <div class="max-w-4xl mx-auto flex flex-col items-center gap-5">
                     
-                    <!-- Header with Title & Action Buttons -->
-                    <div class="w-full flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-4 mb-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 bg-amber-50 dark:bg-amber-900/30 text-amber-500 rounded-xl flex items-center justify-center text-lg">
-                                <i class="fa-solid fa-wand-magic-sparkles"></i>
-                            </div>
-                            <div>
-                                <h3 class="text-base font-bold text-gray-800 dark:text-white">مسح الخلفية</h3>
-                                <p class="text-xs text-gray-400">إزالة الخلفية بالذكاء الاصطناعي بدقة عالية</p>
+                    <!-- Top Floating Action Pill Toolbar (Matches Screenshot) -->
+                    <div class="bg-white dark:bg-gray-800 rounded-full shadow-lg border border-gray-100 dark:border-gray-700 px-4 py-2 flex items-center gap-2 md:gap-4 flex-wrap justify-center z-10 transition-all">
+                        <button onclick="window.processBgRemoveLive()" class="text-xs font-bold text-gray-700 dark:text-gray-200 hover:text-indigo-600 px-3 py-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-wand-magic-sparkles text-amber-500"></i> Cutout
+                        </button>
+
+                        <!-- Background Color Dropdown -->
+                        <div class="relative">
+                            <button onclick="window.toggleBgColorMenu()" class="text-xs font-bold text-gray-700 dark:text-gray-200 hover:text-indigo-600 px-3 py-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-image text-blue-500"></i> Background
+                            </button>
+                            <div id="bgColorDropdown" class="hidden absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-3 border border-gray-100 dark:border-gray-700 flex items-center gap-2 z-50">
+                                <button onclick="window.changeCanvasBg('transparent')" class="w-7 h-7 rounded-full border border-gray-300 bg-checkerboard" title="شفاف"></button>
+                                <button onclick="window.changeCanvasBg('#ffffff')" class="w-7 h-7 rounded-full border border-gray-200 bg-white" title="أبيض"></button>
+                                <button onclick="window.changeCanvasBg('#000000')" class="w-7 h-7 rounded-full bg-black" title="أسود"></button>
+                                <button onclick="window.changeCanvasBg('#3b82f6')" class="w-7 h-7 rounded-full bg-blue-500" title="أزرق"></button>
+                                <button onclick="window.changeCanvasBg('#10b981')" class="w-7 h-7 rounded-full bg-emerald-500" title="أخضر"></button>
+                                <button onclick="window.changeCanvasBg('#f59e0b')" class="w-7 h-7 rounded-full bg-amber-500" title="أصفر"></button>
+                                <button onclick="window.changeCanvasBg('#ec4899')" class="w-7 h-7 rounded-full bg-pink-500" title="وردي"></button>
                             </div>
                         </div>
-                        
-                        <div class="flex items-center gap-2">
-                            <button onclick="document.getElementById('studioFileInput').click()" class="bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs font-bold px-3.5 py-2 rounded-lg flex items-center gap-2 transition">
-                                <i class="fa-solid fa-cloud-arrow-up text-blue-500"></i>
-                                <span>رفع صورة</span>
-                            </button>
-                            <button onclick="window.downloadEditedImage('png')" id="studioDownloadBtn" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition">
-                                <i class="fa-solid fa-download"></i>
-                                <span>تحميل الصورة</span>
-                            </button>
-                        </div>
+
+                        <button onclick="window.applyImageEffect('shadow')" class="text-xs font-bold text-gray-700 dark:text-gray-200 hover:text-indigo-600 px-3 py-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-half-stroke text-purple-500"></i> Effects
+                        </button>
+                        <button onclick="window.applyImageEffect('brightness')" class="text-xs font-bold text-gray-700 dark:text-gray-200 hover:text-indigo-600 px-3 py-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-sliders text-emerald-500"></i> Adjust
+                        </button>
+
+                        <div class="h-5 w-px bg-gray-200 dark:bg-gray-700 mx-1 hidden md:block"></div>
+
+                        <!-- Undo / Redo -->
+                        <button onclick="window.studioUndo()" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-full transition" title="تراجع"><i class="fa-solid fa-rotate-left text-xs"></i></button>
+                        <button onclick="window.studioRedo()" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-full transition" title="إعادة"><i class="fa-solid fa-rotate-right text-xs"></i></button>
+
+                        <!-- Download Primary Blue Button -->
+                        <button onclick="window.downloadEditedImage('png')" id="studioDownloadBtn" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2 rounded-full shadow-md shadow-blue-600/30 flex items-center gap-2 transition hover:scale-105">
+                            <span>Download</span>
+                            <i class="fa-solid fa-download text-xs"></i>
+                        </button>
                     </div>
 
-                    <!-- Compact Center Canvas (Fits Single Screen) -->
-                    <div class="w-full max-w-md h-[340px] md:h-[380px] rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 relative flex items-center justify-center bg-checkerboard shadow-inner" id="studioCanvasWrapper">
+                    <!-- Center Work Canvas (Checkerboard Studio Area) -->
+                    <div class="w-full max-w-xl h-[400px] md:h-[460px] rounded-3xl overflow-hidden border border-gray-200 dark:border-gray-700 relative flex items-center justify-center bg-checkerboard shadow-xl transition-all" id="studioCanvasWrapper">
                         
-                        <!-- Empty Dropzone -->
-                        <div id="studioEmptyDropzone" class="flex flex-col items-center justify-center p-6 text-center cursor-pointer" onclick="document.getElementById('studioFileInput').click()">
-                            <div class="w-16 h-16 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center text-2xl mb-3 shadow-xs hover:scale-105 transition">
-                                <i class="fa-solid fa-image"></i>
+                        <!-- Empty Dropzone State -->
+                        <div id="studioEmptyDropzone" class="flex flex-col items-center justify-center p-8 text-center cursor-pointer select-none group" onclick="document.getElementById('studioFileInput').click()">
+                            <div class="w-20 h-20 bg-indigo-50 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400 rounded-3xl flex items-center justify-center text-3xl mb-4 shadow-sm group-hover:scale-110 transition duration-300">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i>
                             </div>
-                            <h4 class="text-sm font-bold text-gray-700 dark:text-gray-200 mb-1">اضغط لاختيار صورة من جهازك</h4>
-                            <p class="text-[11px] text-gray-400">سيتم مسح الخلفية فوراً وبشكل تلقائي</p>
+                            <h4 class="text-base font-extrabold text-gray-800 dark:text-gray-100 mb-1.5">اسحب الصورة وأفلتها هنا، أو اضغط للاختيار</h4>
+                            <p class="text-xs text-gray-400 font-medium mb-3">يمكنك أيضاً نسخ أي صورة ولصقها مباشرة <span class="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded font-mono font-bold text-indigo-600">Ctrl + V</span></p>
+                            <span class="text-[11px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-3.5 py-1.5 rounded-full">يدعم PNG, JPG, WEBP بدقة عالية</span>
                             <input type="file" id="studioFileInput" accept="image/*" class="hidden" onchange="window.handleStudioUpload(this)">
                         </div>
 
                         <!-- Live Processed Image Display -->
-                        <div id="studioImageContainer" class="hidden w-full h-full relative flex items-center justify-center p-4">
-                            <img id="studioMainImg" class="max-w-full max-h-full object-contain drop-shadow-md" />
+                        <div id="studioImageContainer" class="hidden w-full h-full relative flex items-center justify-center p-6">
+                            <img id="studioMainImg" class="max-w-full max-h-full object-contain drop-shadow-2xl transition-all duration-300" />
                             
                             <!-- Loading Spinner Overlay -->
-                            <div id="studioLoadingOverlay" class="hidden absolute inset-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xs flex flex-col items-center justify-center gap-2">
-                                <div class="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                                <p class="text-xs font-bold text-blue-600">جاري مسح الخلفية بالذكاء الاصطناعي...</p>
+                            <div id="studioLoadingOverlay" class="hidden absolute inset-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 z-20">
+                                <div class="w-10 h-10 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                                <p class="text-xs font-bold text-indigo-600 animate-pulse">جاري إزالة الخلفية بالذكاء الاصطناعي...</p>
                             </div>
                         </div>
 
+                    </div>
+
+                    <!-- Bottom Bar: + Button and History Thumbnails Strip (Matches Screenshot) -->
+                    <div class="flex items-center gap-3 bg-white dark:bg-gray-800 p-2.5 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 max-w-xl w-full overflow-x-auto custom-scrollbar justify-start md:justify-center">
+                        <!-- Add New Image + Button -->
+                        <button onclick="document.getElementById('studioFileInput').click()" class="w-12 h-12 rounded-xl bg-gray-100 hover:bg-indigo-50 hover:text-indigo-600 text-gray-500 flex items-center justify-center text-xl font-bold transition shrink-0 shadow-xs" title="إزالة خلفية صورة جديدة">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                        
+                        <!-- History Thumbnails List -->
+                        <div id="studioThumbnailsStrip" class="flex items-center gap-2.5 shrink-0">
+                            <!-- Thumbnails added dynamically by JS -->
+                        </div>
                     </div>
 
                 </div>
