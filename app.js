@@ -134,7 +134,7 @@ window.renderReEntryLogBadge = function() {};
         
         let currentUserAuth = null;
         let currentUserData = null; 
-        window.isAdmin = function() { if(!currentUserData) return false; const r = (currentUserData.role || "").toUpperCase(); return r === "CEO" || r === "مطور" || r === "DEVELOPER"; };
+        window.isAdmin = function() { if(!currentUserData) return false; const r = (currentUserData.role || "").toUpperCase(); return r === "CEO" || r === "مطور" || r === "DEVELOPER" || r === "ADMIN" || r === "مدير" || r === "مدير عام" || r === "SUPERADMIN"; };
         let currentGeneratedOTPHash = null; 
         let otpGeneratedTime = 0;
         let otpTimerInterval = null;
@@ -12559,7 +12559,7 @@ window.renderAttractionGridsForm = () => {
                 <!-- Grid Name -->
                 <div class="flex items-center gap-3 mb-3">
                     <label class="text-xs font-semibold text-gray-700 w-28 shrink-0"><span class="text-rose-500">*</span> Grid Name:</label>
-                    <input type="text" value="${grid.name || ''}" oninput="window.updateGridName(${idx}, this.value)" class="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-[#1890ff] focus:ring-1 focus:ring-[#1890ff] transition" placeholder="Enter grid name...">
+                    <input type="text" value="${escapeHTML(grid.name || '')}" oninput="window.updateGridName(${idx}, this.value)" class="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-[#1890ff] focus:ring-1 focus:ring-[#1890ff] transition" placeholder="Enter grid name...">
                 </div>
 
                 <!-- Redirect Link -->
@@ -12577,7 +12577,7 @@ window.renderAttractionGridsForm = () => {
                 ${isCustomLink ? `
                 <div class="flex items-center gap-3">
                     <label class="text-xs font-semibold text-gray-700 w-28 shrink-0"><span class="text-rose-500">*</span> Custom external link:</label>
-                    <input type="url" value="${grid.customUrl || ''}" oninput="window.updateGridCustomLink(${idx}, this.value)" class="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-[#1890ff] focus:ring-1 focus:ring-[#1890ff] transition" placeholder="https://www.example.com">
+                    <input type="url" value="${escapeHTML(grid.customUrl || '')}" oninput="window.updateGridCustomLink(${idx}, this.value)" class="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-[#1890ff] focus:ring-1 focus:ring-[#1890ff] transition" placeholder="https://www.example.com">
                 </div>
                 ` : ''}
             </div>
@@ -12629,7 +12629,7 @@ window.renderAttractionScreenPreview = () => {
         html += `
         <div class="${colSpan} ${heightClass} ${bg} rounded-2xl p-3 text-white shadow-md relative overflow-hidden flex flex-col justify-between transform hover:scale-[1.02] transition cursor-pointer">
             <i class="${icon} absolute right-2 bottom-1 text-white/20 text-5xl pointer-events-none"></i>
-            <h4 class="text-sm md:text-base font-black tracking-wide drop-shadow-xs z-10 leading-tight">${grid.name || 'Grid'}</h4>
+            <h4 class="text-sm md:text-base font-black tracking-wide drop-shadow-xs z-10 leading-tight">${escapeHTML(grid.name || 'Grid')}</h4>
             <div class="flex items-center gap-1 text-[10px] font-semibold text-white/90 z-10">
                 <i class="${icon} text-xs"></i>
                 <span class="truncate max-w-[100px]">${grid.linkType === 'Custom external link' ? 'Web Link' : grid.linkType}</span>
