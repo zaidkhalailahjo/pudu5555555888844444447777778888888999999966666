@@ -33,6 +33,10 @@ window.renderReEntryLogBadge = function() {};
         const storage = getStorage(app);
         const appId = 'quill-world-system';
         const cloudFunctions = getFunctions(app);
+        window.cloudFunctions = cloudFunctions;
+        window.httpsCallable = httpsCallable;
+        window.db = db;
+        window.appId = appId;
         const appCheck = initializeAppCheck(app, {
     provider: new ReCaptchaV3Provider('6LdlXi0tAAAAAMKyF4LbNTqwGPE85gXhl6BLWVSS'),
     isTokenAutoRefreshEnabled: true
@@ -11796,12 +11800,13 @@ window.saveAndPushAd = async () => {
 
 window.fetchLiveRobotStatuses = async () => {
     if (!globalRobots || !Array.isArray(globalRobots)) return;
-    const linkedRobots = globalRobots.filter(r => r.puduLinked && r.serialNumber && r.serialNumber !== 'بدون رقم');
     
-    for (const r of linkedRobots) {
+    // Find all robots with a valid serial number
+    const targetRobots = globalRobots.filter(r => r.serialNumber && r.serialNumber !== 'بدون رقم' && r.serialNumber.trim().length > 4);
+    
+    for (const r of targetRobots) {
         try {
-            if (typeof window.cloudFunctions === 'undefined' || typeof window.httpsCallable === 'undefined') continue;
-            const puduGateway = window.httpsCallable(window.cloudFunctions, "puduGateway");
+            const puduGateway = httpsCallable(cloudFunctions, "puduGateway");
             const result = await puduGateway({ action: "status", sn: r.serialNumber.trim(), payload: {} });
             
             let data = null;
@@ -11813,12 +11818,21 @@ window.fetchLiveRobotStatuses = async () => {
             const batCircle = document.getElementById('bat-circle-' + r.id);
             const batText = document.getElementById('bat-text-' + r.id);
 
+            let batVal = (r.battery !== undefined && r.battery !== null) ? parseInt(r.battery) : ((r.power !== undefined && r.power !== null) ? parseInt(r.power) : 0);
+            let rawState = "";
+            let isOffline = true;
+            let isCharging = false;
+            let isMoving = false;
+            let isBlocked = false;
+            let isError = false;
+
             if (data) {
-                const batVal = data.battery !== undefined ? parseInt(data.battery) : (data.power !== undefined ? parseInt(data.power) : 0);
-                const rawState = String(data.run_state || data.runState || "").toUpperCase();
+                if (data.battery !== undefined) batVal = parseInt(data.battery);
+                else if (data.power !== undefined) batVal = parseInt(data.power);
+
+                rawState = String(data.run_state || data.runState || "").toUpperCase();
                 
-                // 1. Offline detection
-                const isOffline = (
+                isOffline = (
                     rawState === "OFFLINE" ||
                     rawState === "OFF_LINE" ||
                     rawState === "DISCONNECTED" ||
@@ -11827,8 +11841,7 @@ window.fetchLiveRobotStatuses = async () => {
                     data.is_online === false
                 );
 
-                // 2. Charging detection
-                const isCharging = !isOffline && (
+                isCharging = !isOffline && (
                     data.is_charging === 1 || 
                     data.is_charging === true || 
                     rawState === "DISABLE" || 
@@ -11836,8 +11849,7 @@ window.fetchLiveRobotStatuses = async () => {
                     (data.charge_stage && String(data.charge_stage).trim() !== "")
                 );
 
-                // 3. Moving / Working detection
-                const isMoving = !isOffline && !isCharging && (
+                isMoving = !isOffline && !isCharging && (
                     rawState.includes("BUSY") || 
                     rawState.includes("WORK") || 
                     rawState.includes("DELIVER") || 
@@ -11848,20 +11860,18 @@ window.fetchLiveRobotStatuses = async () => {
                     (data.move_state && String(data.move_state).toUpperCase().includes("MOVE"))
                 );
 
-                // 4. Blocked / Error / Idle
-                const isBlocked = !isOffline && !isCharging && (rawState.includes("PAUSE") || rawState.includes("BLOCK") || rawState.includes("OBSTACLE"));
-                const isError = !isOffline && (rawState.includes("ERROR") || rawState.includes("FAULT"));
+                isBlocked = !isOffline && !isCharging && (rawState.includes("PAUSE") || rawState.includes("BLOCK") || rawState.includes("OBSTACLE"));
+                isError = !isOffline && (rawState.includes("ERROR") || rawState.includes("FAULT"));
+            }
 
-                let displayState = "Idle";
-                let badgeColor = "bg-emerald-50 text-emerald-700 border border-emerald-200";
+            let displayState = "Offline";
+            let badgeColor = "bg-gray-100 text-gray-500 border border-gray-200";
 
-                if (isOffline) {
-                    displayState = "Offline";
-                    badgeColor = "bg-gray-100 text-gray-500 border border-gray-200";
-                } else if (isCharging) {
-                    displayState = "Charging";
-                    badgeColor = "bg-emerald-100 text-emerald-700 border border-emerald-300";
-                } else if (isMoving) {
+            if (isCharging) {
+                displayState = "Charging";
+                badgeColor = "bg-emerald-100 text-emerald-700 border border-emerald-300";
+            } else if (!isOffline) {
+                if (isMoving) {
                     displayState = "Moving";
                     badgeColor = "bg-blue-100 text-blue-700 border border-blue-200";
                 } else if (isBlocked) {
@@ -11874,21 +11884,29 @@ window.fetchLiveRobotStatuses = async () => {
                     displayState = "Idle";
                     badgeColor = "bg-emerald-50 text-emerald-700 border border-emerald-200";
                 }
-                
-                // Update Card Elements with user's exact color specifications
-                if (batCircle && batText) {
-                    if (isCharging) {
-                        batCircle.setAttribute('class', "text-emerald-500 stroke-current charging-circle-anim");
-                        batCircle.setAttribute('stroke-dasharray', '100, 100');
-                        batText.innerHTML = `<span class="text-emerald-600 flex items-center justify-center gap-0.5"><i class="fa-solid fa-bolt text-[8px] animate-pulse"></i>${batVal}%</span>`;
-                    } else if (isOffline) {
+            }
+            
+            // Update Card Battery & Colors
+            if (batCircle && batText) {
+                if (isCharging) {
+                    batCircle.setAttribute('class', "text-emerald-500 stroke-current charging-circle-anim");
+                    batCircle.setAttribute('stroke-dasharray', '100, 100');
+                    batText.innerHTML = `<span class="text-emerald-600 flex items-center justify-center gap-0.5"><i class="fa-solid fa-bolt text-[8px] animate-pulse"></i>${batVal}%</span>`;
+                } else {
+                    // Exact User Color Specifications:
+                    // 81 - 100: Green (#10b981 / text-emerald-500)
+                    // 61 - 80: Yellow (#eab308 / text-yellow-400)
+                    // 31 - 60: Orange (#f97316 / text-orange-500)
+                    // 0 - 30: Red (#ef4444 / text-rose-500)
+                    let strokeColor = "text-emerald-500 stroke-current";
+                    if (batVal >= 81) strokeColor = "text-emerald-500 stroke-current";
+                    else if (batVal >= 61) strokeColor = "text-yellow-400 stroke-current";
+                    else if (batVal >= 31) strokeColor = "text-orange-500 stroke-current";
+                    else strokeColor = "text-rose-500 stroke-current";
+
+                    if (isOffline) {
                         if (batVal > 0) {
-                            let offColor = "text-gray-300 stroke-current";
-                            if (batVal >= 81) offColor = "text-emerald-400/60 stroke-current";
-                            else if (batVal >= 61) offColor = "text-yellow-400/60 stroke-current";
-                            else if (batVal >= 31) offColor = "text-orange-400/60 stroke-current";
-                            else offColor = "text-rose-400/60 stroke-current";
-                            batCircle.setAttribute('class', offColor);
+                            batCircle.setAttribute('class', strokeColor + " opacity-80 stroke-current transition-all duration-700");
                             batCircle.setAttribute('stroke-dasharray', batVal + ', 100');
                             batText.innerText = batVal + '%';
                         } else {
@@ -11897,33 +11915,21 @@ window.fetchLiveRobotStatuses = async () => {
                             batText.innerText = '--%';
                         }
                     } else {
-                        // Online active: 81-100 Green, 61-80 Yellow, 31-60 Orange, 0-30 Red
-                        let strokeColor = "text-emerald-500 stroke-current";
-                        if (batVal >= 81) strokeColor = "text-emerald-500 stroke-current";
-                        else if (batVal >= 61) strokeColor = "text-yellow-400 stroke-current";
-                        else if (batVal >= 31) strokeColor = "text-orange-500 stroke-current";
-                        else strokeColor = "text-rose-500 stroke-current";
-
-                        batCircle.setAttribute('class', strokeColor + " transition-all duration-700");
+                        batCircle.setAttribute('class', strokeColor + " stroke-current transition-all duration-700");
                         batCircle.setAttribute('stroke-dasharray', batVal + ', 100');
                         batText.innerText = batVal + '%';
                     }
                 }
-                
-                if (badge) {
-                    badge.className = `px-1.5 py-0.5 rounded text-[10px] font-bold ${badgeColor}`;
-                    badge.innerText = displayState;
-                }
-
-                r.battery = batVal;
-                r.liveState = displayState;
-                r.isCharging = isCharging;
-            } else {
-                if (badge) {
-                    badge.className = "px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-500 border border-gray-200";
-                    badge.innerText = "Offline";
-                }
             }
+            
+            if (badge) {
+                badge.className = `px-1.5 py-0.5 rounded text-[10px] font-bold ${badgeColor}`;
+                badge.innerText = displayState;
+            }
+
+            r.battery = batVal;
+            r.liveState = displayState;
+            r.isCharging = isCharging;
         } catch (err) {
             const badge = document.getElementById('pudu-badge-' + r.id);
             if (badge) {
@@ -11934,7 +11940,6 @@ window.fetchLiveRobotStatuses = async () => {
     }
 };
 
-// Start periodic live poller every 10 seconds
 if (!window._puduStatusInterval) {
     window._puduStatusInterval = setInterval(() => {
         if (typeof window.fetchLiveRobotStatuses === 'function') {
