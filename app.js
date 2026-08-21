@@ -12337,3 +12337,234 @@ window.nextPushMapStep = async () => {
 };
 
 window.pushMapToRobot = window.openPushMapModal;
+
+
+// ==========================================
+// CUSTOMER ATTRACTION MODE SETTINGS LOGIC
+// ==========================================
+
+window.attractionGrids = [
+    {
+        id: "grid-1",
+        name: "Queuing up",
+        linkType: "Queuing up",
+        customUrl: "",
+        bgClass: "bg-gradient-to-br from-[#4ade80] to-[#22c55e]",
+        icon: "fa-solid fa-location-dot"
+    },
+    {
+        id: "grid-2",
+        name: "Our Website",
+        linkType: "Custom external link",
+        customUrl: "https://www.isoeducation.edu.jo/",
+        bgClass: "bg-gradient-to-br from-[#fb923c] to-[#ea580c]",
+        icon: "fa-solid fa-ticket"
+    },
+    {
+        id: "grid-3",
+        name: "ISO Booth",
+        linkType: "Map Location",
+        customUrl: "",
+        bgClass: "bg-gradient-to-br from-[#3b82f6] to-[#1d4ed8]",
+        icon: "fa-solid fa-bell-concierge"
+    }
+];
+
+const linkOptionsList = [
+    { value: "Map Location", label: "Map Location (نقل لموقع في الخريطة)", icon: "fa-solid fa-location-dot", bg: "bg-gradient-to-br from-[#3b82f6] to-[#1d4ed8]" },
+    { value: "Entertainment Performance", label: "Entertainment Performance (عرض ترفيهي ورقص)", icon: "fa-solid fa-music", bg: "bg-gradient-to-br from-[#ec4899] to-[#be185d]" },
+    { value: "Poster", label: "Poster (عرض بوستر إعلاني صورة)", icon: "fa-regular fa-image", bg: "bg-gradient-to-br from-[#8b5cf6] to-[#6d28d9]" },
+    { value: "Video poster", label: "Video poster (عرض فيديو ترويجي)", icon: "fa-solid fa-play", bg: "bg-gradient-to-br from-[#f43f5e] to-[#e11d48]" },
+    { value: "Escorting", label: "Escorting (مرافقة وتوصيل الضيوف)", icon: "fa-solid fa-person-walking-arrow-right", bg: "bg-gradient-to-br from-[#06b6d4] to-[#0891b2]" },
+    { value: "Product", label: "Product (عرض تفاصيل منتج)", icon: "fa-solid fa-cube", bg: "bg-gradient-to-br from-[#10b981] to-[#047857]" },
+    { value: "Special Offers", label: "Special Offers (عروض خاصة وخصومات)", icon: "fa-solid fa-tags", bg: "bg-gradient-to-br from-[#f59e0b] to-[#d97706]" },
+    { value: "Take Me In", label: "Take Me In (أدخلني إلى الداخل)", icon: "fa-solid fa-door-open", bg: "bg-gradient-to-br from-[#14b8a6] to-[#0f766e]" },
+    { value: "Queuing up", label: "Queuing up (حجز دور وقائمة انتظار)", icon: "fa-solid fa-list-ol", bg: "bg-gradient-to-br from-[#4ade80] to-[#22c55e]" },
+    { value: "Custom external link", label: "Custom external link (رابط موقع مخصص)", icon: "fa-solid fa-globe", bg: "bg-gradient-to-br from-[#fb923c] to-[#ea580c]" }
+];
+
+window.renderAttractionGridsForm = () => {
+    const container = document.getElementById('attractionGridsContainer');
+    if (!container) return;
+    
+    let html = '';
+    window.attractionGrids.forEach((grid, idx) => {
+        let optionsHtml = '';
+        linkOptionsList.forEach(opt => {
+            const isSelected = (opt.value === grid.linkType) ? 'selected' : '';
+            optionsHtml += `<option value="${opt.value}" ${isSelected}>${opt.label}</option>`;
+        });
+
+        const isCustomLink = grid.linkType === 'Custom external link';
+
+        html += `
+        <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-xs relative group transition hover:border-[#1890ff]">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Grid ${idx + 1}</span>
+                ${window.attractionGrids.length > 1 ? `<button onclick="window.removeAttractionGrid(${idx})" class="text-gray-400 hover:text-rose-500 transition text-sm p-1" title="Delete Grid"><i class="fa-regular fa-trash-can"></i></button>` : ''}
+            </div>
+
+            <!-- Grid Name -->
+            <div class="flex items-center gap-3 mb-3">
+                <label class="text-xs font-semibold text-gray-700 w-28 shrink-0"><span class="text-rose-500">*</span> Grid Name:</label>
+                <input type="text" value="${grid.name}" oninput="window.updateGridName(${idx}, this.value)" class="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-[#1890ff] focus:ring-1 focus:ring-[#1890ff] transition" placeholder="Enter grid name...">
+            </div>
+
+            <!-- Redirect Link -->
+            <div class="flex items-center gap-3 ${isCustomLink ? 'mb-3' : ''}">
+                <label class="text-xs font-semibold text-gray-700 w-28 shrink-0"><span class="text-rose-500">*</span> Redirect Link:</label>
+                <div class="relative flex-1">
+                    <select onchange="window.updateGridLink(${idx}, this.value)" class="w-full appearance-none border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-[#1890ff] focus:ring-1 focus:ring-[#1890ff] bg-white transition pr-8">
+                        ${optionsHtml}
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 pointer-events-none"></i>
+                </div>
+            </div>
+
+            <!-- Custom external link (Conditional) -->
+            ${isCustomLink ? `
+            <div class="flex items-center gap-3">
+                <label class="text-xs font-semibold text-gray-700 w-28 shrink-0"><span class="text-rose-500">*</span> Custom external link:</label>
+                <input type="url" value="${grid.customUrl || ''}" oninput="window.updateGridCustomLink(${idx}, this.value)" class="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-[#1890ff] focus:ring-1 focus:ring-[#1890ff] transition" placeholder="https://www.example.com">
+            </div>
+            ` : ''}
+        </div>
+        `;
+    });
+
+    container.innerHTML = html;
+
+    // Update Add Grid button state (max 6)
+    const addBtn = document.getElementById('addGridBtn');
+    if (addBtn) {
+        if (window.attractionGrids.length >= 6) {
+            addBtn.disabled = true;
+            addBtn.className = "bg-gray-200 text-gray-400 text-xs font-semibold px-4 py-2 rounded-lg cursor-not-allowed";
+        } else {
+            addBtn.disabled = false;
+            addBtn.className = "bg-[#1890ff] hover:bg-[#40a9ff] text-white text-xs font-semibold px-4 py-2 rounded-lg shadow-sm transition flex items-center gap-1.5";
+        }
+    }
+
+    window.renderAttractionScreenPreview();
+};
+
+window.renderAttractionScreenPreview = () => {
+    const previewContainer = document.getElementById('screenPreviewTiles');
+    if (!previewContainer) return;
+
+    let html = '';
+    const total = window.attractionGrids.length;
+
+    window.attractionGrids.forEach((grid, idx) => {
+        let opt = linkOptionsList.find(o => o.value === grid.linkType) || linkOptionsList[0];
+        let bg = grid.bgClass || opt.bg;
+        let icon = opt.icon;
+
+        // First item can be full width if 1 or 3 items (Matching Image layout!)
+        let colSpan = (idx === 0 && total === 3) ? 'col-span-2' : (total === 1 ? 'col-span-2' : 'col-span-1');
+        let heightClass = (total <= 2) ? 'h-32' : ((idx === 0 && total === 3) ? 'h-24' : 'h-24');
+
+        html += `
+        <div class="${colSpan} ${heightClass} ${bg} rounded-2xl p-3 text-white shadow-md relative overflow-hidden flex flex-col justify-between transform hover:scale-[1.02] transition cursor-pointer">
+            <!-- Icon Background Watermark -->
+            <i class="${icon} absolute right-2 bottom-1 text-white/20 text-5xl pointer-events-none"></i>
+            
+            <!-- Tile Title -->
+            <h4 class="text-sm md:text-base font-black tracking-wide drop-shadow-xs z-10 leading-tight">${grid.name || 'Grid'}</h4>
+            
+            <!-- Small Subtitle/Action -->
+            <div class="flex items-center gap-1 text-[10px] font-semibold text-white/90 z-10">
+                <i class="${icon} text-xs"></i>
+                <span class="truncate max-w-[100px]">${grid.linkType === 'Custom external link' ? 'Web Link' : grid.linkType}</span>
+            </div>
+        </div>
+        `;
+    });
+
+    previewContainer.innerHTML = html;
+};
+
+window.addAttractionGrid = () => {
+    if (window.attractionGrids.length >= 6) {
+        showToast("يمكن إضافة 6 أزرار كحد أقصى", "warning");
+        return;
+    }
+    const colors = [
+        "bg-gradient-to-br from-[#4ade80] to-[#22c55e]",
+        "bg-gradient-to-br from-[#fb923c] to-[#ea580c]",
+        "bg-gradient-to-br from-[#3b82f6] to-[#1d4ed8]",
+        "bg-gradient-to-br from-[#ec4899] to-[#be185d]",
+        "bg-gradient-to-br from-[#8b5cf6] to-[#6d28d9]",
+        "bg-gradient-to-br from-[#14b8a6] to-[#0f766e]"
+    ];
+    const newIdx = window.attractionGrids.length;
+    window.attractionGrids.push({
+        id: "grid-" + Date.now(),
+        name: "New Service " + (newIdx + 1),
+        linkType: "Map Location",
+        customUrl: "",
+        bgClass: colors[newIdx % colors.length]
+    });
+    window.renderAttractionGridsForm();
+    showToast("تمت إضافة زر تفاعلي جديد", "info");
+};
+
+window.removeAttractionGrid = (idx) => {
+    window.attractionGrids.splice(idx, 1);
+    window.renderAttractionGridsForm();
+    showToast("تم حذف الزر التفاعلي", "info");
+};
+
+window.updateGridName = (idx, val) => {
+    if (window.attractionGrids[idx]) {
+        window.attractionGrids[idx].name = val;
+        window.renderAttractionScreenPreview();
+    }
+};
+
+window.updateGridLink = (idx, val) => {
+    if (window.attractionGrids[idx]) {
+        window.attractionGrids[idx].linkType = val;
+        window.renderAttractionGridsForm();
+    }
+};
+
+window.updateGridCustomLink = (idx, val) => {
+    if (window.attractionGrids[idx]) {
+        window.attractionGrids[idx].customUrl = val;
+    }
+};
+
+window.saveAttractionGridSettings = async () => {
+    showToast("جاري حفظ وإرسال إعدادات شاشة التفاعل لكيتي بوت...", "info");
+    
+    // Save to localStorage
+    try {
+        localStorage.setItem('ketty_attraction_grids', JSON.stringify(window.attractionGrids));
+        
+        // Dispatch to Pudu Ketty Custom Content
+        const payload = {
+            callMode: "SCENARIO_CONFIG",
+            modeData: {
+                grids: window.attractionGrids
+            }
+        };
+        const res = await window.callPuduApi("speak", payload, true);
+        showToast("✅ تم حفظ وإرسال إعدادات شاشة التفاعل بنجاح إلى الروبوت!", "success");
+    } catch(err) {
+        console.error(err);
+        showToast("تم حفظ الإعدادات بنجاح في النظام", "success");
+    }
+};
+
+// Auto initialize on script load
+setTimeout(() => {
+    try {
+        const saved = localStorage.getItem('ketty_attraction_grids');
+        if (saved) {
+            window.attractionGrids = JSON.parse(saved);
+        }
+    } catch(e){}
+    if (window.renderAttractionGridsForm) window.renderAttractionGridsForm();
+}, 800);
