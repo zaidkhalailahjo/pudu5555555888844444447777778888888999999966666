@@ -12543,7 +12543,7 @@ window.renderAttractionGridsForm = () => {
             let optionsHtml = '';
             linkOptionsList.forEach(opt => {
                 const isSelected = (opt.value === grid.linkType) ? 'selected' : '';
-                optionsHtml += \`<option value="\${opt.value}" \${isSelected}>\${opt.label}</option>\`;
+                optionsHtml += `<option value="${opt.value}" ${isSelected}>${opt.label}</option>`;
             });
 
             const isCustomLink = grid.linkType === 'Custom external link';
