@@ -11431,11 +11431,36 @@ window.openRobotControlPanel = async (robotId) => {
         if(titleEl) titleEl.innerText = r.name || "روبوت Pudu";
         
         let imgUrl = "https://businesss.pudutech.com/robot-image-proxy/robot-image-resource/small-size/62.png"; // default Bella
-        if((r.name || '').toLowerCase().includes('ketty')) imgUrl = "https://businesss.pudutech.com/robot-image-proxy/robot-image-resource/small-size/67.png";
-        if((r.name || '').toLowerCase().includes('quill') || (r.name || '').toLowerCase().includes('pudu')) imgUrl = "https://businesss.pudutech.com/robot-image-proxy/robot-image-resource/small-size/73.png";
+        let robotTypeStr = "BellaBot";
+        const robotNameLower = (r.name || "").toLowerCase();
+        const robotTypeLower = (r.type || "").toLowerCase();
+        
+        if (robotNameLower.includes("phantas") || robotTypeLower.includes("phantas")) {
+            imgUrl = "https://static.wixstatic.com/media/8b4c48_2fbf0768246a462f953fabc9834f14cc~mv2.png/v1/fill/w_280,h_157,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/Phantas_.png";
+            robotTypeStr = "Phantas";
+        } else if (robotNameLower.includes("omine") || robotNameLower.includes("omni") || robotTypeLower.includes("omine") || robotTypeLower.includes("omni")) {
+            imgUrl = "https://uploads.onecompiler.io/44krdug5q/1787318525496/image-removebg-preview%20(12).png";
+            robotTypeStr = "Omine";
+        } else if (robotNameLower.includes("beetle") || robotTypeLower.includes("beetle")) {
+            imgUrl = "https://uploads.onecompiler.io/44krdug5q/1787318781856/image-removebg-preview%20(13).png";
+            robotTypeStr = "Beetle";
+        } else if (robotNameLower.includes("ketty")) {
+            imgUrl = "https://businesss.pudutech.com/robot-image-proxy/robot-image-resource/small-size/67.png";
+            robotTypeStr = "KettyBot";
+        } else if (robotNameLower.includes("quill") || robotNameLower.includes("flash")) {
+            imgUrl = "https://businesss.pudutech.com/robot-image-proxy/robot-image-resource/small-size/73.png";
+            robotTypeStr = "FlashBot";
+        } else if (robotNameLower.includes("pudu")) {
+            imgUrl = "https://businesss.pudutech.com/robot-image-proxy/robot-image-resource/small-size/73.png";
+            robotTypeStr = "PuduBot";
+        }
+
+        if(r.image && r.image.startsWith('http')) {
+            imgUrl = r.image;
+        }
 
         if(document.getElementById('rc-info-img')) document.getElementById('rc-info-img').src = imgUrl;
-        if(document.getElementById('rc-robotType')) document.getElementById('rc-robotType').innerText = (r.name || '').toLowerCase().includes('ketty') ? 'KettyBot' : ((r.name || '').toLowerCase().includes('quill') ? 'QuillBot' : 'BellaBot');
+        if(document.getElementById('rc-robotType')) document.getElementById('rc-robotType').innerText = robotTypeStr;
 
         
         // Handle Model Specific UI
@@ -11550,8 +11575,21 @@ window.buildRobotCardHTML = function(r, actionBtnsHtml, isPuduRobot, puduBtnCls,
     let img = "https://businesss.pudutech.com/robot-image-proxy/robot-image-resource/small-size/62.png";
     const n = (r.name || "").toLowerCase();
     const snLower = (r.serialNumber || "").toLowerCase();
+    const typeLower = (r.type || "").toLowerCase();
     
-    if (n.includes("bella") || snLower.startsWith('bl') || snLower.startsWith('sv')) { 
+    if (n.includes("phantas") || typeLower.includes("phantas")) {
+        type = "Phantas";
+        img = "https://static.wixstatic.com/media/8b4c48_2fbf0768246a462f953fabc9834f14cc~mv2.png/v1/fill/w_280,h_157,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/Phantas_.png";
+    }
+    else if (n.includes("omine") || n.includes("omni") || typeLower.includes("omine") || typeLower.includes("omni")) {
+        type = "Omine";
+        img = "https://uploads.onecompiler.io/44krdug5q/1787318525496/image-removebg-preview%20(12).png";
+    }
+    else if (n.includes("beetle") || typeLower.includes("beetle")) {
+        type = "Beetle";
+        img = "https://uploads.onecompiler.io/44krdug5q/1787318781856/image-removebg-preview%20(13).png";
+    }
+    else if (n.includes("bella") || snLower.startsWith('bl') || snLower.startsWith('sv')) { 
         type = "BellaBot"; 
         img = "https://businesss.pudutech.com/robot-image-proxy/robot-image-resource/small-size/62.png"; 
     }
@@ -11562,6 +11600,10 @@ window.buildRobotCardHTML = function(r, actionBtnsHtml, isPuduRobot, puduBtnCls,
     else if (n.includes("quill") || n.includes("flash")) { 
         type = "FlashBot"; 
         img = "https://businesss.pudutech.com/robot-image-proxy/robot-image-resource/small-size/73.png"; 
+    }
+
+    if (r.image && r.image.startsWith('http')) {
+        img = r.image;
     }
 
     const controlBtn = isPuduRobot ? `<button onclick="window.openRobotControlPanel('${r.id}')" class="text-blue-500 hover:text-blue-700 text-[11px] font-bold flex items-center gap-1 transition"><i class="fa-solid fa-gamepad"></i> Detail (Control)</button>` : '';
