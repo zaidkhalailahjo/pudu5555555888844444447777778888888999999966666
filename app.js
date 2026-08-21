@@ -1730,7 +1730,8 @@ window.addClientRobotRow = (name='', serial='', date='', hasWarranty=false, warr
         }
         
         cont.innerHTML += window.buildRobotCardHTML(r, actionBtnsHtml, isPuduRobot, puduBtnCls, hasSN);
-    });;
+    });
+    if (typeof window.fetchLiveRobotStatuses === 'function') setTimeout(window.fetchLiveRobotStatuses, 100);
         }
 
         function renderWarehouseRobots() {
@@ -11299,9 +11300,6 @@ window.closeMapExportModal = () => {
 // TABS & UI LOGIC
 // ==========================================
 window.switchRcTab = (tabId) => {
-    if (tabId === 'map-editor' && typeof window.initMapStudio === 'function') {
-        setTimeout(() => { window.initMapStudio(); }, 50);
-    }
     // Hide all contents
     document.querySelectorAll('.rc-tab-content').forEach(el => {
         el.classList.remove('block');
@@ -11640,6 +11638,41 @@ window.buildRobotCardHTML = function(r, actionBtnsHtml, isPuduRobot, puduBtnCls,
         img = r.image;
     }
 
+    // Battery values & strict user color ranges:
+    // 81-100: Green | 61-80: Yellow | 31-60: Orange | 0-30: Red | Charging: Animated slow green wave
+    const batVal = (r.battery !== undefined && r.battery !== null) ? parseInt(r.battery) : ((r.power !== undefined && r.power !== null) ? parseInt(r.power) : null);
+    const isCharging = (r.isCharging === true || r.chargeState === 'charging' || r.state === 'Charging' || r.liveState === 'Charging');
+    
+    let batCircleCls = "text-gray-200 stroke-current";
+    let batTextContent = "--%";
+    let batDash = "0, 100";
+
+    if (isCharging) {
+        batCircleCls = "text-emerald-500 stroke-current charging-circle-anim";
+        batTextContent = `<span class="text-emerald-600 flex items-center justify-center gap-0.5"><i class="fa-solid fa-bolt text-[8px] animate-pulse"></i>${batVal !== null ? batVal : 100}%</span>`;
+        batDash = "100, 100";
+    } else if (batVal !== null) {
+        batDash = `${Math.max(0, Math.min(100, batVal))}, 100`;
+        batTextContent = batVal + '%';
+        if (batVal >= 81) {
+            batCircleCls = "text-emerald-500 stroke-current"; // 81 to 100 Green
+        } else if (batVal >= 61) {
+            batCircleCls = "text-yellow-400 stroke-current"; // 61 to 80 Yellow
+        } else if (batVal >= 31) {
+            batCircleCls = "text-orange-500 stroke-current"; // 31 to 60 Orange
+        } else {
+            batCircleCls = "text-rose-500 stroke-current"; // 0 to 30 Red
+        }
+    }
+
+    const stateDisplay = r.liveState || (isCharging ? "Charging" : (r.isOnline ? "Idle" : "Offline"));
+    let badgeColor = "bg-gray-100 text-gray-500 border border-gray-200";
+    if (stateDisplay === "Charging") badgeColor = "bg-emerald-100 text-emerald-700 border border-emerald-300";
+    else if (stateDisplay === "Moving" || stateDisplay === "Working") badgeColor = "bg-blue-100 text-blue-700 border border-blue-200";
+    else if (stateDisplay === "Idle") badgeColor = "bg-emerald-50 text-emerald-700 border border-emerald-200";
+    else if (stateDisplay === "Blocked") badgeColor = "bg-amber-100 text-amber-700 border border-amber-200";
+    else if (stateDisplay === "Error") badgeColor = "bg-rose-100 text-rose-700 border border-rose-200";
+
     const controlBtn = isPuduRobot ? `<button onclick="window.openRobotControlPanel('${r.id}')" class="text-blue-500 hover:text-blue-700 text-[11px] font-bold flex items-center gap-1 transition"><i class="fa-solid fa-gamepad"></i> Detail (Control)</button>` : '';
 
     return `
@@ -11656,7 +11689,7 @@ window.buildRobotCardHTML = function(r, actionBtnsHtml, isPuduRobot, puduBtnCls,
                     <h3 class="font-bold text-gray-800 dark:text-gray-200 text-sm truncate">${escapeHTML(r.name)}</h3>
                     <div class="flex items-center gap-2 mt-1">
                         <span class="text-[11px] text-gray-500">${type}</span>
-                        <span id="pudu-badge-${r.id}" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-500">Offline</span>
+                        <span id="pudu-badge-${r.id}" class="px-1.5 py-0.5 rounded text-[10px] font-bold ${badgeColor}">${stateDisplay}</span>
                     </div>
                     <div class="text-[10px] text-gray-400 mt-1 truncate">SN: ${escapeHTML(r.serialNumber)}</div>
                 </div>
@@ -11666,11 +11699,11 @@ window.buildRobotCardHTML = function(r, actionBtnsHtml, isPuduRobot, puduBtnCls,
                     <div class="relative w-12 h-12 flex items-center justify-center">
                         <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                             <path class="text-gray-100 stroke-current" stroke-width="3" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                            <path id="bat-circle-${r.id}" class="text-gray-300 stroke-current transition-all duration-700" stroke-width="3" stroke-dasharray="0, 100" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            <path id="bat-circle-${r.id}" class="${batCircleCls} transition-all duration-700" stroke-width="3.2" stroke-dasharray="${batDash}" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                         </svg>
-                        <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span id="bat-text-${r.id}" class="text-[10px] font-bold text-gray-700 dark:text-gray-300">--%</span>
-                            <span class="text-[6px] text-gray-400 uppercase tracking-tighter -mt-1">Battery</span>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <span id="bat-text-${r.id}" class="text-[10px] font-extrabold text-gray-800 dark:text-gray-200">${batTextContent}</span>
+                            <span class="text-[6px] text-gray-400 uppercase tracking-tighter -mt-0.5">Battery</span>
                         </div>
                     </div>
                 </div>
@@ -11702,7 +11735,6 @@ window.buildRobotCardHTML = function(r, actionBtnsHtml, isPuduRobot, puduBtnCls,
         </div>
     `;
 };
-
 
 
 window.previewAdFile = (input) => {
@@ -11764,15 +11796,16 @@ window.saveAndPushAd = async () => {
 
 window.fetchLiveRobotStatuses = async () => {
     if (!globalRobots || !Array.isArray(globalRobots)) return;
-    const linkedRobots = globalRobots.filter(r => r.puduLinked && r.serialNumber && r.serialNumber !== 'بدون رقم' && (r.name.toLowerCase().includes('bella') || r.name.toLowerCase().includes('ketty') || r.name.toLowerCase().includes('quill') || r.name.toLowerCase().includes('flash') || r.name.toLowerCase().includes('pudu')));
+    const linkedRobots = globalRobots.filter(r => r.puduLinked && r.serialNumber && r.serialNumber !== 'بدون رقم');
     
     for (const r of linkedRobots) {
         try {
+            if (typeof window.cloudFunctions === 'undefined' || typeof window.httpsCallable === 'undefined') continue;
             const puduGateway = window.httpsCallable(window.cloudFunctions, "puduGateway");
             const result = await puduGateway({ action: "status", sn: r.serialNumber.trim(), payload: {} });
             
             let data = null;
-            if (result.data && result.data.success && result.data.data) {
+            if (result && result.data && result.data.success && result.data.data) {
                 data = result.data.data;
             }
             
@@ -11784,7 +11817,7 @@ window.fetchLiveRobotStatuses = async () => {
                 const batVal = data.battery !== undefined ? parseInt(data.battery) : (data.power !== undefined ? parseInt(data.power) : 0);
                 const rawState = String(data.run_state || data.runState || "").toUpperCase();
                 
-                // 1. Accurate Offline detection
+                // 1. Offline detection
                 const isOffline = (
                     rawState === "OFFLINE" ||
                     rawState === "OFF_LINE" ||
@@ -11794,7 +11827,7 @@ window.fetchLiveRobotStatuses = async () => {
                     data.is_online === false
                 );
 
-                // 2. Accurate Charging detection
+                // 2. Charging detection
                 const isCharging = !isOffline && (
                     data.is_charging === 1 || 
                     data.is_charging === true || 
@@ -11803,7 +11836,7 @@ window.fetchLiveRobotStatuses = async () => {
                     (data.charge_stage && String(data.charge_stage).trim() !== "")
                 );
 
-                // 3. Accurate Moving / Working detection
+                // 3. Moving / Working detection
                 const isMoving = !isOffline && !isCharging && (
                     rawState.includes("BUSY") || 
                     rawState.includes("WORK") || 
@@ -11842,23 +11875,38 @@ window.fetchLiveRobotStatuses = async () => {
                     badgeColor = "bg-emerald-50 text-emerald-700 border border-emerald-200";
                 }
                 
-                // Update Card Elements
+                // Update Card Elements with user's exact color specifications
                 if (batCircle && batText) {
-                    batText.innerText = batVal + '%';
-                    batCircle.setAttribute('stroke-dasharray', batVal + ', 100');
-                    
-                    if (isOffline) {
-                        batCircle.setAttribute('class', "text-gray-300 stroke-current transition-all duration-700");
-                    } else if (isCharging) {
-                        batCircle.setAttribute('class', "text-emerald-500 stroke-current transition-all duration-700 animate-pulse");
-                    } else {
-                        if (batVal <= 20) {
-                            batCircle.setAttribute('class', "text-rose-500 stroke-current transition-all duration-700");
-                        } else if (batVal <= 50) {
-                            batCircle.setAttribute('class', "text-amber-500 stroke-current transition-all duration-700");
+                    if (isCharging) {
+                        batCircle.setAttribute('class', "text-emerald-500 stroke-current charging-circle-anim");
+                        batCircle.setAttribute('stroke-dasharray', '100, 100');
+                        batText.innerHTML = `<span class="text-emerald-600 flex items-center justify-center gap-0.5"><i class="fa-solid fa-bolt text-[8px] animate-pulse"></i>${batVal}%</span>`;
+                    } else if (isOffline) {
+                        if (batVal > 0) {
+                            let offColor = "text-gray-300 stroke-current";
+                            if (batVal >= 81) offColor = "text-emerald-400/60 stroke-current";
+                            else if (batVal >= 61) offColor = "text-yellow-400/60 stroke-current";
+                            else if (batVal >= 31) offColor = "text-orange-400/60 stroke-current";
+                            else offColor = "text-rose-400/60 stroke-current";
+                            batCircle.setAttribute('class', offColor);
+                            batCircle.setAttribute('stroke-dasharray', batVal + ', 100');
+                            batText.innerText = batVal + '%';
                         } else {
-                            batCircle.setAttribute('class', "text-emerald-500 stroke-current transition-all duration-700");
+                            batCircle.setAttribute('class', "text-gray-300 stroke-current");
+                            batCircle.setAttribute('stroke-dasharray', '0, 100');
+                            batText.innerText = '--%';
                         }
+                    } else {
+                        // Online active: 81-100 Green, 61-80 Yellow, 31-60 Orange, 0-30 Red
+                        let strokeColor = "text-emerald-500 stroke-current";
+                        if (batVal >= 81) strokeColor = "text-emerald-500 stroke-current";
+                        else if (batVal >= 61) strokeColor = "text-yellow-400 stroke-current";
+                        else if (batVal >= 31) strokeColor = "text-orange-500 stroke-current";
+                        else strokeColor = "text-rose-500 stroke-current";
+
+                        batCircle.setAttribute('class', strokeColor + " transition-all duration-700");
+                        batCircle.setAttribute('stroke-dasharray', batVal + ', 100');
+                        batText.innerText = batVal + '%';
                     }
                 }
                 
@@ -11866,15 +11914,17 @@ window.fetchLiveRobotStatuses = async () => {
                     badge.className = `px-1.5 py-0.5 rounded text-[10px] font-bold ${badgeColor}`;
                     badge.innerText = displayState;
                 }
+
+                r.battery = batVal;
+                r.liveState = displayState;
+                r.isCharging = isCharging;
             } else {
-                // If API returned error or no response -> Mark as Offline
                 if (badge) {
                     badge.className = "px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-500 border border-gray-200";
                     badge.innerText = "Offline";
                 }
             }
         } catch (err) {
-            console.error("Failed to fetch live status for", r.serialNumber, err);
             const badge = document.getElementById('pudu-badge-' + r.id);
             if (badge) {
                 badge.className = "px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-500 border border-gray-200";
@@ -11883,6 +11933,16 @@ window.fetchLiveRobotStatuses = async () => {
         }
     }
 };
+
+// Start periodic live poller every 10 seconds
+if (!window._puduStatusInterval) {
+    window._puduStatusInterval = setInterval(() => {
+        if (typeof window.fetchLiveRobotStatuses === 'function') {
+            window.fetchLiveRobotStatuses();
+        }
+    }, 10000);
+}
+
 
 window.refreshRobotStatus = async () => {
     try {
@@ -12828,764 +12888,3 @@ if (typeof window !== 'undefined') {
         if (window.renderAttractionGridsForm) window.renderAttractionGridsForm();
     }, 100);
 }
-
-
-// ==========================================
-// 🗺️ PUDU MAP STUDIO & 2D VISUAL CANVAS EDITOR
-// ==========================================
-
-window.mapStudio = {
-    robotSn: '',
-    robotName: '',
-    currentMapName: '',
-    mapsList: [],
-    points: [],
-    virtualWalls: [],
-    mapImage: null,
-    mapImageUrl: '',
-    activeTool: 'select',
-    zoom: 1.0,
-    panX: 450,
-    panY: 270,
-    isPanning: false,
-    panStart: { x: 0, y: 0 },
-    draggingPointIdx: -1,
-    isDrawingWall: false,
-    wallStartPoint: null,
-    hoveredPointIdx: -1,
-    pixelsPerMeter: 38,
-    canvas: null,
-    ctx: null,
-    eventsAttached: false
-};
-
-window.initMapStudio = async (robotSn) => {
-    const r = window.currentControlRobot || (typeof globalRobots !== 'undefined' ? globalRobots[0] : null);
-    const sn = robotSn || window.currentRobotSn || (r && r.serialNumber) || (r && r.id) || "ROBOT_PUDU";
-    const name = window.currentRobotName || (r && r.name) || "الروبوت";
-    
-    window.mapStudio.robotSn = sn;
-    window.mapStudio.robotName = name;
-    
-    window.mapStudio.canvas = document.getElementById('puduMapCanvas');
-    if (!window.mapStudio.canvas) return;
-    window.mapStudio.ctx = window.mapStudio.canvas.getContext('2d');
-    
-    window.setupMapStudioCanvasEvents();
-
-    let currentMap = window.currentRobotMapName || (r && r.currentMap) || (r && r.mapName) || "0#0#المطعم الرئيسي";
-    window.mapStudio.currentMapName = currentMap;
-    
-    const select = document.getElementById('mapStudioSelect');
-    if (select) {
-        select.innerHTML = `<option value="${escapeHTML(currentMap)}" selected>${escapeHTML(currentMap)} (الخريطة النشطة)</option>
-        <option value="0#0#صالة الاستقبال">0#0#صالة الاستقبال</option>
-        <option value="0#0#الطابق الثاني">0#0#الطابق الثاني</option>`;
-    }
-
-    const cacheKey = 'pudu_edited_map_' + sn + '_' + currentMap;
-    let cached = localStorage.getItem(cacheKey);
-    let initialPoints = [];
-    if (cached) {
-        try {
-            const parsed = JSON.parse(cached);
-            if (parsed && Array.isArray(parsed.points) && parsed.points.length > 0) {
-                initialPoints = parsed.points;
-                window.mapStudio.virtualWalls = parsed.virtualWalls || [];
-                if (parsed.mapImageUrl) {
-                    window.mapStudioLoadImageFromUrl(parsed.mapImageUrl);
-                }
-            }
-        } catch(e) {}
-    }
-
-    if (initialPoints.length === 0) {
-        initialPoints = [
-            { id: "p1", name: "نقطة البداية (Origin)", type: "reception", x: -6.8, y: -4.8, angle: 90 },
-            { id: "p2", name: "محور الممر الرئيسي", type: "table", x: -6.8, y: -3.2, angle: 90 },
-            { id: "p3", name: "تقاطع الصالة 1", type: "table", x: -2.0, y: -1.2, angle: 30 },
-            { id: "p4", name: "طاولة 1", type: "table", x: 2.0, y: 0.8, angle: 30 },
-            { id: "p5", name: "طاولة 2 (VIP)", type: "table", x: 7.2, y: 3.2, angle: 30 },
-            { id: "p6", name: "ممر الصالة الشمالي", type: "table", x: -3.5, y: 3.5, angle: 0 },
-            { id: "p7", name: "قاعدة الشحن", type: "charger", x: 4.8, y: 4.5, angle: 180 }
-        ];
-    }
-
-    window.mapStudio.points = initialPoints;
-    window.renderMapStudioCanvas();
-    window.renderMapStudioPointsList();
-
-    // Background Enrichment
-    if (typeof window.callPuduApi === 'function') {
-        window.callPuduApi('mapList', { sn })
-            .then(res => {
-                if (res && res.success && res.data && Array.isArray(res.data.maps) && res.data.maps.length > 0) {
-                    window.mapStudio.mapsList = res.data.maps;
-                    if (select) {
-                        let html = '';
-                        res.data.maps.forEach(m => {
-                            const mName = m.mapName || m.name || m;
-                            const isCur = (mName === window.mapStudio.currentMapName) || m.isCurrent;
-                            html += `<option value="${escapeHTML(mName)}" ${isCur ? 'selected' : ''}>${escapeHTML(mName)} ${isCur ? '(الخريطة النشطة)' : ''}</option>`;
-                        });
-                        select.innerHTML = html;
-                    }
-                }
-            })
-            .catch(() => {});
-
-        window.callPuduApi('map', { sn, needElement: "true" })
-            .then(res => {
-                const data = res && res.data ? res.data : res;
-                if (data) {
-                    if (data.picture_url || data.map_url) {
-                        window.mapStudioLoadImageFromUrl(data.picture_url || data.map_url);
-                    }
-                    if (Array.isArray(data.elements) || (data.data && Array.isArray(data.data.elements))) {
-                        const rawList = Array.isArray(data.elements) ? data.elements : data.data.elements;
-                        if (rawList.length > 0) {
-                            window.mapStudio.points = rawList.map(el => ({
-                                id: el.id || ('pt-' + Math.random().toString(36).substr(2, 6)),
-                                name: el.name || 'طاولة',
-                                type: el.type || 'table',
-                                x: (el.x !== undefined) ? Number(el.x) : (Math.random() * 6 - 3),
-                                y: (el.y !== undefined) ? Number(el.y) : (Math.random() * 6 - 3),
-                                angle: el.angle || 0
-                            }));
-                            window.renderMapStudioCanvas();
-                            window.renderMapStudioPointsList();
-                        }
-                    }
-                }
-            })
-            .catch(() => {});
-    }
-};
-
-window.mapStudioLoadImageFromUrl = (url) => {
-    if (!url) return;
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-        window.mapStudio.mapImage = img;
-        window.mapStudio.mapImageUrl = url;
-        window.renderMapStudioCanvas();
-    };
-    img.src = url;
-};
-
-window.mapStudioHandleFileUpload = (event) => {
-    const file = event.target.files && event.target.files[0];
-    if (!file) return;
-
-    showToast("جاري قراءة وتحميل ملف الخريطة (" + file.name + ")...", "info");
-
-    if (file.name.endsWith('.png') || file.name.endsWith('.jpg') || file.name.endsWith('.jpeg')) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            window.mapStudioLoadImageFromUrl(e.target.result);
-            showToast("تم تحميل صورة خريطة الليدار بنجاح! 🗺️", "success");
-        };
-        reader.readAsDataURL(file);
-    } else {
-        // .pdmap or custom package
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const content = e.target.result;
-            // Check if base64 or JSON
-            try {
-                if (typeof content === 'string' && content.startsWith('data:image')) {
-                    window.mapStudioLoadImageFromUrl(content);
-                } else {
-                    showToast("تم قراءة ملف الخريطة .pdmap بنجاح!", "success");
-                }
-            } catch(err) {
-                showToast("تم استيراد خريطة الروبوت", "success");
-            }
-            window.renderMapStudioCanvas();
-        };
-        reader.readAsDataURL(file);
-    }
-};
-
-window.mapStudioChangeMap = (val) => {
-    if (!val) return;
-    window.mapStudio.currentMapName = val;
-    const cacheKey = 'pudu_edited_map_' + window.mapStudio.robotSn + '_' + val;
-    let cached = localStorage.getItem(cacheKey);
-    if (cached) {
-        try {
-            const parsed = JSON.parse(cached);
-            if (parsed && Array.isArray(parsed.points)) {
-                window.mapStudio.points = parsed.points;
-                window.mapStudio.virtualWalls = parsed.virtualWalls || [];
-            }
-        } catch(e) {}
-    }
-    window.renderMapStudioCanvas();
-    window.renderMapStudioPointsList();
-    showToast("تم تبديل عرض الخريطة إلى: " + val, "info");
-};
-
-window.mapStudioReloadMap = () => {
-    showToast("جاري تحديث الخريطة...", "info");
-    window.initMapStudio(window.mapStudio.robotSn);
-};
-
-window.setupMapStudioCanvasEvents = () => {
-    const canvas = window.mapStudio.canvas || document.getElementById('puduMapCanvas');
-    if (!canvas || window.mapStudio.eventsAttached) return;
-    
-    window.mapStudio.eventsAttached = true;
-    const state = window.mapStudio;
-
-    function getCanvasCoords(e) {
-        const rect = canvas.getBoundingClientRect();
-        const clientX = e.clientX || (e.touches && e.touches[0] && e.touches[0].clientX) || 0;
-        const clientY = e.clientY || (e.touches && e.touches[0] && e.touches[0].clientY) || 0;
-        return {
-            screenX: (clientX - rect.left) * (canvas.width / rect.width),
-            screenY: (clientY - rect.top) * (canvas.height / rect.height)
-        };
-    }
-
-    function screenToWorld(sx, sy) {
-        const scale = state.pixelsPerMeter * state.zoom;
-        return {
-            x: (sx - state.panX) / scale,
-            y: (state.panY - sy) / scale
-        };
-    }
-
-    function findPointAtScreen(sx, sy) {
-        const scale = state.pixelsPerMeter * state.zoom;
-        for (let i = state.points.length - 1; i >= 0; i--) {
-            const pt = state.points[i];
-            const px = state.panX + pt.x * scale;
-            const py = state.panY - pt.y * scale;
-            const dist = Math.hypot(sx - px, sy - py);
-            if (dist <= 22) return i;
-        }
-        return -1;
-    }
-
-    canvas.addEventListener('mousedown', (e) => {
-        const { screenX, screenY } = getCanvasCoords(e);
-        const world = screenToWorld(screenX, screenY);
-
-        if (state.activeTool === 'wall') {
-            if (!state.isDrawingWall) {
-                state.isDrawingWall = true;
-                state.wallStartPoint = world;
-            } else {
-                state.isDrawingWall = false;
-                state.virtualWalls.push({
-                    start: state.wallStartPoint,
-                    end: world
-                });
-                state.wallStartPoint = null;
-                showToast("تم رسم الجدار الافتراضي بنجاح", "info");
-            }
-            window.renderMapStudioCanvas();
-            return;
-        }
-
-        const ptIdx = findPointAtScreen(screenX, screenY);
-        if (ptIdx !== -1) {
-            state.draggingPointIdx = ptIdx;
-        } else {
-            state.isPanning = true;
-            state.panStart = { x: screenX - state.panX, y: screenY - state.panY };
-        }
-    });
-
-    canvas.addEventListener('mousemove', (e) => {
-        const { screenX, screenY } = getCanvasCoords(e);
-        const world = screenToWorld(screenX, screenY);
-        
-        const coordsSpan = document.getElementById('mapCursorCoords');
-        if (coordsSpan) {
-            coordsSpan.innerText = 'X: ' + world.x.toFixed(2) + 'm | Y: ' + world.y.toFixed(2) + 'm';
-        }
-
-        if (state.draggingPointIdx !== -1) {
-            state.points[state.draggingPointIdx].x = Number(world.x.toFixed(2));
-            state.points[state.draggingPointIdx].y = Number(world.y.toFixed(2));
-            window.renderMapStudioCanvas();
-            window.renderMapStudioPointsList();
-            return;
-        }
-
-        if (state.isPanning) {
-            state.panX = screenX - state.panStart.x;
-            state.panY = screenY - state.panStart.y;
-            window.renderMapStudioCanvas();
-            return;
-        }
-
-        const hovered = findPointAtScreen(screenX, screenY);
-        if (hovered !== state.hoveredPointIdx) {
-            state.hoveredPointIdx = hovered;
-            canvas.style.cursor = (hovered !== -1) ? 'move' : (state.activeTool === 'wall' ? 'crosshair' : 'default');
-            window.renderMapStudioCanvas();
-        }
-    });
-
-    window.addEventListener('mouseup', () => {
-        state.draggingPointIdx = -1;
-        state.isPanning = false;
-    });
-
-    canvas.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        const factor = e.deltaY < 0 ? 1.1 : 0.9;
-        window.mapStudioZoom(factor);
-    }, { passive: false });
-};
-
-window.renderMapStudioCanvas = () => {
-    const canvas = window.mapStudio.canvas || document.getElementById('puduMapCanvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const state = window.mapStudio;
-    
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    const scale = state.pixelsPerMeter * state.zoom;
-    const offsetX = state.panX;
-    const offsetY = state.panY;
-
-    // 1. Dark Pudu OS Canvas Backdrop
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // 2. High-Tech Grid Backdrop
-    const gridSize = 16 * state.zoom;
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 1;
-    for (let x = (offsetX % gridSize); x < canvas.width; x += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-        ctx.stroke();
-    }
-    for (let y = (offsetY % gridSize); y < canvas.height; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
-    }
-
-    // 3. Render Real LiDAR Point-Cloud Map (Background Layer)
-    if (state.mapImage) {
-        const iw = state.mapImage.width * state.zoom * 0.8;
-        const ih = state.mapImage.height * state.zoom * 0.8;
-        ctx.drawImage(state.mapImage, offsetX - iw / 2, offsetY - ih / 2, iw, ih);
-    } else {
-        // Procedural High-Fidelity LiDAR Point Cloud matching Pudu SLAM
-        ctx.save();
-        ctx.translate(offsetX, offsetY);
-        ctx.scale(state.zoom, state.zoom);
-
-        // Gray bounding scan zone
-        ctx.fillStyle = 'rgba(71, 85, 105, 0.45)';
-        ctx.fillRect(-350, -220, 700, 440);
-        ctx.strokeStyle = 'rgba(148, 163, 184, 0.3)';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(-350, -220, 700, 440);
-
-        // Realistic LiDAR Scanner Rays and Floor Contour (White & Light Gray Free Space)
-        ctx.fillStyle = '#f8fafc';
-        ctx.beginPath();
-        // Diagonal corridor shape
-        ctx.moveTo(-280, 180);
-        ctx.lineTo(-280, 110);
-        ctx.lineTo(-120, -50);
-        ctx.lineTo(60, 30);
-        ctx.lineTo(260, -90);
-        ctx.lineTo(290, -70);
-        ctx.lineTo(80, 60);
-        ctx.lineTo(-90, -20);
-        ctx.lineTo(-250, 140);
-        ctx.lineTo(-250, 190);
-        ctx.closePath();
-        ctx.fill();
-
-        // Main Room Area (Laser Scanned Room)
-        ctx.beginPath();
-        ctx.moveTo(-180, -30);
-        ctx.lineTo(-160, -180);
-        ctx.lineTo(50, -160);
-        ctx.lineTo(80, -50);
-        ctx.lineTo(-50, 10);
-        ctx.closePath();
-        ctx.fill();
-
-        // Secondary Corridor
-        ctx.beginPath();
-        ctx.moveTo(-140, -150);
-        ctx.lineTo(-40, -20);
-        ctx.lineTo(-20, -15);
-        ctx.lineTo(-120, -145);
-        ctx.closePath();
-        ctx.fill();
-
-        // Laser Scan Ray Dust Particles & Obstacle Outlines (Realistic LiDAR noise)
-        ctx.strokeStyle = 'rgba(15, 23, 42, 0.85)';
-        ctx.lineWidth = 2.5;
-        ctx.stroke();
-
-        // Ray flare shadows
-        ctx.fillStyle = 'rgba(203, 213, 225, 0.4)';
-        for (let i = 0; i < 24; i++) {
-            let rx = -200 + i * 20;
-            let ry = -120 + Math.sin(i) * 30;
-            ctx.fillRect(rx, ry, 6, 6);
-        }
-
-        ctx.restore();
-    }
-
-    // 4. Official Axis Coordinate Lines (Green Vertical + Red Horizontal)
-    ctx.strokeStyle = '#22c55e'; // Green Y Axis
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(offsetX - 260 * state.zoom, 0);
-    ctx.lineTo(offsetX - 260 * state.zoom, canvas.height);
-    ctx.stroke();
-
-    ctx.strokeStyle = '#ef4444'; // Red X Axis
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(0, offsetY + 160 * state.zoom);
-    ctx.lineTo(canvas.width, offsetY + 160 * state.zoom);
-    ctx.stroke();
-
-    // 5. Official Blue Navigation Trajectory Corridors (مسارات الملاحة الزرقاء)
-    const pts = state.points;
-    if (pts.length >= 2) {
-        // Outer Orange/Amber Buffer Lines
-        ctx.strokeStyle = '#f97316';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([4, 4]);
-        
-        ctx.beginPath();
-        for (let i = 0; i < pts.length; i++) {
-            const px = offsetX + pts[i].x * scale;
-            const py = offsetY - pts[i].y * scale;
-            if (i === 0) ctx.moveTo(px + 4, py - 4);
-            else ctx.lineTo(px + 4, py - 4);
-        }
-        ctx.stroke();
-
-        ctx.beginPath();
-        for (let i = 0; i < pts.length; i++) {
-            const px = offsetX + pts[i].x * scale;
-            const py = offsetY - pts[i].y * scale;
-            if (i === 0) ctx.moveTo(px - 4, py + 4);
-            else ctx.lineTo(px - 4, py + 4);
-        }
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // Main Solid Blue/Cyan Centerline Guidance
-        ctx.strokeStyle = '#00a6ff';
-        ctx.lineWidth = 5.0;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.beginPath();
-        for (let i = 0; i < pts.length; i++) {
-            const px = offsetX + pts[i].x * scale;
-            const py = offsetY - pts[i].y * scale;
-            if (i === 0) ctx.moveTo(px, py);
-            else ctx.lineTo(px, py);
-        }
-        ctx.stroke();
-
-        // Inner Bright Core
-        ctx.strokeStyle = '#e0f2fe';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-    }
-
-    // 6. Draw Virtual Walls (Red Dashed Lines)
-    ctx.strokeStyle = '#f43f5e';
-    ctx.lineWidth = 4;
-    ctx.setLineDash([8, 6]);
-    state.virtualWalls.forEach(wall => {
-        const x1 = offsetX + wall.start.x * scale;
-        const y1 = offsetY - wall.start.y * scale;
-        const x2 = offsetX + wall.end.x * scale;
-        const y2 = offsetY - wall.end.y * scale;
-        
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-
-        ctx.fillStyle = '#f43f5e';
-        ctx.beginPath();
-        ctx.arc(x1, y1, 4, 0, Math.PI * 2);
-        ctx.arc(x2, y2, 4, 0, Math.PI * 2);
-        ctx.fill();
-    });
-    ctx.setLineDash([]);
-
-    // 7. Pudu Official Square Waypoints (نقاط الوقوف المربعة)
-    pts.forEach((pt, idx) => {
-        const px = offsetX + pt.x * scale;
-        const py = offsetY - pt.y * scale;
-        const isDragging = (state.draggingPointIdx === idx);
-        const isHovered = (state.hoveredPointIdx === idx);
-
-        let color = '#3b82f6';
-        if (pt.type === 'charger') color = '#f59e0b';
-        else if (pt.type === 'dining_outlet') color = '#10b981';
-        else if (pt.type === 'reception') color = '#8b5cf6';
-
-        if (isDragging || isHovered) {
-            ctx.beginPath();
-            ctx.arc(px, py, 20, 0, Math.PI * 2);
-            ctx.fillStyle = color + '44';
-            ctx.fill();
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 2;
-            ctx.stroke();
-        }
-
-        // Pudu Official Square Waypoint Box
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(px - 7, py - 7, 14, 14);
-        ctx.strokeStyle = '#0284c7';
-        ctx.lineWidth = 2.5;
-        ctx.strokeRect(px - 7, py - 7, 14, 14);
-
-        // Center Point
-        ctx.fillStyle = color;
-        ctx.fillRect(px - 3, py - 3, 6, 6);
-
-        // Direction Arrow
-        const rad = (pt.angle || 0) * (Math.PI / 180);
-        const ax = px + Math.cos(rad) * 16;
-        const ay = py - Math.sin(rad) * 16;
-        ctx.strokeStyle = '#38bdf8';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(px, py);
-        ctx.lineTo(ax, ay);
-        ctx.stroke();
-
-        // Label Pill
-        ctx.font = 'bold 11px Cairo, sans-serif';
-        ctx.textAlign = 'center';
-        const labelText = pt.name || ('Point ' + (idx + 1));
-        const textWidth = ctx.measureText(labelText).width;
-
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
-        ctx.beginPath();
-        ctx.roundRect(px - textWidth / 2 - 5, py + 12, textWidth + 10, 16, 4);
-        ctx.fill();
-        ctx.strokeStyle = '#475569';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-
-        ctx.fillStyle = '#f8fafc';
-        ctx.fillText(labelText, px, py + 24);
-    });
-};
-
-window.renderMapStudioPointsList = () => {
-    const list = document.getElementById('mapStudioPointsList');
-    const count = document.getElementById('mapPointsCount');
-    if (!list) return;
-    
-    const pts = window.mapStudio.points || [];
-    if (count) count.innerText = pts.length;
-    
-    let html = '';
-    pts.forEach((pt, idx) => {
-        let typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700">طاولة</span>';
-        if (pt.type === 'charger') typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700">شاحن</span>';
-        else if (pt.type === 'dining_outlet') typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">مطبخ</span>';
-        else if (pt.type === 'reception') typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700">استقبال</span>';
-
-        html += `
-        <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between transition hover:border-indigo-400 group">
-            <div class="flex items-center gap-2">
-                <div class="w-3 h-3 border-2 border-indigo-500 bg-white rounded-xs flex items-center justify-center">
-                    <div class="w-1.5 h-1.5 ${pt.type === 'charger' ? 'bg-amber-400' : (pt.type === 'dining_outlet' ? 'bg-emerald-400' : 'bg-blue-500')}"></div>
-                </div>
-                <div>
-                    <input type="text" value="${escapeHTML(pt.name)}" onchange="window.mapStudioRenamePoint(${idx}, this.value)" class="text-xs font-bold text-slate-800 bg-transparent border-none p-0 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded w-28 truncate">
-                    <span class="text-[10px] font-mono text-slate-400 block">X:${pt.x}m, Y:${pt.y}m</span>
-                </div>
-            </div>
-            <div class="flex items-center gap-1.5">
-                ${typeBadge}
-                <button onclick="window.mapStudioDeletePoint(${idx})" class="text-slate-300 hover:text-rose-500 transition text-xs p-1" title="حذف النقطة"><i class="fa-regular fa-trash-can"></i></button>
-            </div>
-        </div>
-        `;
-    });
-    list.innerHTML = html;
-};
-
-window.mapStudioRenamePoint = (idx, newName) => {
-    if (window.mapStudio.points[idx]) {
-        window.mapStudio.points[idx].name = newName.trim();
-        window.renderMapStudioCanvas();
-    }
-};
-
-window.mapStudioDeletePoint = (idx) => {
-    if (window.mapStudio.points[idx]) {
-        window.mapStudio.points.splice(idx, 1);
-        window.renderMapStudioCanvas();
-        window.renderMapStudioPointsList();
-        showToast("تم حذف النقطة من الخريطة", "info");
-    }
-};
-
-window.mapStudioSetTool = (tool) => {
-    window.mapStudio.activeTool = tool;
-    document.querySelectorAll('.map-tool-btn').forEach(b => {
-        b.classList.remove('active', 'bg-white', 'text-indigo-600', 'shadow-xs');
-        b.classList.add('text-slate-600');
-    });
-    if (tool === 'select') {
-        const b = document.getElementById('mapToolBtnSelect');
-        if (b) b.classList.add('active', 'bg-white', 'text-indigo-600', 'shadow-xs');
-        showToast("وضع التحديد والتحريك مفعّل", "info");
-    } else if (tool === 'wall') {
-        const b = document.getElementById('mapToolBtnWall');
-        if (b) b.classList.add('active', 'bg-white', 'text-rose-600', 'shadow-xs');
-        showToast("انقر على الخريطة وحدد نقطتين لرسم الجدار الافتراضي", "info");
-    }
-};
-
-window.mapStudioClearWalls = () => {
-    window.mapStudio.virtualWalls = [];
-    window.renderMapStudioCanvas();
-    showToast("تم مسح جميع الجدران الافتراضية", "info");
-};
-
-window.mapStudioZoom = (factor) => {
-    window.mapStudio.zoom = Math.max(0.4, Math.min(3.5, window.mapStudio.zoom * factor));
-    window.renderMapStudioCanvas();
-};
-
-window.mapStudioResetView = () => {
-    window.mapStudio.zoom = 1.0;
-    window.mapStudio.panX = 450;
-    window.mapStudio.panY = 270;
-    window.renderMapStudioCanvas();
-};
-
-window.mapStudioOpenAddPointModal = () => {
-    const modal = document.getElementById('mapStudioAddPointModal');
-    if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-        setTimeout(() => { modal.classList.remove('opacity-0'); }, 10);
-    }
-};
-
-window.mapStudioCloseAddPointModal = () => {
-    const modal = document.getElementById('mapStudioAddPointModal');
-    if (modal) {
-        modal.classList.add('opacity-0');
-        setTimeout(() => {
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        }, 300);
-    }
-};
-
-window.mapStudioConfirmAddPoint = () => {
-    const name = document.getElementById('mapNewPointName').value.trim();
-    const type = document.getElementById('mapNewPointType').value;
-    const x = parseFloat(document.getElementById('mapNewPointX').value) || 0;
-    const y = parseFloat(document.getElementById('mapNewPointY').value) || 0;
-
-    if (!name) {
-        showToast("يرجى إدخال اسم النقطة أولاً", "warning");
-        return;
-    }
-
-    window.mapStudio.points.push({
-        id: 'pt-' + Math.random().toString(36).substr(2, 6),
-        name: name,
-        type: type,
-        x: x,
-        y: y,
-        angle: 0
-    });
-
-    window.mapStudioCloseAddPointModal();
-    window.renderMapStudioCanvas();
-    window.renderMapStudioPointsList();
-    showToast("تمت إضافة النقطة بنجاح", "success");
-    document.getElementById('mapNewPointName').value = '';
-};
-
-window.mapStudioSaveMap = async () => {
-    const sn = window.mapStudio.robotSn;
-    const mapName = window.mapStudio.currentMapName;
-    if (!sn) return;
-
-    showToast("جاري حفظ التعديلات على الخريطة سحابياً...", "info");
-    const payload = {
-        mapName: mapName,
-        points: window.mapStudio.points,
-        virtualWalls: window.mapStudio.virtualWalls,
-        mapImageUrl: window.mapStudio.mapImageUrl || '',
-        updatedAt: Date.now()
-    };
-
-    localStorage.setItem('pudu_edited_map_' + sn + '_' + mapName, JSON.stringify(payload));
-
-    if (typeof db !== 'undefined' && typeof appId !== 'undefined' && typeof setDoc !== 'undefined') {
-        try {
-            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robot_maps', sn + '_' + mapName.replace(/[^a-zA-Z0-9]/g, '_')), payload, { merge: true });
-        } catch(e) {}
-    }
-
-    showToast("تم حفظ الخريطة والنقاط بنجاح!", "success");
-};
-
-window.mapStudioPushToRobot = async () => {
-    const sn = window.mapStudio.robotSn;
-    const mapName = window.mapStudio.currentMapName;
-    if (!sn) return;
-
-    await window.mapStudioSaveMap();
-    showToast("جاري تطبيق وتفعيل الخريطة المعدلة على الروبوت...", "info");
-
-    try {
-        if (typeof window.callPuduApi === 'function') {
-            const res = await window.callPuduApi('switchMap', {
-                sn: sn,
-                mapName: mapName,
-                mapCode: ""
-            });
-            if (res && res.success) {
-                showToast("تم تفعيل الخريطة على الروبوت بنجاح! 🚀", "success");
-            } else {
-                showToast("تم حفظ الخريطة. سيتم تطبيق التفعيل فور اتصال الروبوت.", "info");
-            }
-        } else {
-            showToast("تم تفعيل الخريطة بنجاح.", "success");
-        }
-    } catch(e) {
-        showToast("تم حفظ الخريطة بنجاح سحابياً.", "success");
-    }
-};
-
-window.mapStudioExportPdmap = () => {
-    const mapName = window.mapStudio.currentMapName;
-    if (typeof window.executeMapExport === 'function') {
-        window.executeMapExport(mapName);
-    } else {
-        showToast("جاري تصدير ملف الخريطة .pdmap...", "info");
-    }
-};
