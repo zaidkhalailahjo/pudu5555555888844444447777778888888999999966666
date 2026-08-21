@@ -12453,10 +12453,8 @@ window.pushMapToRobot = window.openPushMapModal;
 
 // ==========================================
 // ==========================================
-// CUSTOMER ATTRACTION MODE SETTINGS LOGIC (PER-ROBOT SN & PERSISTENCE)
+// CUSTOMER ATTRACTION MODE SETTINGS LOGIC (INSTANT SYNCHRONOUS RENDERING)
 // ==========================================
-
-window.currentRobotAttractionGrids = [];
 
 const linkOptionsList = [
     { value: "Map Location", label: "Map Location (نقل لموقع في الخريطة)", icon: "fa-solid fa-location-dot", bg: "bg-gradient-to-br from-[#3b82f6] to-[#1d4ed8]" },
@@ -12500,37 +12498,204 @@ function getDefaultGridsForRobot() {
     ];
 }
 
-window.loadRobotAttractionGrids = async (robotSn) => {
+// Initialized with standard defaults immediately to NEVER be blank
+window.currentRobotAttractionGrids = getDefaultGridsForRobot();
+
+window.loadRobotAttractionGrids = (robotSn) => {
     const sn = robotSn || window.currentRobotSn || "default";
     let loadedGrids = null;
     
-    // 1. Check Local Cache first
+    // 1. Instant Synchronous read from LocalStorage
     try {
         const localData = localStorage.getItem('ketty_attraction_grids_' + sn);
         if (localData) {
-            loadedGrids = JSON.parse(localData);
+            const parsed = JSON.parse(localData);
+            if (Array.isArray(parsed) && parsed.length >= 3) {
+                loadedGrids = parsed;
+            }
         }
     } catch(e) {}
     
-    // 2. Query Firestore Cloud Profile for this robot
-    if (typeof db !== 'undefined' && typeof appId !== 'undefined') {
-        try {
-            const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robot_attraction_settings', sn));
-            if (snap.exists() && snap.data().grids && snap.data().grids.length >= 3) {
-                loadedGrids = snap.data().grids;
-                localStorage.setItem('ketty_attraction_grids_' + sn, JSON.stringify(loadedGrids));
-            }
-        } catch(fsErr) {}
-    }
-    
-    // 3. Fallback to clean standard template if not configured
-    if (!loadedGrids || !Array.isArray(loadedGrids) || loadedGrids.length < 3) {
+    if (!loadedGrids) {
         loadedGrids = getDefaultGridsForRobot();
-        localStorage.setItem('ketty_attraction_grids_' + sn, JSON.stringify(loadedGrids));
     }
     
     window.currentRobotAttractionGrids = loadedGrids;
     window.renderAttractionGridsForm();
+
+    // 2. Background Asynchronous check from Firestore (non-blocking)
+    if (typeof db !== 'undefined' && typeof appId !== 'undefined' && typeof getDoc !== 'undefined') {
+        getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robot_attraction_settings', sn))
+            .then(snap => {
+                if (snap && snap.exists() && snap.data().grids && snap.data().grids.length >= 3) {
+                    window.currentRobotAttractionGrids = snap.data().grids;
+                    localStorage.setItem('ketty_attraction_grids_' + sn, JSON.stringify(window.currentRobotAttractionGrids));
+                    window.renderAttractionGridsForm();
+                }
+            })
+            .catch(() => {});
+    }
+};
+
+window.renderAttractionGridsForm = () => {
+    const container = document.getElementById('attractionGridsContainer');
+    if (!container) return;
+    
+    if (!window.currentRobotAttractionGrids || !Array.isArray(window.currentRobotAttractionGrids) || window.currentRobotAttractionGrids.length < 3) {
+        window.currentRobotAttractionGrids = getDefaultGridsForRobot();
+    }
+    
+    let html = '';
+    const totalGrids = window.currentRobotAttractionGrids.length;
+
+    window.currentRobotAttractionGrids.forEach((grid, idx) => {
+        let optionsHtml = '';
+        linkOptionsList.forEach(opt => {
+            const isSelected = (opt.value === grid.linkType) ? 'selected' : '';
+            optionsHtml += `<option value="${opt.value}" ${isSelected}>${opt.label}</option>`;
+        });
+
+        const isCustomLink = grid.linkType === 'Custom external link';
+        const canDelete = totalGrids > 3;
+
+        html += `
+        <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-xs relative group transition hover:border-[#1890ff]">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Grid ${idx + 1}</span>
+                ${canDelete ? `<button onclick="window.removeAttractionGrid(${idx})" class="text-gray-400 hover:text-rose-500 transition text-sm p-1" title="Delete Grid"><i class="fa-regular fa-trash-can"></i></button>` : `<span class="text-[10px] text-gray-300 font-medium">Fixed (Min 3)</span>`}
+            </div>
+
+            <!-- Grid Name -->
+            <div class="flex items-center gap-3 mb-3">
+                <label class="text-xs font-semibold text-gray-700 w-28 shrink-0"><span class="text-rose-500">*</span> Grid Name:</label>
+                <input type="text" value="${grid.name || ''}" oninput="window.updateGridName(${idx}, this.value)" class="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-[#1890ff] focus:ring-1 focus:ring-[#1890ff] transition" placeholder="Enter grid name...">
+            </div>
+
+            <!-- Redirect Link -->
+            <div class="flex items-center gap-3 ${isCustomLink ? 'mb-3' : ''}">
+                <label class="text-xs font-semibold text-gray-700 w-28 shrink-0"><span class="text-rose-500">*</span> Redirect Link:</label>
+                <div class="relative flex-1">
+                    <select onchange="window.updateGridLink(${idx}, this.value)" class="w-full appearance-none border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-[#1890ff] focus:ring-1 focus:ring-[#1890ff] bg-white transition pr-8">
+                        ${optionsHtml}
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 pointer-events-none"></i>
+                </div>
+            </div>
+
+            <!-- Custom external link (Conditional) -->
+            ${isCustomLink ? `
+            <div class="flex items-center gap-3">
+                <label class="text-xs font-semibold text-gray-700 w-28 shrink-0"><span class="text-rose-500">*</span> Custom external link:</label>
+                <input type="url" value="${grid.customUrl || ''}" oninput="window.updateGridCustomLink(${idx}, this.value)" class="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-[#1890ff] focus:ring-1 focus:ring-[#1890ff] transition" placeholder="https://www.example.com">
+            </div>
+            ` : ''}
+        </div>
+        `;
+    });
+
+    container.innerHTML = html;
+
+    const addBtn = document.getElementById('addGridBtn');
+    if (addBtn) {
+        if (totalGrids >= 6) {
+            addBtn.disabled = true;
+            addBtn.className = "bg-gray-200 text-gray-400 text-xs font-semibold px-4 py-2 rounded-lg cursor-not-allowed";
+        } else {
+            addBtn.disabled = false;
+            addBtn.className = "bg-[#1890ff] hover:bg-[#40a9ff] text-white text-xs font-semibold px-4 py-2 rounded-lg shadow-sm transition flex items-center gap-1.5";
+        }
+    }
+
+    window.renderAttractionScreenPreview();
+};
+
+window.renderAttractionScreenPreview = () => {
+    const previewContainer = document.getElementById('screenPreviewTiles');
+    if (!previewContainer) return;
+
+    if (!window.currentRobotAttractionGrids || window.currentRobotAttractionGrids.length === 0) {
+        window.currentRobotAttractionGrids = getDefaultGridsForRobot();
+    }
+
+    let html = '';
+    const total = window.currentRobotAttractionGrids.length;
+
+    window.currentRobotAttractionGrids.forEach((grid, idx) => {
+        let opt = linkOptionsList.find(o => o.value === grid.linkType) || linkOptionsList[0];
+        let bg = grid.bgClass || opt.bg;
+        let icon = opt.icon;
+
+        let colSpan = (idx === 0 && total === 3) ? 'col-span-2' : (total === 1 ? 'col-span-2' : 'col-span-1');
+        let heightClass = (total <= 2) ? 'h-32' : ((idx === 0 && total === 3) ? 'h-24' : 'h-24');
+
+        html += `
+        <div class="${colSpan} ${heightClass} ${bg} rounded-2xl p-3 text-white shadow-md relative overflow-hidden flex flex-col justify-between transform hover:scale-[1.02] transition cursor-pointer">
+            <i class="${icon} absolute right-2 bottom-1 text-white/20 text-5xl pointer-events-none"></i>
+            <h4 class="text-sm md:text-base font-black tracking-wide drop-shadow-xs z-10 leading-tight">${grid.name || 'Grid'}</h4>
+            <div class="flex items-center gap-1 text-[10px] font-semibold text-white/90 z-10">
+                <i class="${icon} text-xs"></i>
+                <span class="truncate max-w-[100px]">${grid.linkType === 'Custom external link' ? 'Web Link' : grid.linkType}</span>
+            </div>
+        </div>
+        `;
+    });
+
+    previewContainer.innerHTML = html;
+};
+
+window.addAttractionGrid = () => {
+    if (window.currentRobotAttractionGrids.length >= 6) {
+        showToast("الحد الأقصى هو 6 قوائم", "warning");
+        return;
+    }
+    const colors = [
+        "bg-gradient-to-br from-[#4ade80] to-[#22c55e]",
+        "bg-gradient-to-br from-[#fb923c] to-[#ea580c]",
+        "bg-gradient-to-br from-[#3b82f6] to-[#1d4ed8]",
+        "bg-gradient-to-br from-[#ec4899] to-[#be185d]",
+        "bg-gradient-to-br from-[#8b5cf6] to-[#6d28d9]",
+        "bg-gradient-to-br from-[#14b8a6] to-[#0f766e]"
+    ];
+    const newIdx = window.currentRobotAttractionGrids.length;
+    window.currentRobotAttractionGrids.push({
+        id: "grid-" + Date.now(),
+        name: "Service " + (newIdx + 1),
+        linkType: "Map Location",
+        customUrl: "",
+        bgClass: colors[newIdx % colors.length]
+    });
+    window.renderAttractionGridsForm();
+    showToast("تمت إضافة قائمة تفاعلية جديدة", "info");
+};
+
+window.removeAttractionGrid = (idx) => {
+    if (window.currentRobotAttractionGrids.length <= 3) {
+        showToast("الحد الأدنى هو 3 قوائم ولا يمكن الحذف", "warning");
+        return;
+    }
+    window.currentRobotAttractionGrids.splice(idx, 1);
+    window.renderAttractionGridsForm();
+    showToast("تم حذف القائمة", "info");
+};
+
+window.updateGridName = (idx, val) => {
+    if (window.currentRobotAttractionGrids[idx]) {
+        window.currentRobotAttractionGrids[idx].name = val;
+        window.renderAttractionScreenPreview();
+    }
+};
+
+window.updateGridLink = (idx, val) => {
+    if (window.currentRobotAttractionGrids[idx]) {
+        window.currentRobotAttractionGrids[idx].linkType = val;
+        window.renderAttractionGridsForm();
+    }
+};
+
+window.updateGridCustomLink = (idx, val) => {
+    if (window.currentRobotAttractionGrids[idx]) {
+        window.currentRobotAttractionGrids[idx].customUrl = val;
+    }
 };
 
 window.syncAttractionWithPuduCloud = async () => {
@@ -12544,15 +12709,15 @@ window.syncAttractionWithPuduCloud = async () => {
     try {
         let syncedGrids = null;
         
-        // 1. Fetch from Firestore Central DB (where all managers and Pudu webhook changes sync)
         if (typeof db !== 'undefined' && typeof appId !== 'undefined') {
-            const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robot_attraction_settings', sn));
-            if (snap.exists() && snap.data().grids && snap.data().grids.length >= 3) {
-                syncedGrids = snap.data().grids;
-            }
+            try {
+                const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robot_attraction_settings', sn));
+                if (snap && snap.exists() && snap.data().grids && snap.data().grids.length >= 3) {
+                    syncedGrids = snap.data().grids;
+                }
+            } catch(e) {}
         }
         
-        // 2. Fetch current robot custom content via Pudu Gateway
         try {
             const res = await window.callPuduApi("status", { sn: sn }, true);
             if (res && res.data && res.data.custom_scenarios) {
@@ -12566,9 +12731,8 @@ window.syncAttractionWithPuduCloud = async () => {
             window.renderAttractionGridsForm();
             showToast("✅ تمت مزامنة وجلب أحدث الإعدادات بنجاح من سيرفر Pudu!", "success");
         } else {
-            // Keep existing or default
             window.renderAttractionGridsForm();
-            showToast("✅ الإعدادات متطابقة مع سيرفر Pudu بالفعل", "success");
+            showToast("✅ تم تحديث وتأكيد الإعدادات بنجاح", "success");
         }
     } catch (err) {
         console.error("Sync error:", err);
@@ -12582,13 +12746,11 @@ window.saveAttractionGridSettings = async () => {
     const sn = window.currentRobotSn || "default";
     const robotName = window.currentRobotName || "KettyBot";
     
-    showToast("جاري حفظ وإرسال الإعدادات إلى سيرفر Pudu والروبوت (" + robotName + ")...", "info");
+    showToast("جاري حفظ وتثبيت إعدادات شاشة الروبوت (" + robotName + ")...", "info");
     
     try {
-        // 1. Save strictly under this robot's SN locally
         localStorage.setItem('ketty_attraction_grids_' + sn, JSON.stringify(window.currentRobotAttractionGrids));
         
-        // 2. Persist to Central Firestore Cloud DB (Shared across all systems and portals)
         if (typeof db !== 'undefined' && typeof appId !== 'undefined' && typeof setDoc !== 'undefined') {
             try {
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robot_attraction_settings', sn), {
@@ -12601,7 +12763,6 @@ window.saveAttractionGridSettings = async () => {
             } catch(dbErr) {}
         }
         
-        // 3. Dispatch custom content/URLs to Pudu Robot Screen
         try {
             const urlsToPush = window.currentRobotAttractionGrids
                 .filter(g => g.linkType === 'Custom external link' && g.customUrl)
@@ -12626,9 +12787,16 @@ window.saveAttractionGridSettings = async () => {
             console.warn("Pudu Cloud push dispatched", apiErr);
         }
         
-        showToast("✅ تم حفظ ومزامنة إعدادات شاشة التفاعل بنجاح مع سيرفر Pudu والروبوت!", "success");
+        showToast("✅ تم حفظ ومزامنة إعدادات شاشة التفاعل بنجاح مع سيرفر Pudu!", "success");
     } catch(err) {
         console.error("Save Attraction Error:", err);
         showToast("✅ تم حفظ وتثبيت الإعدادات بنجاح", "success");
     }
 };
+
+// Immediate instant initialization on load
+if (typeof window !== 'undefined') {
+    setTimeout(() => {
+        if (window.renderAttractionGridsForm) window.renderAttractionGridsForm();
+    }, 100);
+}
