@@ -11738,43 +11738,88 @@ window.fetchLiveRobotStatuses = async () => {
         try {
             const puduGateway = window.httpsCallable(window.cloudFunctions, "puduGateway");
             const result = await puduGateway({ action: "status", sn: r.serialNumber.trim(), payload: {} });
+            
+            let data = null;
             if (result.data && result.data.success && result.data.data) {
-                const data = result.data.data;
+                data = result.data.data;
+            }
+            
+            const badge = document.getElementById('pudu-badge-' + r.id);
+            const batCircle = document.getElementById('bat-circle-' + r.id);
+            const batText = document.getElementById('bat-text-' + r.id);
+
+            if (data) {
                 const batVal = data.battery !== undefined ? parseInt(data.battery) : (data.power !== undefined ? parseInt(data.power) : 0);
-                const rawState = String(data.run_state || data.runState || "IDLE").toUpperCase();
+                const rawState = String(data.run_state || data.runState || "").toUpperCase();
                 
-                // ACCURATE Charging Detection
-                const isCharging = (data.is_charging === 1 || data.is_charging === true || rawState === "DISABLE" || rawState === "CHARGING" || (data.charge_stage && String(data.charge_stage).trim() !== ""));
+                // 1. Accurate Offline detection
+                const isOffline = (
+                    rawState === "OFFLINE" ||
+                    rawState === "OFF_LINE" ||
+                    rawState === "DISCONNECTED" ||
+                    rawState === "UNAVAILABLE" ||
+                    data.is_online === 0 ||
+                    data.is_online === false
+                );
+
+                // 2. Accurate Charging detection
+                const isCharging = !isOffline && (
+                    data.is_charging === 1 || 
+                    data.is_charging === true || 
+                    rawState === "DISABLE" || 
+                    rawState === "CHARGING" || 
+                    (data.charge_stage && String(data.charge_stage).trim() !== "")
+                );
+
+                // 3. Accurate Moving / Working detection
+                const isMoving = !isOffline && !isCharging && (
+                    rawState.includes("BUSY") || 
+                    rawState.includes("WORK") || 
+                    rawState.includes("DELIVER") || 
+                    rawState.includes("CRUISE") || 
+                    rawState.includes("DIRECT") || 
+                    rawState.includes("MOVE") || 
+                    rawState.includes("MOVING") || 
+                    (data.move_state && String(data.move_state).toUpperCase().includes("MOVE"))
+                );
+
+                // 4. Blocked / Error / Idle
+                const isBlocked = !isOffline && !isCharging && (rawState.includes("PAUSE") || rawState.includes("BLOCK") || rawState.includes("OBSTACLE"));
+                const isError = !isOffline && (rawState.includes("ERROR") || rawState.includes("FAULT"));
 
                 let displayState = "Idle";
-                let badgeColor = "bg-slate-100 text-slate-700 border border-slate-200";
+                let badgeColor = "bg-emerald-50 text-emerald-700 border border-emerald-200";
 
-                if (isCharging) {
+                if (isOffline) {
+                    displayState = "Offline";
+                    badgeColor = "bg-gray-100 text-gray-500 border border-gray-200";
+                } else if (isCharging) {
                     displayState = "Charging";
                     badgeColor = "bg-emerald-100 text-emerald-700 border border-emerald-300";
-                } else if (rawState.includes("BUSY") || rawState.includes("WORK") || rawState.includes("DELIVER")) {
-                    displayState = "Working";
+                } else if (isMoving) {
+                    displayState = "Moving";
                     badgeColor = "bg-blue-100 text-blue-700 border border-blue-200";
-                } else if (rawState.includes("ERROR")) {
+                } else if (isBlocked) {
+                    displayState = "Blocked";
+                    badgeColor = "bg-amber-100 text-amber-700 border border-amber-200";
+                } else if (isError) {
                     displayState = "Error";
                     badgeColor = "bg-rose-100 text-rose-700 border border-rose-200";
+                } else {
+                    displayState = "Idle";
+                    badgeColor = "bg-emerald-50 text-emerald-700 border border-emerald-200";
                 }
                 
                 // Update Card Elements
-                const batCircle = document.getElementById('bat-circle-' + r.id);
-                const batText = document.getElementById('bat-text-' + r.id);
-                const badge = document.getElementById('pudu-badge-' + r.id);
-                
                 if (batCircle && batText) {
                     batText.innerText = batVal + '%';
                     batCircle.setAttribute('stroke-dasharray', batVal + ', 100');
                     
-                    if (isCharging) {
+                    if (isOffline) {
+                        batCircle.setAttribute('class', "text-gray-300 stroke-current transition-all duration-700");
+                    } else if (isCharging) {
                         batCircle.setAttribute('class', "text-emerald-500 stroke-current transition-all duration-700 animate-pulse");
                     } else {
-                        // 🔴 Under 20% -> Red
-                        // 🟠 21% - 50% -> Orange
-                        // 🟢 Above 50% -> Green
                         if (batVal <= 20) {
                             batCircle.setAttribute('class', "text-rose-500 stroke-current transition-all duration-700");
                         } else if (batVal <= 50) {
@@ -11789,13 +11834,23 @@ window.fetchLiveRobotStatuses = async () => {
                     badge.className = `px-1.5 py-0.5 rounded text-[10px] font-bold ${badgeColor}`;
                     badge.innerText = displayState;
                 }
+            } else {
+                // If API returned error or no response -> Mark as Offline
+                if (badge) {
+                    badge.className = "px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-500 border border-gray-200";
+                    badge.innerText = "Offline";
+                }
             }
         } catch (err) {
             console.error("Failed to fetch live status for", r.serialNumber, err);
+            const badge = document.getElementById('pudu-badge-' + r.id);
+            if (badge) {
+                badge.className = "px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-500 border border-gray-200";
+                badge.innerText = "Offline";
+            }
         }
     }
 };
-
 
 window.refreshRobotStatus = async () => {
     try {
@@ -11811,91 +11866,146 @@ window.refreshRobotStatus = async () => {
         const data = res && res.data ? res.data : res;
         
         if(data) {
-            const rawState = String(data.run_state || data.runState || "IDLE").toUpperCase();
+            const rawState = String(data.run_state || data.runState || "").toUpperCase();
             const bat = data.battery !== undefined ? parseInt(data.battery) : (data.power !== undefined ? parseInt(data.power) : 0);
             
-            // ACCURATE Charging Detection:
-            // 1. is_charging is explicitly 1 or true
-            // 2. rawState is DISABLE or CHARGING
-            // 3. charge_stage is non-empty
-            const isCharging = (data.is_charging === 1 || data.is_charging === true || rawState === "DISABLE" || rawState === "CHARGING" || (data.charge_stage && String(data.charge_stage).trim() !== ""));
-            
-            // Format state display
-            let displayState = "Idle";
-            if (isCharging) {
-                displayState = "Charging";
-            } else if (rawState.includes("BUSY") || rawState.includes("WORK") || rawState.includes("DELIVER")) {
-                displayState = "Working";
-            } else if (rawState.includes("ERROR")) {
-                displayState = "Error";
-            } else {
-                displayState = "Idle";
-            }
+            // 1. Accurate Offline detection
+            const isOffline = (
+                rawState === "OFFLINE" ||
+                rawState === "OFF_LINE" ||
+                rawState === "DISCONNECTED" ||
+                rawState === "UNAVAILABLE" ||
+                data.is_online === 0 ||
+                data.is_online === false
+            );
 
+            // 2. Accurate Charging detection
+            const isCharging = !isOffline && (
+                data.is_charging === 1 || 
+                data.is_charging === true || 
+                rawState === "DISABLE" || 
+                rawState === "CHARGING" || 
+                (data.charge_stage && String(data.charge_stage).trim() !== "")
+            );
+
+            // 3. Accurate Moving / Working detection
+            const isMoving = !isOffline && !isCharging && (
+                rawState.includes("BUSY") || 
+                rawState.includes("WORK") || 
+                rawState.includes("DELIVER") || 
+                rawState.includes("CRUISE") || 
+                rawState.includes("DIRECT") || 
+                rawState.includes("MOVE") || 
+                rawState.includes("MOVING") || 
+                (data.move_state && String(data.move_state).toUpperCase().includes("MOVE"))
+            );
+
+            // 4. Blocked / Obstacle detection
+            const isBlocked = !isOffline && !isCharging && (
+                rawState.includes("PAUSE") || 
+                rawState.includes("BLOCK") || 
+                rawState.includes("OBSTACLE")
+            );
+
+            // 5. Error detection
+            const isError = !isOffline && (
+                rawState.includes("ERROR") || 
+                rawState.includes("FAULT")
+            );
+
+            // Update State Label
             if (stateEl) {
-                stateEl.innerText = displayState;
-                if (isCharging) {
-                    stateEl.className = "text-sm font-bold text-emerald-600 flex items-center gap-1";
-                    stateEl.innerHTML = '<i class="fa-solid fa-bolt text-emerald-500 animate-pulse"></i> Charging';
-                } else if (displayState === "Working") {
-                    stateEl.className = "text-sm font-bold text-blue-600";
+                if (isOffline) {
+                    stateEl.className = "text-sm font-bold text-gray-500 flex items-center gap-1.5";
+                    stateEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-gray-400"></span> Offline (غير متصل)';
+                } else if (isCharging) {
+                    stateEl.className = "text-sm font-bold text-emerald-600 flex items-center gap-1.5";
+                    stateEl.innerHTML = '<i class="fa-solid fa-bolt text-emerald-500 animate-pulse"></i> Charging (يشحن)';
+                } else if (isMoving) {
+                    stateEl.className = "text-sm font-bold text-blue-600 flex items-center gap-1.5";
+                    stateEl.innerHTML = '<i class="fa-solid fa-person-walking text-xs animate-bounce"></i> Moving (يمشي / في مهمة)';
+                } else if (isBlocked) {
+                    stateEl.className = "text-sm font-bold text-amber-600 flex items-center gap-1.5";
+                    stateEl.innerHTML = '<i class="fa-solid fa-hand text-xs"></i> Blocked (متوقف)';
+                } else if (isError) {
+                    stateEl.className = "text-sm font-bold text-rose-600 flex items-center gap-1.5";
+                    stateEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-xs"></i> Error (خطأ)';
                 } else {
-                    stateEl.className = "text-sm font-bold text-slate-700";
+                    stateEl.className = "text-sm font-bold text-emerald-700 flex items-center gap-1.5";
+                    stateEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Idle (جاهز)';
                 }
             }
 
-            if (iotEl) iotEl.innerText = "Online";
+            // Update IoT Status
+            if (iotEl) {
+                if (isOffline) {
+                    iotEl.innerText = "Offline";
+                    iotEl.className = "text-xs font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded";
+                } else {
+                    iotEl.innerText = "Online";
+                    iotEl.className = "text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded";
+                }
+            }
 
             // Battery Percentage Text
             if (batText) batText.innerText = bat + "%";
 
-            // Battery Bar Styling & Looping Charging Animation
+            // Battery Bar Styling & Looping Animation
             if (batBar) {
-                if (isCharging) {
-                    // While charging: Looping fill animation (0% -> 100% repeat) in green
-                    batBar.style.width = "";
-                    batBar.className = "h-full rounded-full charging-bar-loop";
-                    if (chargingTag) chargingTag.classList.remove("hidden");
-                } else {
-                    if (chargingTag) chargingTag.classList.add("hidden");
+                batBar.style.width = bat + "%";
+                batBar.classList.remove('bg-rose-500', 'bg-amber-500', 'bg-emerald-500', 'bg-gray-300', 'animate-pulse');
+                
+                if (isOffline) {
+                    batBar.classList.add('bg-gray-300');
                     batBar.style.animation = "none";
-                    batBar.style.width = bat + "%";
-                    
-                    // Exact Color Thresholds:
-                    // 🔴 Under 20%: Red
-                    // 🟠 21% - 50%: Orange
-                    // 🟢 Above 50%: Green
+                } else if (isCharging) {
+                    batBar.classList.add('bg-emerald-500');
+                    batBar.style.animation = "chargingBarLoop 2.2s ease-in-out infinite";
+                } else {
+                    batBar.style.animation = "none";
                     if (bat <= 20) {
-                        batBar.className = "bg-rose-500 h-full rounded-full transition-all duration-700";
+                        batBar.classList.add('bg-rose-500');
                     } else if (bat <= 50) {
-                        batBar.className = "bg-amber-500 h-full rounded-full transition-all duration-700";
+                        batBar.classList.add('bg-amber-500');
                     } else {
-                        batBar.className = "bg-emerald-500 h-full rounded-full transition-all duration-700";
+                        batBar.classList.add('bg-emerald-500');
                     }
                 }
             }
-            
-            // MAC
-            if (document.getElementById("rc-mac")) {
-                let mac = data.mac || data.macAddress || data.mac_address || "--:--:--:--:--:--";
-                document.getElementById("rc-mac").innerText = mac;
+
+            // Charging Tag
+            if (chargingTag) {
+                if (isCharging) {
+                    chargingTag.classList.remove('hidden');
+                    chargingTag.classList.add('inline-flex');
+                } else {
+                    chargingTag.classList.add('hidden');
+                    chargingTag.classList.remove('inline-flex');
+                }
             }
-            
-            // Version
-            if (document.getElementById("rc-version")) {
-                let ver = data.softwareVersion || data.version || data.appVersion || data.systemVersion || "--";
-                document.getElementById("rc-version").innerText = ver;
+        } else {
+            // No data / error -> Mark offline
+            if (stateEl) {
+                stateEl.className = "text-sm font-bold text-gray-500 flex items-center gap-1.5";
+                stateEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-gray-400"></span> Offline (غير متصل)';
             }
-            
-            // Map Name
-            let foundMap = data.mapName || data.map_name || data.currentMap || (data.data && data.data.mapName) || "";
-            if (foundMap && document.getElementById("rc-mapName")) {
-                document.getElementById("rc-mapName").innerText = foundMap;
-                window.currentRobotMapName = foundMap;
+            if (iotEl) {
+                iotEl.innerText = "Offline";
+                iotEl.className = "text-xs font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded";
             }
         }
-    } catch(e) {
-        console.error("Error refreshing robot status", e);
+    } catch(err) {
+        console.error("Refresh status failed:", err);
+        const stateEl = document.getElementById("rc-state");
+        const iotEl = document.getElementById("rc-iotStatus");
+        if (stateEl) {
+            stateEl.className = "text-sm font-bold text-gray-500 flex items-center gap-1.5";
+            stateEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-gray-400"></span> Offline (غير متصل)';
+        }
+        if (iotEl) {
+            iotEl.innerText = "Offline";
+            iotEl.className = "text-xs font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded";
+        }
     }
 };
 
