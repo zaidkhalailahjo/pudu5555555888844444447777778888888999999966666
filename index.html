@@ -4044,9 +4044,14 @@
                                     <h3 class="text-base font-bold text-gray-800">Grid Settings:</h3>
                                     <span class="text-xs text-gray-400">Up to 6 grids can be added</span>
                                 </div>
-                                <button onclick="window.addAttractionGrid()" id="addGridBtn" class="bg-[#1890ff] hover:bg-[#40a9ff] text-white text-xs font-semibold px-4 py-2 rounded-lg shadow-sm transition flex items-center gap-1.5">
-                                    <i class="fa-solid fa-plus text-[10px]"></i> Add Grid
-                                </button>
+                                <div class="flex items-center gap-2">
+                                    <button onclick="window.syncAttractionWithPuduCloud()" id="syncPuduBtn" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 text-xs font-semibold px-3 py-2 rounded-lg shadow-xs transition flex items-center gap-1.5" title="مزامنة وجلب آخر الإعدادات من سيرفر Pudu">
+                                        <i class="fa-solid fa-arrows-rotate text-xs" id="syncPuduIcon"></i> Sync from Pudu
+                                    </button>
+                                    <button onclick="window.addAttractionGrid()" id="addGridBtn" class="bg-[#1890ff] hover:bg-[#40a9ff] text-white text-xs font-semibold px-4 py-2 rounded-lg shadow-sm transition flex items-center gap-1.5">
+                                        <i class="fa-solid fa-plus text-[10px]"></i> Add Grid
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- Dynamic Grids Container -->
