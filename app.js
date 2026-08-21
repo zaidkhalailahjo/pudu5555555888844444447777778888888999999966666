@@ -1674,14 +1674,89 @@ window.addClientRobotRow = (name='', serial='', date='', hasWarranty=false, warr
             } catch(e) { console.error(e); showToast('حدث خطا اثناء الحفظ', 'error'); }
         });
 
-        window.deleteRobot = async (id) => {
-            if(confirm('هل أنت متأكد من الحذف؟')) {
-                try {
-                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robots', id));
-                    showToast('تم الحذف', 'success');
-                } catch(e) { console.error(e); }
-            }
-        };
+        window._pendingDeleteRobotId = null;
+        window._deleteRobotKeyHandler = null;
+
+        window.deleteRobot = (id) => {
+            const r = globalRobots.find(x => x.id === id);
+            const rName = r ? r.name : 'الروبوت';
+            window._pendingDeleteRobotId = id;
+
+            const nameEl = document.getElementById('deleteRobotTargetName');
+            if (nameEl) nameEl.innerText = rName;
+
+            const modal = document.getElementById('deleteRobotConfirmModal');
+            const card = document.getElementById('deleteRobotModalCard');
+            if (modal && card) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                setTimeout(() => {
+                    modal.classList.remove('opacity-0');
+                    modal.classList.add('opacity-100');
+                    card.classList.remove('scale-95');
+                    card.classList.add('scale-100');
+                }, 10);
+
+                const confirmBtn = document.getElementById('deleteRobotConfirmBtn');
+                if (confirmBtn) setTimeout(() => confirmBtn.focus(), 50);
+            }
+
+            // Keyboard listener: Enter = Confirm, Escape = Cancel
+            if (window._deleteRobotKeyHandler) {
+                window.removeEventListener('keydown', window._deleteRobotKeyHandler);
+            }
+            window._deleteRobotKeyHandler = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    window.confirmDeleteRobotAction();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    window.closeDeleteRobotModal();
+                }
+            };
+            window.addEventListener('keydown', window._deleteRobotKeyHandler);
+        };
+
+        window.closeDeleteRobotModal = () => {
+            const modal = document.getElementById('deleteRobotConfirmModal');
+            const card = document.getElementById('deleteRobotModalCard');
+            if (modal && card) {
+                modal.classList.remove('opacity-100');
+                modal.classList.add('opacity-0');
+                card.classList.remove('scale-100');
+                card.classList.add('scale-95');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }, 250);
+            }
+            if (window._deleteRobotKeyHandler) {
+                window.removeEventListener('keydown', window._deleteRobotKeyHandler);
+                window._deleteRobotKeyHandler = null;
+            }
+            window._pendingDeleteRobotId = null;
+        };
+
+        window.confirmDeleteRobotAction = async () => {
+            const id = window._pendingDeleteRobotId;
+            if (!id) return;
+
+            // 1. Instant Optimistic UI Update (disappears in 0ms)
+            globalRobots = globalRobots.filter(x => x.id !== id);
+            if (typeof window.renderCompanyRobots === 'function') window.renderCompanyRobots();
+            if (typeof window.renderWarehouseRobots === 'function') window.renderWarehouseRobots();
+            if (typeof window.renderRobotsOnly === 'function') window.renderRobotsOnly();
+
+            window.closeDeleteRobotModal();
+
+            try {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robots', id));
+                showToast('تم حذف الروبوت بنجاح', 'success');
+            } catch(e) {
+                console.error(e);
+                showToast('حدث خطأ أثناء الحذف', 'error');
+            }
+        };
 
         window.moveRobotLocation = async (id, newLocation) => {
             const locName = newLocation === 'company' ? 'الشركة' : 'المستودع';
@@ -6397,8 +6472,11 @@ async function autoDeleteOldAttendance() {
             onSnapshot(getColRef('robots'), (snapshot) => {
                 globalRobots = [];
                 snapshot.forEach(doc => globalRobots.push({id: doc.id, ...doc.data()}));
-                globalRobots.sort((a,b) => b.timestamp - a.timestamp);
-                if(window.location.hash === '#robots') window.renderRobotsOnly();
+                globalRobots.sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
+                if (typeof window.renderCompanyRobots === 'function') window.renderCompanyRobots();
+                if (typeof window.renderWarehouseRobots === 'function') window.renderWarehouseRobots();
+                if (typeof window.renderRobotsOnly === 'function') window.renderRobotsOnly();
+                if (typeof window.fetchLiveRobotStatuses === 'function') setTimeout(window.fetchLiveRobotStatuses, 50);
             }, (error) => console.error(error));
 
             onSnapshot(getColRef('robot_clients'), (snapshot) => {
@@ -10834,7 +10912,11 @@ window.closeRobotControlPanel = () => {
     window.history.pushState(null, "", "/"); // Revert URL
     const modal = document.getElementById('robotControlModal');
     modal.classList.remove('opacity-100', 'translate-y-0');
-    modal.classList.add('opacity-0', 'translate-y-4'); // Less travel for faster close
+    modal.classList.add('opacity-0', 'translate-y-4');
+    if (window._rcLiveStatusInterval) {
+        clearInterval(window._rcLiveStatusInterval);
+        window._rcLiveStatusInterval = null;
+    }
     setTimeout(() => {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
@@ -11514,7 +11596,17 @@ window.openRobotControlPanel = async (robotId) => {
         if (window.switchRcTab) window.switchRcTab('status');
         
         window.refreshRobotStatus();
-        window.fetchRobotMap(); 
+        window.fetchRobotMap();
+        
+        // Fast real-time live polling while control panel is open (every 3 seconds)
+        if (window._rcLiveStatusInterval) clearInterval(window._rcLiveStatusInterval);
+        window._rcLiveStatusInterval = setInterval(() => {
+            if (document.getElementById('robotControlModal') && !document.getElementById('robotControlModal').classList.contains('hidden')) {
+                window.refreshRobotStatus();
+            } else {
+                clearInterval(window._rcLiveStatusInterval);
+            }
+        }, 3000); 
     } catch (e) {
         console.error("Open Panel Error:", e);
         showToast("حدث خطأ أثناء فتح لوحة التحكم. انظر الكونسول.", "error");
