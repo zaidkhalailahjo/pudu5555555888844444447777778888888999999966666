@@ -11427,6 +11427,7 @@ window.openRobotControlPanel = async (robotId) => {
         const pathId = safeName + r.serialNumber;
         
         // Ensure globals are set for API calls
+        window.currentControlRobot = r;
         window.currentRobotSn = r.serialNumber;
         window.currentRobotName = r.name;
         if (window.loadRobotAttractionGrids) window.loadRobotAttractionGrids(r.serialNumber || r.id);
@@ -12840,7 +12841,7 @@ window.mapStudio = {
     mapsList: [],
     points: [],
     virtualWalls: [],
-    activeTool: 'select', // 'select' | 'wall'
+    activeTool: 'select',
     zoom: 1.0,
     panX: 450,
     panY: 270,
@@ -12857,117 +12858,126 @@ window.mapStudio = {
 };
 
 window.initMapStudio = async (robotSn) => {
-    const sn = robotSn || (window.currentControlRobot && window.currentControlRobot.serialNumber);
-    if (!sn) return;
+    const r = window.currentControlRobot || (typeof globalRobots !== 'undefined' ? globalRobots[0] : null);
+    const sn = robotSn || window.currentRobotSn || (r && r.serialNumber) || (r && r.id) || "ROBOT_PUDU";
+    const name = window.currentRobotName || (r && r.name) || "الروبوت";
     
     window.mapStudio.robotSn = sn;
-    window.mapStudio.robotName = (window.currentControlRobot && window.currentControlRobot.name) || sn;
+    window.mapStudio.robotName = name;
     
     window.mapStudio.canvas = document.getElementById('puduMapCanvas');
     if (!window.mapStudio.canvas) return;
     window.mapStudio.ctx = window.mapStudio.canvas.getContext('2d');
     
     window.setupMapStudioCanvasEvents();
-    await window.mapStudioFetchMapList(sn);
-    await window.mapStudioLoadCurrentMap(sn);
-    
-    window.renderMapStudioCanvas();
-    window.renderMapStudioPointsList();
-};
 
-window.mapStudioFetchMapList = async (sn) => {
+    // 1. Synchronous Instant Setup (Never hang on loading)
+    let currentMap = window.currentRobotMapName || (r && r.currentMap) || (r && r.mapName) || "0#0#المطعم الرئيسي";
+    window.mapStudio.currentMapName = currentMap;
+    
     const select = document.getElementById('mapStudioSelect');
-    if (!select) return;
-    
-    select.innerHTML = '<option value="">جاري جلب الخرائط...</option>';
-    
-    try {
-        let maps = [];
-        if (typeof window.callPuduApi === 'function') {
-            const res = await window.callPuduApi('mapList', { sn });
-            if (res && res.success && res.data && Array.isArray(res.data.maps)) {
-                maps = res.data.maps;
-            }
-        }
-        
-        if (maps.length === 0) {
-            const activeMapName = (window.currentControlRobot && window.currentControlRobot.currentMap) || "0#0#المطعم الرئيسي";
-            maps = [
-                { mapName: activeMapName, isCurrent: true },
-                { mapName: "0#0#صالة الاستقبال", isCurrent: false },
-                { mapName: "0#0#الطابق الثاني", isCurrent: false }
-            ];
-        }
-
-        window.mapStudio.mapsList = maps;
-        let html = '';
-        maps.forEach(m => {
-            const name = m.mapName || m.name || m;
-            const isCurrent = m.isCurrent || (name === window.mapStudio.currentMapName);
-            html += `<option value="${escapeHTML(name)}" ${isCurrent ? 'selected' : ''}>${escapeHTML(name)} ${isCurrent ? '(الخريطة النشطة)' : ''}</option>`;
-        });
-        select.innerHTML = html;
-        window.mapStudio.currentMapName = select.value || (maps[0] && maps[0].mapName) || '';
-    } catch(e) {
-        select.innerHTML = '<option value="0#0#الخريطة الحالية">0#0#الخريطة الحالية (النشطة)</option>';
-        window.mapStudio.currentMapName = "0#0#الخريطة الحالية";
+    if (select) {
+        select.innerHTML = `<option value="${escapeHTML(currentMap)}" selected>${escapeHTML(currentMap)} (الخريطة النشطة)</option>
+        <option value="0#0#صالة الاستقبال">0#0#صالة الاستقبال</option>
+        <option value="0#0#الطابق الثاني">0#0#الطابق الثاني</option>`;
     }
-};
 
-window.mapStudioLoadCurrentMap = async (sn) => {
-    const mapName = window.mapStudio.currentMapName || 'default';
-    const cacheKey = 'pudu_edited_map_' + sn + '_' + mapName;
+    // Load initial cached / default points immediately
+    const cacheKey = 'pudu_edited_map_' + sn + '_' + currentMap;
     let cached = localStorage.getItem(cacheKey);
+    let initialPoints = [];
     if (cached) {
         try {
-            const data = JSON.parse(cached);
-            if (data && Array.isArray(data.points) && data.points.length > 0) {
-                window.mapStudio.points = data.points;
-                window.mapStudio.virtualWalls = data.virtualWalls || [];
-                return;
+            const parsed = JSON.parse(cached);
+            if (parsed && Array.isArray(parsed.points) && parsed.points.length > 0) {
+                initialPoints = parsed.points;
+                window.mapStudio.virtualWalls = parsed.virtualWalls || [];
             }
         } catch(e) {}
     }
 
-    try {
-        let loadedPoints = [];
-        if (typeof window.callPuduApi === 'function') {
-            const res = await window.callPuduApi('map', { sn, needElement: "true" });
-            if (res && res.success && res.data && res.data.elements && res.data.elements.length > 0) {
-                loadedPoints = res.data.elements.map(el => ({
-                    id: el.id || ('pt-' + Math.random().toString(36).substr(2, 6)),
-                    name: el.name || 'طاولة',
-                    type: el.type || 'table',
-                    x: (el.x !== undefined) ? Number(el.x) : (Math.random() * 6 - 3),
-                    y: (el.y !== undefined) ? Number(el.y) : (Math.random() * 6 - 3),
-                    angle: el.angle || 0
-                }));
-            }
-        }
-
-        if (loadedPoints.length === 0) {
-            loadedPoints = [
-                { id: "p1", name: "طاولة 1", type: "table", x: 2.0, y: 1.5, angle: 0 },
-                { id: "p2", name: "طاولة 2", type: "table", x: 4.0, y: 1.5, angle: 0 },
-                { id: "p3", name: "طاولة 3", type: "table", x: 6.0, y: 1.5, angle: 0 },
-                { id: "p4", name: "طاولة VIP 4", type: "table", x: 4.0, y: -2.0, angle: 90 },
-                { id: "p5", name: "نقطة استلام الطلبات", type: "dining_outlet", x: -2.5, y: 0.0, angle: 180 },
-                { id: "p6", name: "قاعدة الشحن", type: "charger", x: -4.0, y: -3.0, angle: 0 }
-            ];
-        }
-
-        window.mapStudio.points = loadedPoints;
-        window.mapStudio.virtualWalls = [
-            { start: { x: -1.0, y: -4.0 }, end: { x: -1.0, y: -1.5 } }
-        ];
-    } catch(e) {
-        window.mapStudio.points = [
+    if (initialPoints.length === 0) {
+        initialPoints = [
             { id: "p1", name: "طاولة 1", type: "table", x: 2.0, y: 1.5, angle: 0 },
-            { id: "p2", name: "طاولة 2", type: "table", x: 4.0, y: 1.5, angle: 0 },
-            { id: "p3", name: "قاعدة الشحن", type: "charger", x: -3.0, y: -2.0, angle: 0 }
+            { id: "p2", name: "طاولة 2", type: "table", x: 4.5, y: 1.5, angle: 0 },
+            { id: "p3", name: "طاولة 3", type: "table", x: 7.0, y: 1.5, angle: 0 },
+            { id: "p4", name: "طاولة VIP 4", type: "table", x: 4.5, y: -2.2, angle: 90 },
+            { id: "p5", name: "نقطة استلام الطلبات", type: "dining_outlet", x: -2.5, y: 0.0, angle: 180 },
+            { id: "p6", name: "قاعدة الشحن", type: "charger", x: -4.5, y: -3.0, angle: 0 }
         ];
-        window.mapStudio.virtualWalls = [];
+        window.mapStudio.virtualWalls = [
+            { start: { x: -1.5, y: -4.0 }, end: { x: -1.5, y: -1.0 } }
+        ];
     }
+
+    window.mapStudio.points = initialPoints;
+    window.renderMapStudioCanvas();
+    window.renderMapStudioPointsList();
+
+    // 2. Background Asynchronous Fetch from Pudu API (Non-blocking)
+    if (typeof window.callPuduApi === 'function') {
+        window.callPuduApi('mapList', { sn })
+            .then(res => {
+                if (res && res.success && res.data && Array.isArray(res.data.maps) && res.data.maps.length > 0) {
+                    window.mapStudio.mapsList = res.data.maps;
+                    if (select) {
+                        let html = '';
+                        res.data.maps.forEach(m => {
+                            const mName = m.mapName || m.name || m;
+                            const isCur = (mName === window.mapStudio.currentMapName) || m.isCurrent;
+                            html += `<option value="${escapeHTML(mName)}" ${isCur ? 'selected' : ''}>${escapeHTML(mName)} ${isCur ? '(الخريطة النشطة)' : ''}</option>`;
+                        });
+                        select.innerHTML = html;
+                    }
+                }
+            })
+            .catch(() => {});
+
+        window.callPuduApi('map', { sn, needElement: "true" })
+            .then(res => {
+                const data = res && res.data ? res.data : res;
+                if (data && (Array.isArray(data.elements) || (data.data && Array.isArray(data.data.elements)))) {
+                    const rawList = Array.isArray(data.elements) ? data.elements : data.data.elements;
+                    if (rawList.length > 0) {
+                        window.mapStudio.points = rawList.map(el => ({
+                            id: el.id || ('pt-' + Math.random().toString(36).substr(2, 6)),
+                            name: el.name || 'طاولة',
+                            type: el.type || 'table',
+                            x: (el.x !== undefined) ? Number(el.x) : (Math.random() * 6 - 3),
+                            y: (el.y !== undefined) ? Number(el.y) : (Math.random() * 6 - 3),
+                            angle: el.angle || 0
+                        }));
+                        window.renderMapStudioCanvas();
+                        window.renderMapStudioPointsList();
+                    }
+                }
+            })
+            .catch(() => {});
+    }
+};
+
+window.mapStudioChangeMap = (val) => {
+    if (!val) return;
+    window.mapStudio.currentMapName = val;
+    const cacheKey = 'pudu_edited_map_' + window.mapStudio.robotSn + '_' + val;
+    let cached = localStorage.getItem(cacheKey);
+    if (cached) {
+        try {
+            const parsed = JSON.parse(cached);
+            if (parsed && Array.isArray(parsed.points)) {
+                window.mapStudio.points = parsed.points;
+                window.mapStudio.virtualWalls = parsed.virtualWalls || [];
+            }
+        } catch(e) {}
+    }
+    window.renderMapStudioCanvas();
+    window.renderMapStudioPointsList();
+    showToast("تم تبديل عرض الخريطة إلى: " + val, "info");
+};
+
+window.mapStudioReloadMap = () => {
+    showToast("جاري إعادة تحميل وتحديث الخريطة...", "info");
+    window.initMapStudio(window.mapStudio.robotSn);
 };
 
 window.setupMapStudioCanvasEvents = () => {
@@ -13002,7 +13012,7 @@ window.setupMapStudioCanvasEvents = () => {
             const px = state.panX + pt.x * scale;
             const py = state.panY - pt.y * scale;
             const dist = Math.hypot(sx - px, sy - py);
-            if (dist <= 18) return i;
+            if (dist <= 20) return i;
         }
         return -1;
     }
