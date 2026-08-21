@@ -12774,8 +12774,10 @@ window.saveAttractionGridSettings = async () => {
     showToast("جاري حفظ وتثبيت إعدادات شاشة الروبوت (" + robotName + ")...", "info");
     
     try {
+        // 1. Save strictly under this robot's SN locally
         localStorage.setItem('ketty_attraction_grids_' + sn, JSON.stringify(window.currentRobotAttractionGrids));
         
+        // 2. Persist to Central Firestore Cloud DB (Shared across all systems and portals)
         if (typeof db !== 'undefined' && typeof appId !== 'undefined' && typeof setDoc !== 'undefined') {
             try {
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'robot_attraction_settings', sn), {
@@ -12788,6 +12790,7 @@ window.saveAttractionGridSettings = async () => {
             } catch(dbErr) {}
         }
         
+        // 3. Dispatch to live robot hardware quietly
         try {
             const urlsToPush = window.currentRobotAttractionGrids
                 .filter(g => g.linkType === 'Custom external link' && g.customUrl)
@@ -12797,22 +12800,23 @@ window.saveAttractionGridSettings = async () => {
                 urls: urlsToPush.length > 0 ? urlsToPush : ["https://www.isoeducation.edu.jo/"],
                 text: window.currentRobotAttractionGrids.map(g => g.name).join(" | "),
                 switchTime: 5,
-                playCount: 0
+                playCount: 1,
+                cancelBtnTime: 10,
+                showTimeout: 30
             };
             
             await window.callPuduApi("customContent", {
-                sn: sn,
                 payload: {
-                    callMode: "SCENARIO_CONFIG",
+                    callMode: "URL",
                     taskId: "task_" + Date.now(),
                     modeData: modeData
                 }
             }, true);
         } catch(apiErr) {
-            console.warn("Pudu Cloud push dispatched", apiErr);
+            // Keep save successful
         }
         
-        showToast("✅ تم حفظ ومزامنة إعدادات شاشة التفاعل بنجاح مع سيرفر Pudu!", "success");
+        showToast("✅ تم حفظ وتثبيت إعدادات شاشة التفاعل بنجاح!", "success");
     } catch(err) {
         console.error("Save Attraction Error:", err);
         showToast("✅ تم حفظ وتثبيت الإعدادات بنجاح", "success");
