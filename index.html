@@ -3845,7 +3845,7 @@
             <div class="flex gap-2 border-b border-slate-200 overflow-x-auto custom-scrollbar pb-px">
                 <button onclick="window.switchRcTab('status')" id="rc-tab-status" class="rc-tab-btn active px-4 py-2 text-sm font-bold text-indigo-600 border-b-2 border-indigo-600 transition-colors whitespace-nowrap"><i class="fa-solid fa-chart-line mr-1"></i> معلومات الروبوت</button>
                 <button onclick="window.switchRcTab('move')" id="rc-tab-move" class="rc-tab-btn px-4 py-2 text-sm font-bold text-slate-500 border-b-2 border-transparent hover:text-indigo-500 transition-colors whitespace-nowrap"><i class="fa-solid fa-route mr-1"></i> التحريك والمهام</button>
-                <button onclick="window.switchRcTab('interact')" id="rc-tab-interact" class="rc-tab-btn px-4 py-2 text-sm font-bold text-slate-500 border-b-2 border-transparent hover:text-indigo-500 transition-colors whitespace-nowrap"><i class="fa-solid fa-face-smile mr-1"></i> التفاعل والشاشة</button>
+                <button onclick="window.switchRcTab('interact')" id="rc-tab-interact" class="rc-tab-btn px-4 py-2 text-sm font-bold text-slate-500 border-b-2 border-transparent hover:text-indigo-500 transition-colors whitespace-nowrap"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Customer Attraction Mode Settings</button>
                 
                 
             </div>
@@ -4029,111 +4029,92 @@
             <!-- TAB: INTERACT -->
             
             <!-- TAB: INTERACT -->
-            <div id="rc-content-interact" class="rc-tab-content hidden max-w-6xl mx-auto w-full">
-                
-                <!-- Ad Configuration (Ketty Only) -->
-                <div class="bg-white rounded-xl border border-slate-200 shadow-sm rc-ketty-only mb-6 overflow-hidden flex flex-col">
-                    <!-- Ad Tabs Header -->
-                    <div class="flex gap-6 border-b border-slate-200 px-6 pt-4 bg-slate-50/50">
-                        <button class="px-2 py-3 text-sm font-bold text-blue-600 border-b-2 border-blue-600 whitespace-nowrap">Large Screen Advertising</button>
-                        <button class="px-2 py-3 text-sm font-bold text-slate-500 border-b-2 border-transparent hover:text-blue-500 whitespace-nowrap">Advanced Scenario Advertising</button>
-                        <button class="px-2 py-3 text-sm font-bold text-slate-500 border-b-2 border-transparent hover:text-blue-500 whitespace-nowrap">Small Screen Screen Saver</button>
-                    </div>
+            <div id="rc-content-interact" class="rc-tab-content hidden max-w-6xl mx-auto w-full" dir="ltr">
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6">
                     
-                    <!-- Ad Split Layout -->
-                    <div class="flex flex-col md:flex-row p-6 gap-8 min-h-[400px]">
+                    <!-- Split Layout: Left Form Builder & Right Interactive Screen Preview -->
+                    <div class="flex flex-col lg:flex-row gap-8 items-start">
                         
-                        <!-- Left Side: Add Content (Form) -->
-                        <div class="w-full md:w-1/3 flex flex-col gap-4 border-r md:border-slate-200 md:pr-6">
-                            <div>
-                                <label class="block text-xs font-bold text-slate-600 mb-1">إضافة محتوى (صورة / فيديو)</label>
-                                <div class="border-2 border-dashed border-blue-200 bg-blue-50/50 hover:bg-blue-50 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition" onclick="document.getElementById('adFileInput').click()">
-                                    <i class="fa-solid fa-cloud-arrow-up text-3xl text-blue-400 mb-2"></i>
-                                    <span class="text-xs font-bold text-blue-600">اختر ملف للرفع</span>
-                                    <input type="file" id="adFileInput" accept="image/*,video/mp4" class="hidden" onchange="window.previewAdFile(this)">
-                                </div>
-                            </div>
+                        <!-- LEFT SIDE: Grid Settings Form -->
+                        <div class="w-full lg:w-1/2 flex flex-col">
                             
-                            <div class="grid grid-cols-2 gap-3 mt-2">
-                                <div>
-                                    <label class="block text-[10px] font-bold text-slate-500 mb-1">تاريخ البداية (Start Date)</label>
-                                    <input type="date" class="w-full border border-slate-200 rounded px-2 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-blue-500">
+                            <!-- Top Bar: Title, Limit & Add Grid Button -->
+                            <div class="flex items-center justify-between mb-6">
+                                <div class="flex items-baseline gap-2">
+                                    <h3 class="text-base font-bold text-gray-800">Grid Settings:</h3>
+                                    <span class="text-xs text-gray-400">Up to 6 grids can be added</span>
                                 </div>
-                                <div>
-                                    <label class="block text-[10px] font-bold text-slate-500 mb-1">تاريخ الانتهاء (End Date)</label>
-                                    <input type="date" class="w-full border border-slate-200 rounded px-2 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-blue-500">
-                                </div>
-                            </div>
-                            
-                            <div class="mt-auto pt-4">
-                                <button onclick="window.saveAndPushAd()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition shadow-md flex items-center justify-center gap-2">
-                                    <i class="fa-solid fa-floppy-disk"></i> Save & Push
+                                <button onclick="window.addAttractionGrid()" id="addGridBtn" class="bg-[#1890ff] hover:bg-[#40a9ff] text-white text-xs font-semibold px-4 py-2 rounded-lg shadow-sm transition flex items-center gap-1.5">
+                                    <i class="fa-solid fa-plus text-[10px]"></i> Add Grid
                                 </button>
                             </div>
+
+                            <!-- Dynamic Grids Container -->
+                            <div id="attractionGridsContainer" class="space-y-4 max-h-[520px] overflow-y-auto custom-scrollbar pr-1">
+                                <!-- Populated dynamically by JS -->
+                            </div>
+
+                            <!-- Bottom Save Button -->
+                            <div class="mt-6 pt-4 border-t border-gray-100 flex justify-start">
+                                <button onclick="window.saveAttractionGridSettings()" class="bg-[#1890ff] hover:bg-[#40a9ff] text-white font-semibold text-sm px-6 py-2 rounded-lg shadow-md transition flex items-center gap-2">
+                                    <i class="fa-solid fa-floppy-disk"></i> Save
+                                </button>
+                            </div>
+
                         </div>
 
-                        <!-- Right Side: Content Preview -->
-                        <div class="w-full md:w-2/3 flex flex-col">
-                            <h4 class="text-xs font-bold text-slate-500 mb-3 uppercase tracking-wider">معاينة المحتوى (Preview)</h4>
-                            <div class="flex-1 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center overflow-hidden relative min-h-[300px]">
-                                <img id="adImagePreview" class="hidden max-w-full max-h-full object-contain" />
-                                <video id="adVideoPreview" class="hidden max-w-full max-h-full" controls autoplay loop muted></video>
-                                <div id="adEmptyState" class="text-center text-slate-400">
-                                    <i class="fa-regular fa-image text-4xl mb-2 opacity-50"></i>
-                                    <p class="text-sm">لا يوجد محتوى محدد</p>
+                        <!-- RIGHT SIDE: Real-time KettyBot Screen Preview (Matching Image) -->
+                        <div class="w-full lg:w-1/2 flex flex-col items-center">
+                            <div class="w-full flex items-center justify-between mb-2">
+                                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">KettyBot Touch Screen Preview</span>
+                                <span class="text-[11px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded-full">Interactive UI</span>
+                            </div>
+
+                            <!-- Tablet Frame -->
+                            <div class="w-full aspect-[16/10] bg-gradient-to-br from-[#cbe5e7] via-[#d7e9e3] to-[#d2e0eb] rounded-2xl p-4 shadow-xl border-4 border-gray-800 relative overflow-hidden flex flex-col justify-between select-none">
+                                
+                                <!-- Top Status Bar -->
+                                <div class="flex justify-end items-center gap-1 text-[11px] font-bold text-gray-700">
+                                    <i class="fa-solid fa-battery-full text-black text-sm"></i>
+                                    <span>100%</span>
                                 </div>
+
+                                <!-- Screen Content: Voice Left & Tiles Right -->
+                                <div class="flex-1 flex gap-3 my-2 items-stretch">
+                                    
+                                    <!-- Left Voice Area -->
+                                    <div class="w-[42%] bg-white/40 backdrop-blur-md rounded-2xl p-3 flex flex-col items-center justify-between border border-white/60 shadow-xs">
+                                        <!-- Glowing Mic Orb -->
+                                        <div class="w-12 h-12 rounded-full bg-white shadow-md flex items-center justify-center relative mt-1">
+                                            <div class="absolute inset-0 rounded-full border-2 border-indigo-400 animate-ping opacity-30"></div>
+                                            <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 via-purple-400 to-pink-400 flex items-center justify-center text-white text-base shadow-xs">
+                                                <i class="fa-solid fa-microphone"></i>
+                                            </div>
+                                        </div>
+
+                                        <!-- Voice Prompts Pills -->
+                                        <div class="w-full space-y-2 my-auto">
+                                            <div class="bg-white/50 border border-white/80 rounded-full py-1.5 px-3 text-center text-xs font-bold text-gray-700 truncate shadow-2xs">“带我进店 / أرشدني للداخل”</div>
+                                            <div class="bg-white/50 border border-white/80 rounded-full py-1.5 px-3 text-center text-xs font-bold text-gray-700 truncate shadow-2xs">“优惠活动 / عروض اليوم”</div>
+                                            <div class="bg-white/50 border border-white/80 rounded-full py-1.5 px-3 text-center text-xs font-bold text-gray-700 truncate shadow-2xs">“特色菜 / خدماتنا الخاصة”</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Right Tiles Area -->
+                                    <div id="screenPreviewTiles" class="w-[58%] grid grid-cols-2 gap-2.5 items-stretch">
+                                        <!-- Tiles Rendered dynamically by JS -->
+                                    </div>
+
+                                </div>
+
+                                <!-- Bottom Voice Listening Indicator -->
+                                <div class="text-center text-xs font-bold text-gray-600/80 tracking-wide">
+                                    我在听… (Robot is listening)
+                                </div>
+
                             </div>
                         </div>
 
-                    </div>
-                </div>
-
-                <!-- Legacy Voice & Expressions Grid -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Voice & Text -->
-                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-comment-dots text-indigo-500"></i> التحدث والصوتيات</h3>
-                        <div class="mb-4">
-                            <label class="block text-xs font-bold text-slate-500 mb-1">النص المراد نطقه (TTS)</label>
-                            <div class="flex gap-2">
-                                <input type="text" id="rc-voiceText" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" placeholder="مرحباً بكم في مطعمنا...">
-                                <button onclick="window.sendRobotVoice()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition"><i class="fa-solid fa-paper-plane"></i> إرسال</button>
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1">التحكم بالصوت (Volume)</label>
-                            <div class="flex gap-2 items-center">
-                                <i class="fa-solid fa-volume-low text-slate-400"></i>
-                                <input type="range" id="rc-volumeSlider" min="0" max="100" value="50" class="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
-                                <i class="fa-solid fa-volume-high text-slate-400"></i>
-                                <button onclick="window.setRobotVolume()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded text-xs font-bold transition ml-2">تطبيق</button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Expressions (KettyBot Only) -->
-                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm rc-ketty-only">
-                        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-face-laugh-beam text-amber-500"></i> تعبيرات الوجه السريعة</h3>
-                        <div class="grid grid-cols-3 gap-3">
-                            <button onclick="window.setExpression('happy')" class="bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg py-3 flex flex-col items-center gap-1 transition">
-                                <i class="fa-solid fa-face-laugh text-2xl"></i> <span class="text-xs font-bold">سعيد</span>
-                            </button>
-                            <button onclick="window.setExpression('cute')" class="bg-pink-50 hover:bg-pink-100 text-pink-700 border border-pink-200 rounded-lg py-3 flex flex-col items-center gap-1 transition">
-                                <i class="fa-solid fa-face-grin-hearts text-2xl"></i> <span class="text-xs font-bold">لطيف</span>
-                            </button>
-                            <button onclick="window.setExpression('angry')" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg py-3 flex flex-col items-center gap-1 transition">
-                                <i class="fa-solid fa-face-angry text-2xl"></i> <span class="text-xs font-bold">غاضب</span>
-                            </button>
-                            <button onclick="window.setExpression('sad')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg py-3 flex flex-col items-center gap-1 transition">
-                                <i class="fa-solid fa-face-sad-cry text-2xl"></i> <span class="text-xs font-bold">حزين</span>
-                            </button>
-                            <button onclick="window.setExpression('sleepy')" class="bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg py-3 flex flex-col items-center gap-1 transition">
-                                <i class="fa-solid fa-face-tired text-2xl"></i> <span class="text-xs font-bold">نعسان</span>
-                            </button>
-                            <button onclick="window.setExpression('normal')" class="bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg py-3 flex flex-col items-center gap-1 transition">
-                                <i class="fa-solid fa-face-meh text-2xl"></i> <span class="text-xs font-bold">طبيعي</span>
-                            </button>
-                        </div>
                     </div>
                 </div>
             </div>
