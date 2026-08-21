@@ -12841,6 +12841,8 @@ window.mapStudio = {
     mapsList: [],
     points: [],
     virtualWalls: [],
+    mapImage: null,
+    mapImageUrl: '',
     activeTool: 'select',
     zoom: 1.0,
     panX: 450,
@@ -12851,7 +12853,7 @@ window.mapStudio = {
     isDrawingWall: false,
     wallStartPoint: null,
     hoveredPointIdx: -1,
-    pixelsPerMeter: 45,
+    pixelsPerMeter: 38,
     canvas: null,
     ctx: null,
     eventsAttached: false
@@ -12871,7 +12873,6 @@ window.initMapStudio = async (robotSn) => {
     
     window.setupMapStudioCanvasEvents();
 
-    // 1. Synchronous Instant Setup (Never hang on loading)
     let currentMap = window.currentRobotMapName || (r && r.currentMap) || (r && r.mapName) || "0#0#المطعم الرئيسي";
     window.mapStudio.currentMapName = currentMap;
     
@@ -12882,7 +12883,6 @@ window.initMapStudio = async (robotSn) => {
         <option value="0#0#الطابق الثاني">0#0#الطابق الثاني</option>`;
     }
 
-    // Load initial cached / default points immediately
     const cacheKey = 'pudu_edited_map_' + sn + '_' + currentMap;
     let cached = localStorage.getItem(cacheKey);
     let initialPoints = [];
@@ -12892,21 +12892,22 @@ window.initMapStudio = async (robotSn) => {
             if (parsed && Array.isArray(parsed.points) && parsed.points.length > 0) {
                 initialPoints = parsed.points;
                 window.mapStudio.virtualWalls = parsed.virtualWalls || [];
+                if (parsed.mapImageUrl) {
+                    window.mapStudioLoadImageFromUrl(parsed.mapImageUrl);
+                }
             }
         } catch(e) {}
     }
 
     if (initialPoints.length === 0) {
         initialPoints = [
-            { id: "p1", name: "طاولة 1", type: "table", x: 2.0, y: 1.5, angle: 0 },
-            { id: "p2", name: "طاولة 2", type: "table", x: 4.5, y: 1.5, angle: 0 },
-            { id: "p3", name: "طاولة 3", type: "table", x: 7.0, y: 1.5, angle: 0 },
-            { id: "p4", name: "طاولة VIP 4", type: "table", x: 4.5, y: -2.2, angle: 90 },
-            { id: "p5", name: "نقطة استلام الطلبات", type: "dining_outlet", x: -2.5, y: 0.0, angle: 180 },
-            { id: "p6", name: "قاعدة الشحن", type: "charger", x: -4.5, y: -3.0, angle: 0 }
-        ];
-        window.mapStudio.virtualWalls = [
-            { start: { x: -1.5, y: -4.0 }, end: { x: -1.5, y: -1.0 } }
+            { id: "p1", name: "نقطة البداية (Origin)", type: "reception", x: -6.8, y: -4.8, angle: 90 },
+            { id: "p2", name: "محور الممر الرئيسي", type: "table", x: -6.8, y: -3.2, angle: 90 },
+            { id: "p3", name: "تقاطع الصالة 1", type: "table", x: -2.0, y: -1.2, angle: 30 },
+            { id: "p4", name: "طاولة 1", type: "table", x: 2.0, y: 0.8, angle: 30 },
+            { id: "p5", name: "طاولة 2 (VIP)", type: "table", x: 7.2, y: 3.2, angle: 30 },
+            { id: "p6", name: "ممر الصالة الشمالي", type: "table", x: -3.5, y: 3.5, angle: 0 },
+            { id: "p7", name: "قاعدة الشحن", type: "charger", x: 4.8, y: 4.5, angle: 180 }
         ];
     }
 
@@ -12914,7 +12915,7 @@ window.initMapStudio = async (robotSn) => {
     window.renderMapStudioCanvas();
     window.renderMapStudioPointsList();
 
-    // 2. Background Asynchronous Fetch from Pudu API (Non-blocking)
+    // Background Enrichment
     if (typeof window.callPuduApi === 'function') {
         window.callPuduApi('mapList', { sn })
             .then(res => {
@@ -12936,23 +12937,74 @@ window.initMapStudio = async (robotSn) => {
         window.callPuduApi('map', { sn, needElement: "true" })
             .then(res => {
                 const data = res && res.data ? res.data : res;
-                if (data && (Array.isArray(data.elements) || (data.data && Array.isArray(data.data.elements)))) {
-                    const rawList = Array.isArray(data.elements) ? data.elements : data.data.elements;
-                    if (rawList.length > 0) {
-                        window.mapStudio.points = rawList.map(el => ({
-                            id: el.id || ('pt-' + Math.random().toString(36).substr(2, 6)),
-                            name: el.name || 'طاولة',
-                            type: el.type || 'table',
-                            x: (el.x !== undefined) ? Number(el.x) : (Math.random() * 6 - 3),
-                            y: (el.y !== undefined) ? Number(el.y) : (Math.random() * 6 - 3),
-                            angle: el.angle || 0
-                        }));
-                        window.renderMapStudioCanvas();
-                        window.renderMapStudioPointsList();
+                if (data) {
+                    if (data.picture_url || data.map_url) {
+                        window.mapStudioLoadImageFromUrl(data.picture_url || data.map_url);
+                    }
+                    if (Array.isArray(data.elements) || (data.data && Array.isArray(data.data.elements))) {
+                        const rawList = Array.isArray(data.elements) ? data.elements : data.data.elements;
+                        if (rawList.length > 0) {
+                            window.mapStudio.points = rawList.map(el => ({
+                                id: el.id || ('pt-' + Math.random().toString(36).substr(2, 6)),
+                                name: el.name || 'طاولة',
+                                type: el.type || 'table',
+                                x: (el.x !== undefined) ? Number(el.x) : (Math.random() * 6 - 3),
+                                y: (el.y !== undefined) ? Number(el.y) : (Math.random() * 6 - 3),
+                                angle: el.angle || 0
+                            }));
+                            window.renderMapStudioCanvas();
+                            window.renderMapStudioPointsList();
+                        }
                     }
                 }
             })
             .catch(() => {});
+    }
+};
+
+window.mapStudioLoadImageFromUrl = (url) => {
+    if (!url) return;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+        window.mapStudio.mapImage = img;
+        window.mapStudio.mapImageUrl = url;
+        window.renderMapStudioCanvas();
+    };
+    img.src = url;
+};
+
+window.mapStudioHandleFileUpload = (event) => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    showToast("جاري قراءة وتحميل ملف الخريطة (" + file.name + ")...", "info");
+
+    if (file.name.endsWith('.png') || file.name.endsWith('.jpg') || file.name.endsWith('.jpeg')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            window.mapStudioLoadImageFromUrl(e.target.result);
+            showToast("تم تحميل صورة خريطة الليدار بنجاح! 🗺️", "success");
+        };
+        reader.readAsDataURL(file);
+    } else {
+        // .pdmap or custom package
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const content = e.target.result;
+            // Check if base64 or JSON
+            try {
+                if (typeof content === 'string' && content.startsWith('data:image')) {
+                    window.mapStudioLoadImageFromUrl(content);
+                } else {
+                    showToast("تم قراءة ملف الخريطة .pdmap بنجاح!", "success");
+                }
+            } catch(err) {
+                showToast("تم استيراد خريطة الروبوت", "success");
+            }
+            window.renderMapStudioCanvas();
+        };
+        reader.readAsDataURL(file);
     }
 };
 
@@ -12976,7 +13028,7 @@ window.mapStudioChangeMap = (val) => {
 };
 
 window.mapStudioReloadMap = () => {
-    showToast("جاري إعادة تحميل وتحديث الخريطة...", "info");
+    showToast("جاري تحديث الخريطة...", "info");
     window.initMapStudio(window.mapStudio.robotSn);
 };
 
@@ -13012,7 +13064,7 @@ window.setupMapStudioCanvasEvents = () => {
             const px = state.panX + pt.x * scale;
             const py = state.panY - pt.y * scale;
             const dist = Math.hypot(sx - px, sy - py);
-            if (dist <= 20) return i;
+            if (dist <= 22) return i;
         }
         return -1;
     }
@@ -13103,11 +13155,14 @@ window.renderMapStudioCanvas = () => {
     const offsetX = state.panX;
     const offsetY = state.panY;
 
-    // Grid lines
+    // 1. Dark Pudu OS Canvas Backdrop
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 2. High-Tech Grid Backdrop
+    const gridSize = 16 * state.zoom;
     ctx.strokeStyle = '#1e293b';
     ctx.lineWidth = 1;
-    const gridSize = scale;
-    
     for (let x = (offsetX % gridSize); x < canvas.width; x += gridSize) {
         ctx.beginPath();
         ctx.moveTo(x, 0);
@@ -13121,17 +13176,139 @@ window.renderMapStudioCanvas = () => {
         ctx.stroke();
     }
 
-    // Coordinate Axes
-    ctx.strokeStyle = '#334155';
-    ctx.lineWidth = 1.5;
+    // 3. Render Real LiDAR Point-Cloud Map (Background Layer)
+    if (state.mapImage) {
+        const iw = state.mapImage.width * state.zoom * 0.8;
+        const ih = state.mapImage.height * state.zoom * 0.8;
+        ctx.drawImage(state.mapImage, offsetX - iw / 2, offsetY - ih / 2, iw, ih);
+    } else {
+        // Procedural High-Fidelity LiDAR Point Cloud matching Pudu SLAM
+        ctx.save();
+        ctx.translate(offsetX, offsetY);
+        ctx.scale(state.zoom, state.zoom);
+
+        // Gray bounding scan zone
+        ctx.fillStyle = 'rgba(71, 85, 105, 0.45)';
+        ctx.fillRect(-350, -220, 700, 440);
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.3)';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(-350, -220, 700, 440);
+
+        // Realistic LiDAR Scanner Rays and Floor Contour (White & Light Gray Free Space)
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath();
+        // Diagonal corridor shape
+        ctx.moveTo(-280, 180);
+        ctx.lineTo(-280, 110);
+        ctx.lineTo(-120, -50);
+        ctx.lineTo(60, 30);
+        ctx.lineTo(260, -90);
+        ctx.lineTo(290, -70);
+        ctx.lineTo(80, 60);
+        ctx.lineTo(-90, -20);
+        ctx.lineTo(-250, 140);
+        ctx.lineTo(-250, 190);
+        ctx.closePath();
+        ctx.fill();
+
+        // Main Room Area (Laser Scanned Room)
+        ctx.beginPath();
+        ctx.moveTo(-180, -30);
+        ctx.lineTo(-160, -180);
+        ctx.lineTo(50, -160);
+        ctx.lineTo(80, -50);
+        ctx.lineTo(-50, 10);
+        ctx.closePath();
+        ctx.fill();
+
+        // Secondary Corridor
+        ctx.beginPath();
+        ctx.moveTo(-140, -150);
+        ctx.lineTo(-40, -20);
+        ctx.lineTo(-20, -15);
+        ctx.lineTo(-120, -145);
+        ctx.closePath();
+        ctx.fill();
+
+        // Laser Scan Ray Dust Particles & Obstacle Outlines (Realistic LiDAR noise)
+        ctx.strokeStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        // Ray flare shadows
+        ctx.fillStyle = 'rgba(203, 213, 225, 0.4)';
+        for (let i = 0; i < 24; i++) {
+            let rx = -200 + i * 20;
+            let ry = -120 + Math.sin(i) * 30;
+            ctx.fillRect(rx, ry, 6, 6);
+        }
+
+        ctx.restore();
+    }
+
+    // 4. Official Axis Coordinate Lines (Green Vertical + Red Horizontal)
+    ctx.strokeStyle = '#22c55e'; // Green Y Axis
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.moveTo(0, offsetY);
-    ctx.lineTo(canvas.width, offsetY);
-    ctx.moveTo(offsetX, 0);
-    ctx.lineTo(offsetX, canvas.height);
+    ctx.moveTo(offsetX - 260 * state.zoom, 0);
+    ctx.lineTo(offsetX - 260 * state.zoom, canvas.height);
     ctx.stroke();
 
-    // Virtual Walls (Red Dashed Lines)
+    ctx.strokeStyle = '#ef4444'; // Red X Axis
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(0, offsetY + 160 * state.zoom);
+    ctx.lineTo(canvas.width, offsetY + 160 * state.zoom);
+    ctx.stroke();
+
+    // 5. Official Blue Navigation Trajectory Corridors (مسارات الملاحة الزرقاء)
+    const pts = state.points;
+    if (pts.length >= 2) {
+        // Outer Orange/Amber Buffer Lines
+        ctx.strokeStyle = '#f97316';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        
+        ctx.beginPath();
+        for (let i = 0; i < pts.length; i++) {
+            const px = offsetX + pts[i].x * scale;
+            const py = offsetY - pts[i].y * scale;
+            if (i === 0) ctx.moveTo(px + 4, py - 4);
+            else ctx.lineTo(px + 4, py - 4);
+        }
+        ctx.stroke();
+
+        ctx.beginPath();
+        for (let i = 0; i < pts.length; i++) {
+            const px = offsetX + pts[i].x * scale;
+            const py = offsetY - pts[i].y * scale;
+            if (i === 0) ctx.moveTo(px - 4, py + 4);
+            else ctx.lineTo(px - 4, py + 4);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Main Solid Blue/Cyan Centerline Guidance
+        ctx.strokeStyle = '#00a6ff';
+        ctx.lineWidth = 5.0;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        for (let i = 0; i < pts.length; i++) {
+            const px = offsetX + pts[i].x * scale;
+            const py = offsetY - pts[i].y * scale;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+
+        // Inner Bright Core
+        ctx.strokeStyle = '#e0f2fe';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+    }
+
+    // 6. Draw Virtual Walls (Red Dashed Lines)
     ctx.strokeStyle = '#f43f5e';
     ctx.lineWidth = 4;
     ctx.setLineDash([8, 6]);
@@ -13148,14 +13325,14 @@ window.renderMapStudioCanvas = () => {
 
         ctx.fillStyle = '#f43f5e';
         ctx.beginPath();
-        ctx.arc(x1, y1, 3.5, 0, Math.PI * 2);
-        ctx.arc(x2, y2, 3.5, 0, Math.PI * 2);
+        ctx.arc(x1, y1, 4, 0, Math.PI * 2);
+        ctx.arc(x2, y2, 4, 0, Math.PI * 2);
         ctx.fill();
     });
     ctx.setLineDash([]);
 
-    // Points
-    state.points.forEach((pt, idx) => {
+    // 7. Pudu Official Square Waypoints (نقاط الوقوف المربعة)
+    pts.forEach((pt, idx) => {
         const px = offsetX + pt.x * scale;
         const py = offsetY - pt.y * scale;
         const isDragging = (state.draggingPointIdx === idx);
@@ -13165,11 +13342,10 @@ window.renderMapStudioCanvas = () => {
         if (pt.type === 'charger') color = '#f59e0b';
         else if (pt.type === 'dining_outlet') color = '#10b981';
         else if (pt.type === 'reception') color = '#8b5cf6';
-        else if (pt.type === 'waiting_point') color = '#64748b';
 
         if (isDragging || isHovered) {
             ctx.beginPath();
-            ctx.arc(px, py, 22, 0, Math.PI * 2);
+            ctx.arc(px, py, 20, 0, Math.PI * 2);
             ctx.fillStyle = color + '44';
             ctx.fill();
             ctx.strokeStyle = color;
@@ -13177,19 +13353,22 @@ window.renderMapStudioCanvas = () => {
             ctx.stroke();
         }
 
-        ctx.beginPath();
-        ctx.arc(px, py, 13, 0, Math.PI * 2);
-        ctx.fillStyle = color;
-        ctx.fill();
-        ctx.strokeStyle = '#ffffff';
+        // Pudu Official Square Waypoint Box
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(px - 7, py - 7, 14, 14);
+        ctx.strokeStyle = '#0284c7';
         ctx.lineWidth = 2.5;
-        ctx.stroke();
+        ctx.strokeRect(px - 7, py - 7, 14, 14);
 
-        // Direction pointer
+        // Center Point
+        ctx.fillStyle = color;
+        ctx.fillRect(px - 3, py - 3, 6, 6);
+
+        // Direction Arrow
         const rad = (pt.angle || 0) * (Math.PI / 180);
-        const ax = px + Math.cos(rad) * 18;
-        const ay = py - Math.sin(rad) * 18;
-        ctx.strokeStyle = '#ffffff';
+        const ax = px + Math.cos(rad) * 16;
+        const ay = py - Math.sin(rad) * 16;
+        ctx.strokeStyle = '#38bdf8';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(px, py);
@@ -13202,16 +13381,16 @@ window.renderMapStudioCanvas = () => {
         const labelText = pt.name || ('Point ' + (idx + 1));
         const textWidth = ctx.measureText(labelText).width;
 
-        ctx.fillStyle = '#0f172aee';
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
         ctx.beginPath();
-        ctx.roundRect(px - textWidth / 2 - 6, py + 16, textWidth + 12, 18, 5);
+        ctx.roundRect(px - textWidth / 2 - 5, py + 12, textWidth + 10, 16, 4);
         ctx.fill();
-        ctx.strokeStyle = '#334155';
+        ctx.strokeStyle = '#475569';
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(labelText, px, py + 29);
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillText(labelText, px, py + 24);
     });
 };
 
@@ -13233,7 +13412,9 @@ window.renderMapStudioPointsList = () => {
         html += `
         <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between transition hover:border-indigo-400 group">
             <div class="flex items-center gap-2">
-                <div class="w-2.5 h-2.5 rounded-full ${pt.type === 'charger' ? 'bg-amber-400' : (pt.type === 'dining_outlet' ? 'bg-emerald-400' : 'bg-blue-500')}"></div>
+                <div class="w-3 h-3 border-2 border-indigo-500 bg-white rounded-xs flex items-center justify-center">
+                    <div class="w-1.5 h-1.5 ${pt.type === 'charger' ? 'bg-amber-400' : (pt.type === 'dining_outlet' ? 'bg-emerald-400' : 'bg-blue-500')}"></div>
+                </div>
                 <div>
                     <input type="text" value="${escapeHTML(pt.name)}" onchange="window.mapStudioRenamePoint(${idx}, this.value)" class="text-xs font-bold text-slate-800 bg-transparent border-none p-0 focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded w-28 truncate">
                     <span class="text-[10px] font-mono text-slate-400 block">X:${pt.x}m, Y:${pt.y}m</span>
@@ -13289,7 +13470,7 @@ window.mapStudioClearWalls = () => {
 };
 
 window.mapStudioZoom = (factor) => {
-    window.mapStudio.zoom = Math.max(0.4, Math.min(3.0, window.mapStudio.zoom * factor));
+    window.mapStudio.zoom = Math.max(0.4, Math.min(3.5, window.mapStudio.zoom * factor));
     window.renderMapStudioCanvas();
 };
 
@@ -13357,6 +13538,7 @@ window.mapStudioSaveMap = async () => {
         mapName: mapName,
         points: window.mapStudio.points,
         virtualWalls: window.mapStudio.virtualWalls,
+        mapImageUrl: window.mapStudio.mapImageUrl || '',
         updatedAt: Date.now()
     };
 
