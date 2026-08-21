@@ -12241,14 +12241,13 @@ window.uploadRobotFiles = () => {
 
 
 // ==========================================
-// 🎨 AI BACKGROUND REMOVER STUDIO (Drag, Paste & History)
+// 🎨 AI BACKGROUND REMOVER STUDIO (Drag, Paste, Compare & History)
 // ==========================================
 
 window.studioState = {
     items: [], // [{ id, originalUrl, processedUrl, name }]
     currentIndex: -1,
-    undoStack: [],
-    redoStack: []
+    isShowingOriginal: false
 };
 
 // Process File (via Input, Drag & Drop, or Clipboard Paste)
@@ -12270,15 +12269,18 @@ window.processImageFile = (file) => {
 
         window.studioState.items.push(newItem);
         window.studioState.currentIndex = window.studioState.items.length - 1;
+        window.studioState.isShowingOriginal = false;
 
         // Update UI
         const emptyDropzone = document.getElementById('studioEmptyDropzone');
         const imgContainer = document.getElementById('studioImageContainer');
         const mainImg = document.getElementById('studioMainImg');
+        const compareBadge = document.getElementById('studioCompareBadge');
         
         if (emptyDropzone) emptyDropzone.classList.add('hidden');
         if (imgContainer) imgContainer.classList.remove('hidden');
         if (mainImg) mainImg.src = originalUrl;
+        if (compareBadge) compareBadge.classList.add('hidden');
 
         window.renderStudioThumbnails();
 
@@ -12292,7 +12294,7 @@ window.handleStudioUpload = (input) => {
     const file = input.files && input.files[0];
     if (file) {
         window.processImageFile(file);
-        input.value = ''; // Reset input to allow selecting the same file again
+        input.value = '';
     }
 };
 
@@ -12306,7 +12308,7 @@ window.renderStudioThumbnails = () => {
         const imgSrc = item.processedUrl || item.originalUrl;
         
         html += `
-            <div onclick="window.selectStudioItem(${idx})" class="relative group cursor-pointer shrink-0 transition-transform ${isActive ? 'scale-105' : 'hover:scale-105'}">
+            <div onclick="window.selectStudioItem(${idx})" class="relative group cursor-pointer shrink-0 transition-transform ${isActive ? 'scale-105' : 'hover:scale-105'}" title="${escapeHTML(item.name)}">
                 <div class="w-12 h-12 rounded-xl overflow-hidden border-2 ${isActive ? 'border-blue-500 shadow-md ring-2 ring-blue-400/40' : 'border-gray-200 dark:border-gray-700'} bg-checkerboard">
                     <img src="${imgSrc}" class="w-full h-full object-cover" />
                 </div>
@@ -12320,6 +12322,7 @@ window.renderStudioThumbnails = () => {
 window.selectStudioItem = (idx) => {
     if (!window.studioState.items[idx]) return;
     window.studioState.currentIndex = idx;
+    window.studioState.isShowingOriginal = false;
     const item = window.studioState.items[idx];
     
     const mainImg = document.getElementById('studioMainImg');
@@ -12327,8 +12330,19 @@ window.selectStudioItem = (idx) => {
     
     const emptyDropzone = document.getElementById('studioEmptyDropzone');
     const imgContainer = document.getElementById('studioImageContainer');
+    const compareBadge = document.getElementById('studioCompareBadge');
+    const compareBadgeText = document.getElementById('studioCompareBadgeText');
+    const compareText = document.getElementById('studioCompareText');
+    const compareBtn = document.getElementById('studioCompareBtn');
+
     if (emptyDropzone) emptyDropzone.classList.add('hidden');
     if (imgContainer) imgContainer.classList.remove('hidden');
+    if (compareBadge) {
+        compareBadge.classList.remove('hidden');
+        if (compareBadgeText) compareBadgeText.innerText = "بعد مسح الخلفية ✨";
+    }
+    if (compareText) compareText.innerText = "مقارنة (قبل / بعد)";
+    if (compareBtn) compareBtn.classList.remove('bg-indigo-50', 'text-indigo-600', 'border-indigo-300');
 
     window.renderStudioThumbnails();
 };
@@ -12368,6 +12382,11 @@ window.processBgRemoveLive = async () => {
             const mainImg = document.getElementById('studioMainImg');
             if (mainImg) mainImg.src = resultUrl;
             
+            const compareBadge = document.getElementById('studioCompareBadge');
+            const compareBadgeText = document.getElementById('studioCompareBadgeText');
+            if (compareBadge) compareBadge.classList.remove('hidden');
+            if (compareBadgeText) compareBadgeText.innerText = "بعد مسح الخلفية ✨";
+            
             window.renderStudioThumbnails();
             showToast("✨ تم مسح الخلفية بالذكاء الاصطناعي بنجاح!", "success");
         } else {
@@ -12382,9 +12401,43 @@ window.processBgRemoveLive = async () => {
     }
 };
 
+// Toggle Comparison (Before / After)
+window.toggleStudioCompare = () => {
+    const curItem = window.studioState.items[window.studioState.currentIndex];
+    if (!curItem || !curItem.originalUrl) {
+        showToast("يرجى رفع صورة أولاً للمقارنة", "warning");
+        return;
+    }
+
+    const mainImg = document.getElementById('studioMainImg');
+    const compareBadge = document.getElementById('studioCompareBadge');
+    const compareBadgeText = document.getElementById('studioCompareBadgeText');
+    const compareText = document.getElementById('studioCompareText');
+    const compareBtn = document.getElementById('studioCompareBtn');
+
+    window.studioState.isShowingOriginal = !window.studioState.isShowingOriginal;
+
+    if (window.studioState.isShowingOriginal) {
+        // Show Original Image (Before)
+        if (mainImg) mainImg.src = curItem.originalUrl;
+        if (compareBadge) compareBadge.classList.remove('hidden');
+        if (compareBadgeText) compareBadgeText.innerText = "الصورة الأصلية (قبل المسح) 📷";
+        if (compareText) compareText.innerText = "عرض المفرغة (بعد)";
+        if (compareBtn) compareBtn.classList.add('bg-indigo-50', 'text-indigo-600', 'border-indigo-300');
+        showToast("عرض الصورة الأصلية قبل مسح الخلفية", "info");
+    } else {
+        // Show Processed Image (After)
+        if (mainImg) mainImg.src = curItem.processedUrl || curItem.originalUrl;
+        if (compareBadge) compareBadge.classList.remove('hidden');
+        if (compareBadgeText) compareBadgeText.innerText = "بعد مسح الخلفية ✨";
+        if (compareText) compareText.innerText = "مقارنة (قبل / بعد)";
+        if (compareBtn) compareBtn.classList.remove('bg-indigo-50', 'text-indigo-600', 'border-indigo-300');
+        showToast("عرض الصورة بعد مسح الخلفية", "success");
+    }
+};
+
 // Clipboard Paste Listener (Ctrl + V)
 window.addEventListener('paste', (e) => {
-    // Only trigger if in bgremove section or hash is #bgremove
     const bgSec = document.getElementById('bgremove');
     const isBgActive = (window.location.hash === '#bgremove' || (bgSec && !bgSec.classList.contains('hidden')));
     if (!isBgActive) return;
@@ -12405,10 +12458,6 @@ window.addEventListener('paste', (e) => {
 });
 
 // Drag and Drop Listeners
-window.addEventListener('DOMContentLoaded', () => {
-    window.setupBgRemoveDragAndDrop();
-});
-
 window.setupBgRemoveDragAndDrop = () => {
     const bgSec = document.getElementById('bgremove');
     const overlay = document.getElementById('bgRemoveDragOverlay');
@@ -12453,47 +12502,6 @@ window.setupBgRemoveDragAndDrop = () => {
 
 window.setupBgRemoveDragAndDrop();
 
-window.toggleBgColorMenu = () => {
-    const menu = document.getElementById('bgColorDropdown');
-    if (menu) menu.classList.toggle('hidden');
-};
-
-window.changeCanvasBg = (color) => {
-    const wrapper = document.getElementById('studioCanvasWrapper');
-    const menu = document.getElementById('bgColorDropdown');
-    if (menu) menu.classList.add('hidden');
-    
-    if (wrapper) {
-        if (color === 'transparent') {
-            wrapper.className = "w-full max-w-xl h-[400px] md:h-[460px] rounded-3xl overflow-hidden border border-gray-200 dark:border-gray-700 relative flex items-center justify-center bg-checkerboard shadow-xl transition-all";
-            wrapper.style.backgroundColor = "";
-        } else {
-            wrapper.className = "w-full max-w-xl h-[400px] md:h-[460px] rounded-3xl overflow-hidden border border-gray-200 dark:border-gray-700 relative flex items-center justify-center shadow-xl transition-all";
-            wrapper.style.backgroundColor = color;
-        }
-    }
-};
-
-window.applyImageEffect = (type) => {
-    const img = document.getElementById('studioMainImg');
-    if (!img) return;
-    if (type === 'shadow') {
-        img.classList.toggle('drop-shadow-2xl');
-        showToast("تم تبديل تأثير الظل الواقعي", "info");
-    } else if (type === 'brightness') {
-        img.style.filter = img.style.filter ? "" : "contrast(1.12) brightness(1.06) saturate(1.1)";
-        showToast("تم تحسين تباين وإضاءة الصورة", "info");
-    }
-};
-
-window.studioUndo = () => {
-    showToast("تراجع", "info");
-};
-
-window.studioRedo = () => {
-    showToast("إعادة", "info");
-};
-
 window.downloadEditedImage = (format = 'png') => {
     const curItem = window.studioState.items[window.studioState.currentIndex];
     const img = document.getElementById('studioMainImg');
@@ -12515,7 +12523,7 @@ window.downloadEditedImage = (format = 'png') => {
     document.body.removeChild(a);
     
     localStorage.setItem('quill_remove_counter', (currentCount + 1).toString());
-    showToast(`✅ تم تحميل الصورة باسم: ${fileName}`, "success");
+    showToast(`✅ تم تحميل الصورة بنجاح باسم: ${fileName}`, "success");
 };
 
 
