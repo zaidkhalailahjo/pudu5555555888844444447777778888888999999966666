@@ -11466,11 +11466,25 @@ window.openRobotControlPanel = async (robotId) => {
 
         
         // Handle Model Specific UI
-        const isKetty = r.serialNumber.toLowerCase().startsWith('pnt') || r.serialNumber.toLowerCase().startsWith('kty') || (r.name || '').toLowerCase().includes('ketty');
+        const isKetty = r.serialNumber.toLowerCase().startsWith('pnt') || r.serialNumber.toLowerCase().startsWith('kty') || (r.name || '').toLowerCase().includes('ketty') || (r.type || '').toLowerCase().includes('ketty');
+        
+        // Strictly show Customer Attraction Mode Settings tab for KettyBot ONLY
+        const interactTabBtn = document.getElementById('rc-tab-interact');
+        if (interactTabBtn) {
+            if (isKetty) {
+                interactTabBtn.style.display = '';
+            } else {
+                interactTabBtn.style.display = 'none';
+            }
+        }
+        
         document.querySelectorAll('.rc-ketty-only').forEach(el => {
             if (isKetty) el.style.display = '';
             else el.style.display = 'none';
         });
+
+        // Always reset to main status tab when opening control panel
+        window.switchRcTab('status');
 
         // Show Modal safely
         const modal = document.getElementById('robotControlModal');
