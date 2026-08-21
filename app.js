@@ -11606,7 +11606,7 @@ window.openRobotControlPanel = async (robotId) => {
             } else {
                 clearInterval(window._rcLiveStatusInterval);
             }
-        }, 3000); 
+        }, 4500); 
     } catch (e) {
         console.error("Open Panel Error:", e);
         showToast("حدث خطأ أثناء فتح لوحة التحكم. انظر الكونسول.", "error");
@@ -12049,7 +12049,10 @@ window.refreshRobotStatus = async () => {
         const batBar = document.getElementById("rc-batBar");
         const chargingTag = document.getElementById("rc-chargingTag");
         
-        if (stateEl) stateEl.innerText = "جاري الفحص...";
+        // Silent Background Polling (No flickering)
+        if (stateEl && !stateEl.innerHTML.trim()) {
+            stateEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-slate-400 animate-pulse"></span> جاري الاتصال بالروبوت...';
+        }
         
         const res = await window.callPuduApi("status", {}, true);
         const data = res && res.data ? res.data : res;
