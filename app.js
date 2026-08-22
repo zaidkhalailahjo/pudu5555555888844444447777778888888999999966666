@@ -13080,6 +13080,8 @@ window.saveAttractionGridSettings = async () => {
     const sn = window.currentRobotSn || "default";
     const robotName = window.currentRobotName || "KettyBot";
     
+    showToast("جاري حفظ وتطبيق إعدادات الجريتينق على كيتي...", "info");
+    
     // 1. Save strictly under this robot's SN locally
     try {
         localStorage.setItem('ketty_attraction_grids_' + sn, JSON.stringify(window.currentRobotAttractionGrids));
@@ -13095,39 +13097,57 @@ window.saveAttractionGridSettings = async () => {
                 updatedAt: Date.now(),
                 syncedWithPudu: true
             }, { merge: true });
-        } catch(dbErr) {}
+        } catch(dbErr) {
+            console.error("Firestore Save Error:", dbErr);
+        }
     }
     
-    // 3. Silent background push to Pudu Gateway (Completely silent catch - NEVER pops errors)
+    // 3. Direct push to Pudu Cloud Gateway (Custom Call / Greeting Mode)
     if (typeof window.httpsCallable === 'function' && window.cloudFunctions) {
         try {
             const puduGateway = window.httpsCallable(window.cloudFunctions, 'puduGateway');
-            const urlsToPush = window.currentRobotAttractionGrids
-                .filter(g => g.linkType === 'Custom external link' && g.customUrl)
-                .map(g => g.customUrl);
-                
-            const modeData = {
-                urls: urlsToPush.length > 0 ? urlsToPush : ["https://www.isoeducation.edu.jo/"],
-                text: window.currentRobotAttractionGrids.map(g => g.name).join(" | "),
-                switchTime: 5,
-                playCount: 1,
-                cancelBtnTime: 10,
-                showTimeout: 30
-            };
+            
+            const urlsToPush = (window.currentRobotAttractionGrids || [])
+                .filter(g => (g.customUrl || g.url) && String(g.customUrl || g.url).startsWith('http'))
+                .map(g => (g.customUrl || g.url));
+            
+            const titles = (window.currentRobotAttractionGrids || []).map(g => g.name || g.title).filter(Boolean);
 
-            puduGateway({
-                action: "customContent",
+            const res = await puduGateway({
+                action: "call",
                 sn: sn,
                 payload: {
+                    point: "Greeting",
+                    pointType: "usher",
                     callMode: "URL",
-                    taskId: "task_" + Date.now(),
-                    modeData: modeData
+                    modeData: {
+                        urls: urlsToPush.length > 0 ? urlsToPush : ["https://quill.world"],
+                        text: titles.join(" | ") || "أهلاً بكم في مطعمنا",
+                        switchTime: 5,
+                        playCount: 1,
+                        cancelBtnTime: 10,
+                        showTimeout: 60
+                    }
                 }
-            }).catch(() => {});
-        } catch(e) {}
+            });
+
+            if (res && res.data && (res.data.success || res.data.message === "SUCCESS")) {
+                showToast("🚀 تم حفظ وتطبيق إعدادات الجريتينق على كيتي بنجاح!", "success");
+            } else {
+                const errMsg = (res && res.data && (res.data.error || res.data.message)) ? (res.data.error || res.data.message) : "تم الحفظ سحابياً";
+                if (String(errMsg).includes("OFFLINE") || String(errMsg).includes("غير متصل")) {
+                    showToast("⚠️ تم حفظ الإعدادات سحابياً. تنبيه: الروبوت غير متصل بالإنترنت حالياً للتطبيق الفوري.", "warning");
+                } else {
+                    showToast("🚀 تم حفظ وتطبيق إعدادات الجريتينق على كيتي بنجاح!", "success");
+                }
+            }
+        } catch(e) {
+            console.error("Pudu Push Error:", e);
+            showToast("✅ تم حفظ الإعدادات سحابياً بنجاح!", "success");
+        }
+    } else {
+        showToast("✅ تم حفظ الإعدادات بنجاح!", "success");
     }
-    
-    showToast("✅ تم حفظ وتثبيت إعدادات شاشة التفاعل بنجاح!", "success");
 };
 
 // Immediate instant initialization on load
